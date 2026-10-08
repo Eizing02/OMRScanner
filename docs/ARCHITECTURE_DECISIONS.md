@@ -1,0 +1,9 @@
+# Architecture decisions — 8 October 2026
+
+1. Preserve the single Next.js App Router structure required by AGENTS.md. Do not introduce apps/web or a separate PDF service. Layout, scoring, import and camera are modules under lib. The attached Blueprint is a proposed specification, not authority to overwrite repository instructions.
+2. PRODUCT.md is unchanged. A4 landscape/two-up, opaque per-sheet QR, five-digit IDs and scanned/needs_review/verified/published/voided states follow the user-approved product context. Earlier portrait/PII-in-QR requirements conflict; use the privacy-preserving product design and document the difference.
+3. This delivery begins Phase 0–1 and includes executable UI and geometry/PDF tools. Cloud mutations require a real Supabase connection and membership. Demo data is synthetic, browser-local, explicitly labeled and unavailable in production. A successful demo action is never reported as server confirmation.
+4. Repository rules still require Cloudinary for scans. Private Supabase scan storage in the Blueprint is a conflicting proposal. No scan upload is implemented until the storage decision is resolved. Auth/database migrations can proceed independently.
+5. Python OMR deployment is deferred: bundled Python exists, but no deployed worker, cloud credentials or physical calibration dataset were supplied. A separate Python service conflicts with the current single-project rule. Upstream commit/license verification is recorded separately. No mock OMR result is accepted as a real read.
+6. Print and OMR coordinates derive from one millimeter layout. Geometry is experimental until physical printer/phone tests. Only reference two-up/20-question/4-choice printing is enabled; unvalidated presets are disabled.
+7. Server routes use the signed-in user's Supabase client and transactional RPC functions, not service-role bypass. RLS protects tenant rows and membership cannot be self-escalated.
