@@ -14,13 +14,14 @@ import {
 } from "lucide-react";
 import { useWorkspace } from "@/components/layout/workspace-provider";
 import { Badge, EmptyState, PageHeading } from "@/components/ui/primitives";
+import { resolveGeometry } from "@/lib/omr/generate-template";
 export const stageLabels = [
   "สร้างชุดสอบ",
   "ออกแบบ",
   "พิมพ์",
   "สแกน",
   "ตรวจสอบ",
-  "พร้อมเผยแพร่",
+  "พร้อมรายงาน",
 ];
 export function ExamRoute({ stage }: { stage: number }) {
   return (
@@ -40,15 +41,14 @@ export function ExamRoute({ stage }: { stage: number }) {
   );
 }
 export function Dashboard() {
-  const { exams, reviews, mode } = useWorkspace();
+  const { exams, reviews, getLayout } = useWorkspace();
   const active = exams.filter((e) => !e.archived);
   const pending = reviews.filter((r) => r.status === "needs_review");
   const focus = active.find((e) => e.stage === 4) ?? active[0];
   return (
     <>
       <PageHeading
-        title="พร้อมสำหรับงานวันนี้"
-        description="ดูงานที่ค้าง และทำต่อจากจุดที่คุณหยุดไว้"
+        title="ภาพรวมงานตรวจสอบ"
         actions={
           <>
             <Link href="/scan" className="btn btn-secondary">
@@ -76,7 +76,14 @@ export function Dashboard() {
           <strong>{active.filter((e) => e.stage === 5).length}</strong>
           ชุดสอบตรวจครบแล้ว
         </span>
-        <span className="summary-date">พฤหัสบดี 8 ตุลาคม 2569</span>
+        <span className="summary-date">
+          {new Date().toLocaleDateString("th-TH", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            timeZone: "Asia/Bangkok",
+          })}
+        </span>
       </div>
       <div className="dashboard-grid">
         <section className="panel current-exam">
@@ -126,13 +133,14 @@ export function Dashboard() {
                 <div>
                   <strong>{pending.length} รายการ</strong>
                   <span>ต้องตรวจรอยฝนด้วยตา</span>
-                  <small>คะแนนจะยังไม่เผยแพร่จนกว่าจะยืนยัน</small>
                 </div>
               </div>
               <div className="panel-footer">
                 <span>
                   <Clock3 size={15} />
-                  อัปเดตล่าสุด 8 ต.ค. 2569
+                  {new Date(focus.updatedAt).toLocaleDateString("th-TH", {
+                    timeZone: "Asia/Bangkok",
+                  })}
                 </span>
                 <Link
                   href={
@@ -163,7 +171,6 @@ export function Dashboard() {
             <h2>คิวที่ต้องตรวจ</h2>
             <Badge tone="amber">{pending.length} รายการ</Badge>
           </div>
-          <p className="muted small">ตรวจความไม่แน่ใจก่อนยืนยันคะแนน</p>
           {pending.length ? (
             <div className="review-quick-list">
               {pending.slice(0, 3).map((r) => (
@@ -216,7 +223,8 @@ export function Dashboard() {
                 </p>
               </div>
               <span className="desktop-only small muted">
-                v.{exam.version} · A4 2 ใบ/หน้า
+                v.{exam.version} ·{" "}
+                {resolveGeometry(getLayout(exam)).sheetsPerPage} ใบ / A4
               </span>
               <Badge
                 tone={
@@ -247,25 +255,6 @@ export function Dashboard() {
           ))}
         </div>
       </section>
-      <div className="dashboard-bottom">
-        <div>
-          <h2>ทุกคะแนนมีที่มา</h2>
-          <p>
-            กระดาษแต่ละใบผูกกับเวอร์ชันชุดสอบและแม่แบบ เพื่อกลับมาตรวจสอบได้เสมอ
-          </p>
-        </div>
-        <div className="trace-note">
-          <FileCheck2 size={22} />
-          <span>
-            ต้นฉบับ → ผลอ่าน → การตรวจทาน
-            <small>
-              {mode === "demo"
-                ? "ข้อมูลตัวอย่างเพื่อทดลอง workflow"
-                : "เก็บประวัติการแก้ไขพร้อมเหตุผล"}
-            </small>
-          </span>
-        </div>
-      </div>
     </>
   );
 }

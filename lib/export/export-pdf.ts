@@ -12,7 +12,7 @@ import {
 } from "@/lib/omr/generate-template";
 import { createSetIdentity, qrDataUrl } from "@/lib/omr/qr";
 import { thaiChoices } from "@/types/exam";
-import { inspectLogo } from "@/lib/omr/logo-image";
+import { printableLogo } from "@/lib/omr/logo-image";
 import type { PrintManifest, PrintStudent } from "@/types/print";
 
 export async function buildPrintPdf(
@@ -56,16 +56,7 @@ export async function buildPrintPdf(
   doc.addFont("Thai.ttf", "Thai", "normal");
   doc.setFont("Thai");
   const qr = await qrDataUrl(identity.token);
-  let logoBytes: Uint8Array | null = null;
-  let logoFormat: "PNG" | "JPEG" = "PNG";
-  if (layout.logo) {
-    // Load original pixels once. Never canvas-resize or recompress the logo for PDF.
-    const response = await fetch(layout.logo);
-    if (!response.ok)
-      throw new Error("โหลดโลโก้ต้นฉบับไม่สำเร็จ กรุณาลองใหม่ก่อนพิมพ์");
-    logoBytes = new Uint8Array(await response.arrayBuffer());
-    logoFormat = inspectLogo(logoBytes).format;
-  }
+  const logo = layout.logo ? await printableLogo(layout.logo) : null;
   const sheets: PrintManifest["sheets"] = [];
   for (let index = 0; index < count; index++) {
     const student = students[index];
@@ -87,8 +78,8 @@ export async function buildPrintPdf(
     doc.setFillColor(0, 0, 0);
     doc.setLineWidth(0.2);
     g.markers.forEach((m) => doc.rect(offset + m.x, m.y, 3, 3, "F"));
-    if (logoBytes) {
-      const dimensions = doc.getImageProperties(logoBytes);
+    if (logo) {
+      const dimensions = logo;
       const scale = Math.min(
         g.logo.width / dimensions.width,
         g.logo.height / dimensions.height,
@@ -96,8 +87,8 @@ export async function buildPrintPdf(
       const w = dimensions.width * scale,
         h = dimensions.height * scale;
       doc.addImage(
-        logoBytes,
-        logoFormat,
+        logo.dataUrl,
+        "PNG",
         offset + g.logo.x + (g.logo.width - w) / 2,
         g.logo.y + (g.logo.height - h) / 2,
         w,

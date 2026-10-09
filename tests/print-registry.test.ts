@@ -49,6 +49,8 @@ beforeAll(async () => {
     "202610080003_roster_school_logo.sql",
     "202610090004_accounts_storage.sql",
     "202610090005_print_registry.sql",
+    "202610090006_scanning_review.sql",
+    "202610090007_compact_print.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   for (const [id, email] of [
@@ -144,6 +146,452 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => {
   await db.close();
+});
+
+describe("private Storage, scanning, grading and review", () => {
+  let scanId: string, uploadId: string, input: Record<string, unknown>;
+  const answers = (uncertain = false) =>
+    Array.from({ length: 20 }, (_, i) => ({
+      question: i + 1,
+      choice: uncertain ? (i === 15 ? "B" : i >= 16 ? null : "A") : "A",
+      state: uncertain
+        ? i === 16
+          ? "blank"
+          : i === 17
+            ? "multiple"
+            : i >= 18
+              ? "ambiguous"
+              : "valid"
+        : "valid",
+      fills: [90, 0, 0, 0],
+      confidence: 1,
+    }));
+  const digitsFor = (code: string | null) =>
+    Array.from({ length: 5 }, (_, digit) => ({
+      digit,
+      value: code ? Number(code[digit]) : null,
+      state: code ? "valid" : "blank",
+      fills: Array.from({ length: 10 }, (_, v) =>
+        code && v === Number(code[digit]) ? 100 : 0,
+      ),
+    }));
+  const digits = digitsFor("02074");
+  async function reserve() {
+    const result = (
+      await rpc(teacher, "reserve_scan_upload", {
+        school_id: school,
+        request_id: crypto.randomUUID(),
+        payload_hash: "b".repeat(64),
+      })
+    ).rows[0] as {
+      result: { id: string; original_path: string; processed_path: string };
+    };
+    for (const path of [
+      result.result.original_path,
+      result.result.processed_path,
+    ])
+      await asUser(
+        teacher,
+        "insert into storage.objects(bucket_id,name) values('scan-images',$1)",
+        [path],
+      );
+    return result.result.id;
+  }
+  it("stores original observations and authoritative scores as pending; retry is idempotent", async () => {
+    registered = (
+      (await rpc(teacher, "register_omr_print", printInput)).rows[0] as {
+        result: typeof registered;
+      }
+    ).result;
+    await db.query(
+      "update students set first_name='สมชาย',last_name='คนแรก',classroom_name='ม.1/2' where id=$1",
+      [studentIds[0]],
+    );
+    uploadId = await reserve();
+    const token = JSON.parse(printInput.identity_json as string);
+    const identity = await createSetIdentity({ ...token.layout, logo: null });
+    input = {
+      school_id: school,
+      upload_id: uploadId,
+      paper: "single",
+      records: [
+        {
+          token: identity.token,
+          slot: 0,
+          student_code: "02074",
+          digits,
+          answers: answers(true),
+        },
+      ],
+    };
+    const result = (await rpc(teacher, "save_scan_batch", input)).rows[0] as {
+      result: { id: string; score: number }[];
+    };
+    scanId = result.result[0].id;
+    expect(Number(result.result[0].score)).toBe(15);
+    expect((await rpc(teacher, "save_scan_batch", input)).rows[0]).toEqual(
+      result,
+    );
+    const scores = (
+      await asUser(teacher, "select * from exam_results where scan_id=$1", [
+        scanId,
+      ])
+    ).rows as { status: string; score: number; uncertain_count: number }[];
+    expect(scores[0].status).toBe("pending_review");
+    expect(Number(scores[0].uncertain_count)).toBe(2);
+    expect(
+      (
+        await asUser(
+          teacher,
+          "select * from detected_answers where scan_id=$1",
+          [scanId],
+        )
+      ).rows,
+    ).toHaveLength(20);
+    expect(
+      (
+        await asUser(
+          teacher,
+          "select * from answer_evaluations where scan_id=$1",
+          [scanId],
+        )
+      ).rows,
+    ).toHaveLength(20);
+  });
+  it("enforces workspace isolation, private image ownership and read-only owner inspection", async () => {
+    expect(
+      (await asUser(other, "select * from scan_records")).rows,
+    ).toHaveLength(0);
+    expect(
+      (
+        await asUser(
+          other,
+          "select * from storage.objects where bucket_id='scan-images'",
+        )
+      ).rows,
+    ).toHaveLength(0);
+    expect(
+      (await asUser(owner, "select * from scan_records")).rows,
+    ).toHaveLength(1);
+    await expect(
+      rpc(owner, "reserve_scan_upload", {
+        school_id: school,
+        request_id: crypto.randomUUID(),
+        payload_hash: "c".repeat(64),
+      }),
+    ).rejects.toThrow("FORBIDDEN");
+    await expect(
+      asUser(
+        other,
+        "insert into storage.objects(bucket_id,name) values('scan-images',$1)",
+        [school + "/forged.jpg"],
+      ),
+    ).rejects.toThrow();
+    await expect(
+      asUser(teacher, "update exam_results set score=999"),
+    ).rejects.toThrow();
+    expect(
+      (
+        await asUser(owner, "select get_scan_reviews($1::uuid) as result", [
+          school,
+        ])
+      ).rows[0],
+    ).toBeTruthy();
+    await expect(
+      asUser(other, "select get_scan_reviews($1::uuid)", [school]),
+    ).rejects.toThrow("FORBIDDEN");
+  });
+  it("requires reasons, detects stale edits, recalculates and keeps raw observations unchanged", async () => {
+    const base = { school_id: school, scanId, revision: 1 };
+    await expect(
+      rpc(teacher, "review_scan", { ...base, action: "confirm" }),
+    ).rejects.toThrow("UNRESOLVED_ANSWERS");
+    await expect(
+      rpc(teacher, "review_scan", {
+        ...base,
+        action: "correct",
+        question: 19,
+        choice: "A",
+        reason: "",
+      }),
+    ).rejects.toThrow("REASON_REQUIRED");
+    await expect(
+      rpc(teacher, "review_scan", {
+        ...base,
+        action: "correct",
+        question: 19,
+        choice: "E",
+        reason: "ทดสอบ",
+      }),
+    ).rejects.toThrow("INVALID_CORRECTION");
+    await rpc(teacher, "review_scan", {
+      ...base,
+      action: "correct",
+      question: 19,
+      choice: "A",
+      reason: "ตรวจจากภาพแล้ว",
+    });
+    await expect(
+      rpc(teacher, "review_scan", {
+        ...base,
+        action: "correct",
+        question: 20,
+        choice: null,
+        reason: "ไม่มีรอยฝน",
+      }),
+    ).rejects.toThrow("STALE_REVIEW");
+    await rpc(teacher, "review_scan", {
+      ...base,
+      revision: 2,
+      action: "correct",
+      question: 20,
+      choice: null,
+      reason: "ไม่มีรอยฝน",
+    });
+    const rows = (
+      await asUser(
+        teacher,
+        "select * from detected_answers where scan_id=$1 and question_number=19",
+        [scanId],
+      )
+    ).rows as {
+      detection_status: string;
+      manually_corrected: boolean;
+      corrected_answer: string;
+      correction_reason: string;
+    }[];
+    expect(rows[0].detection_status).toBe("ambiguous");
+    expect(rows[0].corrected_answer).toBe("A");
+    expect(rows[0].manually_corrected).toBe(true);
+    expect(
+      Number(
+        (
+          (
+            await asUser(
+              teacher,
+              "select score from exam_results where scan_id=$1",
+              [scanId],
+            )
+          ).rows[0] as { score: number }
+        ).score,
+      ),
+    ).toBe(16);
+    await expect(
+      rpc(teacher, "register_score_export", {
+        school_id: school,
+        format: "pdf",
+        scan_ids: [scanId],
+      }),
+    ).rejects.toThrow("UNCONFIRMED_EXPORT");
+    await rpc(teacher, "review_scan", {
+      ...base,
+      revision: 3,
+      action: "confirm",
+    });
+    expect(
+      (
+        (
+          await asUser(
+            teacher,
+            "select scan_status from scan_records where id=$1",
+            [scanId],
+          )
+        ).rows[0] as { scan_status: string }
+      ).scan_status,
+    ).toBe("confirmed");
+    expect(
+      (
+        await asUser(
+          teacher,
+          "select * from omr_sheets where status='reviewed'",
+        )
+      ).rows.length,
+    ).toBeGreaterThan(0);
+    await expect(
+      rpc(teacher, "review_scan", {
+        ...base,
+        revision: 4,
+        action: "correct",
+        question: 1,
+        choice: "B",
+        reason: "ทดสอบ",
+      }),
+    ).rejects.toThrow("RESULT_LOCKED");
+    await rpc(teacher, "register_score_export", {
+      school_id: school,
+      format: "xlsx",
+      scan_ids: [scanId],
+    });
+    const audit = (
+      await asUser(
+        teacher,
+        "select action from audit_logs where resource_id=$1",
+        [scanId],
+      )
+    ).rows as { action: string }[];
+    expect(audit.map((a) => a.action)).toEqual(
+      expect.arrayContaining([
+        "upload_scan",
+        "auto_grade",
+        "manual_correct_answer",
+        "confirm_result",
+      ]),
+    );
+  });
+  it("never overwrites confirmed scores; pending replacement is explicit and atomic", async () => {
+    const original = input.records as Record<string, unknown>[];
+    await expect(
+      rpc(teacher, "save_scan_batch", {
+        ...input,
+        upload_id: await reserve(),
+        replace_pending: true,
+        reason: "ถ่ายภาพใหม่",
+      }),
+    ).rejects.toThrow("CONFIRMED_RESULT_EXISTS");
+    const pendingInput = {
+      ...input,
+      upload_id: await reserve(),
+      records: [
+        {
+          ...original[0],
+          student_code: "00005",
+          digits: digitsFor("00005"),
+          answers: answers(),
+        },
+      ],
+    };
+    const first = (await rpc(teacher, "save_scan_batch", pendingInput))
+      .rows[0] as { result: { id: string }[] };
+    const replacement = { ...pendingInput, upload_id: await reserve() };
+    await expect(rpc(teacher, "save_scan_batch", replacement)).rejects.toThrow(
+      "DUPLICATE_SCAN",
+    );
+    await expect(
+      rpc(teacher, "save_scan_batch", {
+        ...replacement,
+        replace_pending: true,
+        reason: "",
+      }),
+    ).rejects.toThrow("REASON_REQUIRED");
+    await rpc(teacher, "save_scan_batch", {
+      ...replacement,
+      replace_pending: true,
+      reason: "ถ่ายภาพใหม่ให้ชัด",
+    });
+    expect(
+      (
+        (
+          await asUser(
+            teacher,
+            "select scan_status from scan_records where id=$1",
+            [first.result[0].id],
+          )
+        ).rows[0] as { scan_status: string }
+      ).scan_status,
+    ).toBe("rejected");
+    const count = (
+      await asUser(
+        teacher,
+        "select * from exam_results where student_id=$1 and status<>'rejected'",
+        [studentIds[1]],
+      )
+    ).rows;
+    expect(count).toHaveLength(1);
+    await expect(
+      rpc(teacher, "save_scan_batch", {
+        ...replacement,
+        upload_id: await reserve(),
+        replace_pending: true,
+        reason: "ทดสอบ",
+        paper: "a4",
+        records: [
+          {
+            ...original[0],
+            student_code: "00005",
+            digits: digitsFor("00005"),
+            slot: 0,
+            answers: answers(),
+          },
+          {
+            ...original[0],
+            student_code: "00005",
+            digits: digitsFor("00005"),
+            slot: 1,
+            answers: answers(),
+          },
+        ],
+      }),
+    ).rejects.toThrow("DUPLICATE_SCAN");
+    expect(
+      (
+        await asUser(
+          teacher,
+          "select * from exam_results where student_id=$1 and status<>'rejected'",
+          [studentIds[1]],
+        )
+      ).rows,
+    ).toHaveLength(1);
+  });
+  it("holds unknown identity for review and prohibits deleting a saved private image", async () => {
+    const original = (input.records as Record<string, unknown>[])[0];
+    const result = (
+      await rpc(teacher, "save_scan_batch", {
+        ...input,
+        upload_id: await reserve(),
+        records: [
+          {
+            ...original,
+            student_code: null,
+            digits: digitsFor(null),
+            answers: answers(),
+          },
+        ],
+      })
+    ).rows[0] as { result: { id: string }[] };
+    await expect(
+      rpc(teacher, "review_scan", {
+        school_id: school,
+        scanId: result.result[0].id,
+        revision: 1,
+        action: "confirm",
+      }),
+    ).rejects.toThrow("IDENTITY_REQUIRED");
+    await expect(
+      rpc(teacher, "review_scan", {
+        school_id: school,
+        scanId: result.result[0].id,
+        revision: 1,
+        action: "identify",
+        studentCode: "02074",
+        reason: "ตรวจชื่อจากภาพ",
+      }),
+    ).rejects.toThrow("DUPLICATE_SCAN");
+    await rpc(teacher, "review_scan", {
+      school_id: school,
+      scanId: result.result[0].id,
+      revision: 1,
+      action: "reject",
+      reason: "ระบุเจ้าของกระดาษไม่ได้",
+    });
+    const before = (
+      await asUser(
+        teacher,
+        "select * from storage.objects where bucket_id='scan-images'",
+      )
+    ).rows.length;
+    await asUser(
+      teacher,
+      "delete from storage.objects where name in (select original_path from scan_uploads where status='complete')",
+    );
+    expect(
+      (
+        await asUser(
+          teacher,
+          "select * from storage.objects where bucket_id='scan-images'",
+        )
+      ).rows.length,
+    ).toBe(before);
+  });
 });
 describe("immutable personal OMR print registry", () => {
   it("persists layouts privately and rejects altered authoritative exam metadata", async () => {

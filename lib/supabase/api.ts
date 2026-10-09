@@ -60,19 +60,31 @@ export async function accessContext() {
     );
   const parsed = accessContextSchema.safeParse(result.data);
   if (!parsed.success || parsed.data.userId !== data.user.id)
-    throw new ApiError("INVALID_ACCESS", "ตรวจสอบสิทธิ์บัญชีไม่สำเร็จ กรุณาเข้าสู่ระบบใหม่", 403);
+    throw new ApiError(
+      "INVALID_ACCESS",
+      "ตรวจสอบสิทธิ์บัญชีไม่สำเร็จ กรุณาเข้าสู่ระบบใหม่",
+      403,
+    );
   return { db, user: data.user, access: parsed.data };
 }
 export async function ownerContext() {
   const result = await accessContext();
   if (result.access.role !== "owner" || result.access.status !== "approved")
-    throw new ApiError("FORBIDDEN", "เฉพาะเจ้าของระบบเท่านั้นที่จัดการผู้ใช้ได้", 403);
+    throw new ApiError(
+      "FORBIDDEN",
+      "เฉพาะเจ้าของระบบเท่านั้นที่จัดการผู้ใช้ได้",
+      403,
+    );
   return result;
 }
 export async function context(write = false) {
   const { db, user, access } = await accessContext();
   if (access.status !== "approved" || !access.schoolId)
-    throw new ApiError("ACCESS_NOT_APPROVED", "บัญชีนี้ยังไม่ได้รับอนุมัติหรือถูกระงับการใช้งาน", 403);
+    throw new ApiError(
+      "ACCESS_NOT_APPROVED",
+      "บัญชีนี้ยังไม่ได้รับอนุมัติหรือถูกระงับการใช้งาน",
+      403,
+    );
   const requested = (await headers()).get("x-workspace-id");
   if (requested && !z.uuid().safeParse(requested).success)
     throw new ApiError("FORBIDDEN", "พื้นที่ที่ร้องขอไม่ถูกต้อง", 403);
@@ -85,22 +97,29 @@ export async function context(write = false) {
       403,
     );
   if (readOnly) {
-    const target = await db.from("schools").select("id").eq("id", schoolId).maybeSingle();
+    const target = await db
+      .from("schools")
+      .select("id")
+      .eq("id", schoolId)
+      .maybeSingle();
     if (target.error || !target.data)
       throw new ApiError("FORBIDDEN", "ไม่พบพื้นที่หรือไม่มีสิทธิ์เปิดดู", 403);
   }
   return {
-    db, user, schoolId, readOnly, access,
+    db,
+    user,
+    schoolId,
+    readOnly,
+    access,
     role: readOnly ? "viewer" : "admin",
   };
 }
-export async function requestBody(request: Request) {
+export async function requestBody(request: Request, limit = 1024 * 1024) {
   const origin = request.headers.get("origin");
   if (origin && origin !== new URL(request.url).origin)
     throw new ApiError("ORIGIN_DENIED", "แหล่งที่มาของคำขอไม่ถูกต้อง", 403);
   if (!request.headers.get("content-type")?.includes("application/json"))
     throw new ApiError("INVALID_CONTENT_TYPE", "คำขอต้องเป็น JSON", 415);
-  const limit = 1024 * 1024;
   if (Number(request.headers.get("content-length")) > limit)
     throw new ApiError("PAYLOAD_TOO_LARGE", "ข้อมูลมีขนาดใหญ่เกินไป", 413);
   const reader = request.body?.getReader();

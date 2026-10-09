@@ -45,14 +45,13 @@ test("wide school and exam headings never intrude into score or QR regions", asy
     fullPage: true,
   });
   await page.getByRole("link", { name: "ดูตัวอย่างก่อนพิมพ์" }).click();
-  await page.getByLabel("รูปแบบกระดาษคำตอบ").selectOption("blank");
-  await page.getByLabel("จำนวนกระดาษคำตอบ").fill("1");
-  await page.getByRole("checkbox").check();
+  await page.getByLabel("รูปแบบ").selectOption("blank");
+  await page.getByLabel("จำนวนใบสำรอง").fill("1");
   const download = page.waitForEvent("download", (d) =>
     d.suggestedFilename().endsWith(".pdf"),
   );
   await page
-    .getByRole("button", { name: "ดาวน์โหลด PDF ทดสอบ", exact: true })
+    .getByRole("button", { name: "ดาวน์โหลด PDF", exact: true })
     .click();
   await (
     await download
@@ -76,12 +75,11 @@ test("live single-sheet layout, version-safe changes, matching keys and real PDF
     page.getByRole("status").filter({ hasText: "พื้นที่ครึ่ง A4 ไม่พอ" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "ดูตัวอย่างก่อนพิมพ์" }).click();
-  await page.getByLabel("รูปแบบกระดาษคำตอบ").selectOption("blank");
-  await page.getByRole("checkbox").check();
+  await page.getByLabel("รูปแบบ").selectOption("blank");
   await expect(
-    page.getByRole("button", { name: "ดาวน์โหลด PDF ทดสอบ", exact: true }),
+    page.getByRole("button", { name: "ดาวน์โหลด PDF", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("link", { name: "กลับไปออกแบบ" }).click();
+  await page.getByRole("link", { name: "ออกแบบ" }).click();
   await page
     .getByRole("button", { name: "บันทึกโครงข้อสอบ", exact: true })
     .click();
@@ -93,7 +91,7 @@ test("live single-sheet layout, version-safe changes, matching keys and real PDF
     "href",
     firstQr!,
   );
-  await page.getByRole("link", { name: "ตรวจหรือแก้เฉลย" }).click();
+  await page.getByRole("link", { name: "แก้ข้อมูลและเฉลยชุดสอบ" }).click();
   await page.getByRole("button", { name: "แก้เฉลยเป็นเวอร์ชันใหม่" }).click();
   await page
     .getByRole("group", { name: "เฉลยข้อ 60", exact: true })
@@ -145,15 +143,14 @@ test("live single-sheet layout, version-safe changes, matching keys and real PDF
     ).toEqual([]);
   }
   await page.getByRole("link", { name: "ดูตัวอย่างก่อนพิมพ์" }).click();
-  await page.getByLabel("รูปแบบกระดาษคำตอบ").selectOption("blank");
-  await page.getByLabel("จำนวนกระดาษคำตอบ").fill("3");
+  await page.getByLabel("รูปแบบ").selectOption("blank");
+  await page.getByLabel("จำนวนใบสำรอง").fill("3");
   await expect(page.getByText("3 แผ่น", { exact: true })).toBeVisible();
-  await page.getByRole("checkbox").check();
   const download = page.waitForEvent("download", (d) =>
     d.suggestedFilename().endsWith(".pdf"),
   );
   await page
-    .getByRole("button", { name: "ดาวน์โหลด PDF ทดสอบ", exact: true })
+    .getByRole("button", { name: "ดาวน์โหลด PDF", exact: true })
     .click();
   await (await download).saveAs("output/pdf/answer-sheet-60-test.pdf");
   await page.goto("/review");
@@ -167,7 +164,7 @@ test("personalized print previews real roster names and five solid ID marks with
 }) => {
   await page.goto("/exams/demo-math/print");
   const preview = page.getByRole("img", { name: "กระดาษคำตอบตัวอย่างหนึ่งใบ" });
-  await expect(page.getByLabel("รูปแบบกระดาษคำตอบ")).toHaveValue("roster");
+  await expect(page.getByLabel("รูปแบบ")).toHaveValue("roster");
   await expect(preview).toContainText("รหัส 02074");
   await expect(
     preview.locator('circle[data-id-digit][fill="#000"]'),
@@ -179,12 +176,11 @@ test("personalized print previews real roster names and five solid ID marks with
   await expect(preview).toContainText("รหัส 04217");
   await expect(preview.locator("[data-sheet-qr]")).toHaveAttribute("href", qr!);
   await expect(page.getByText("2 แผ่น", { exact: true })).toBeVisible();
-  await page.getByRole("checkbox").check();
   const download = page.waitForEvent("download", (d) =>
     d.suggestedFilename().endsWith(".pdf"),
   );
   await page
-    .getByRole("button", { name: "ดาวน์โหลด PDF ทดสอบ", exact: true })
+    .getByRole("button", { name: "ดาวน์โหลด PDF", exact: true })
     .click();
   await (await download).saveAs("output/pdf/personalized-20-test.pdf");
 });

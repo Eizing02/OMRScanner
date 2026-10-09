@@ -4,21 +4,23 @@
 
 ## Direct runtime packages
 
-| Package | Installed version | Upstream license | Use |
-|---|---|---|---|
-| next | 16.4.0 | MIT | App Router/SSR |
-| react / react-dom | 19.3.0 | MIT | UI |
-| @supabase/ssr | 0.12.7 | MIT | cookie-based server/browser clients |
-| @supabase/supabase-js | 2.117.3 | MIT | Auth/Postgres client |
-| @radix-ui/react-dialog | 1.2.0 | MIT | accessible modal primitive |
-| lucide-react | 1.53.0 | ISC + Feather-derived MIT icons | icons; preserve both notices |
-| @fontsource/noto-sans-thai | 5.3.0 | OFL-1.1 | locally hosted UI font |
-| jscanify | 1.4.3 | MIT | browser client/corner ordering helper |
-| @techstark/opencv-js | 5.0.0-release.1 | Apache-2.0 | local document edge detection/warp |
-| jspdf | 4.2.1 | MIT | vector print PDF |
-| qrcode | 1.5.4 | MIT | per-sheet opaque QR generation |
-| xlsx / SheetJS CE | 0.20.3 | Apache-2.0 | roster parser / demo XLSX/CSV |
-| zod | 4.6.5 | MIT | API/domain validation |
+| Package                    | Installed version | Upstream license                | Use                                                               |
+| -------------------------- | ----------------- | ------------------------------- | ----------------------------------------------------------------- |
+| next                       | 16.4.0            | MIT                             | App Router/SSR                                                    |
+| react / react-dom          | 19.3.0            | MIT                             | UI                                                                |
+| @supabase/ssr              | 0.12.7            | MIT                             | cookie-based server/browser clients                               |
+| @supabase/supabase-js      | 2.117.3           | MIT                             | Auth/Postgres client                                              |
+| @radix-ui/react-dialog     | 1.2.0             | MIT                             | accessible modal primitive                                        |
+| lucide-react               | 1.53.0            | ISC + Feather-derived MIT icons | icons; preserve both notices                                      |
+| @fontsource/noto-sans-thai | 5.3.0             | OFL-1.1                         | locally hosted UI font                                            |
+| jscanify                   | 1.4.3             | MIT                             | browser client/corner ordering helper                             |
+| @techstark/opencv-js       | 5.0.0-release.1   | Apache-2.0                      | local document edge detection/warp                                |
+| jspdf                      | 4.2.1             | MIT                             | vector print PDF                                                  |
+| qrcode                     | 1.5.4             | MIT                             | per-sheet opaque QR generation                                    |
+| jsqr                       | 1.4.0             | Apache-2.0                      | decode opaque set QR from image pixels                            |
+| sharp                      | 0.35.5            | Apache-2.0                      | bounded server image decoding, orientation and JPEG normalization |
+| xlsx / SheetJS CE          | 0.20.3            | Apache-2.0                      | roster parser / demo XLSX/CSV                                     |
+| zod                        | 4.6.5             | MIT                             | API/domain validation                                             |
 
 Full direct package license texts/available notices collected verbatim in `docs/licenses/RUNTIME-LICENSES.txt`. jscanify MIT ©2023 ColonelParrot retained separately in JSCANIFY-LICENSE.txt. SheetJS Apache license retained in SHEETJS-LICENSE.txt. No copied shadcn registry/react-konva/ZXing code is present; these proposed components remain TODO
 

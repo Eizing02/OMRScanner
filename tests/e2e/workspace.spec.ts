@@ -69,30 +69,27 @@ test("create demo exam, fix with reason, verify, PDF download", async ({
     .getByRole("button", { name: "แก้คำตอบข้อ 7", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
-  await expect(
-    dialog.getByRole("button", { name: "บันทึกการแก้ไข" }),
-  ).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "บันทึก" })).toBeDisabled();
   await dialog.getByRole("button", { name: "ก", exact: true }).click();
-  await dialog
-    .getByLabel("เหตุผลในการแก้ไข")
-    .fill("ตรวจภาพต้นฉบับแล้วพบรอยฝนชัดเจน");
-  await dialog.getByRole("button", { name: "บันทึกการแก้ไข" }).click();
-  await page.getByRole("button", { name: "ยืนยันคะแนนในตัวอย่าง" }).click();
+  await dialog.getByLabel("เหตุผล").fill("ตรวจภาพต้นฉบับแล้วพบรอยฝนชัดเจน");
+  await dialog.getByRole("button", { name: "บันทึก" }).click();
+  await page.getByRole("button", { name: "ยืนยันคะแนน" }).click();
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "ยืนยันในตัวอย่าง", exact: true })
+    .getByRole("button", { name: "ยืนยันคะแนน", exact: true })
     .click();
-  await page.getByRole("button", { name: /ยืนยันแล้ว/ }).click();
+  await page
+    .getByRole("combobox", { name: "สถานะผลสแกน" })
+    .selectOption("verified");
   await expect(
-    page.getByText("ยืนยันในพื้นที่ทดลองแล้ว · ยังไม่เผยแพร่ผลจริง"),
+    page.getByText("ยืนยันแล้ว", { exact: true }).first(),
   ).toBeVisible();
   await page.goto("/exams/demo-math/print");
-  await page.getByRole("checkbox").check();
   const download = page.waitForEvent("download", (d) =>
     d.suggestedFilename().endsWith(".pdf"),
   );
   await page
-    .getByRole("button", { name: "ดาวน์โหลด PDF ทดสอบ", exact: true })
+    .getByRole("button", { name: "ดาวน์โหลด PDF", exact: true })
     .click();
   const file = await download;
   await file.saveAs(".impeccable/review/sample-print.pdf");

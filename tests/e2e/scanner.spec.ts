@@ -9,7 +9,7 @@ test.use({
     ],
   },
 });
-test("actual OpenCV edge adapter and perspective crop on a digital fixture", async ({
+test("manual corners remain operable but QR-less photos cannot advance to scoring", async ({
   page,
 }) => {
   await page.goto("/scan");
@@ -35,10 +35,10 @@ test("actual OpenCV edge adapter and perspective crop on a digital fixture", asy
     mimeType: "image/png",
     buffer: Buffer.from(png, "base64"),
   });
-  await expect(page.getByAltText("ภาพต้นฉบับที่ถ่าย")).toBeVisible();
-  await page.waitForFunction(() =>
-    Boolean((window as unknown as { cv?: { Mat?: unknown } }).cv?.Mat),
-  );
+  await expect(page.getByAltText("ภาพต้นฉบับ")).toBeVisible();
+  await expect(
+    page.getByText("ยังอ่าน QR ไม่ได้", { exact: false }),
+  ).toBeVisible();
   const corner = page.getByRole("button", {
     name: "ปรับมุมบนซ้าย",
     exact: true,
@@ -100,22 +100,17 @@ test("actual OpenCV edge adapter and perspective crop on a digital fixture", asy
   expect(Number(await corner.getAttribute("data-x"))).toBeGreaterThan(
     beforeTouch,
   );
-  await page.getByRole("button", { name: "ยืนยันมุมกระดาษ" }).click();
-  await expect(page.getByAltText("ภาพหลังปรับมุม")).toBeVisible({
-    timeout: 45000,
-  });
-  const dimensions = await page
-    .getByAltText("ภาพหลังปรับมุม")
-    .evaluate((el) => ({
-      w: (el as HTMLImageElement).naturalWidth,
-      h: (el as HTMLImageElement).naturalHeight,
-    }));
-  expect(dimensions).toEqual({ w: 1800, h: 1273 });
   await expect(
-    page.getByText(
-      "TODO: เชื่อมพื้นที่จัดเก็บภาพและ OMR worker ก่อนส่งตรวจจริง",
-    ),
+    page.getByRole("button", { name: "ยืนยันมุมกระดาษ" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "อ่าน QR อีกครั้ง" }).click();
+  await expect(
+    page.getByText("ยังอ่าน QR ไม่ได้", { exact: false }),
   ).toBeVisible();
+  await expect(page.getByAltText("ภาพหลังปรับมุม")).toHaveCount(0);
+  const controls = await page.locator(".camera-controls").boundingBox();
+  const nav = await page.locator(".mobile-bottom-nav").boundingBox();
+  expect(controls!.y + controls!.height).toBeLessThanOrEqual(nav!.y);
 });
 test("camera capture works and media tracks stop after capture", async ({
   page,
@@ -138,7 +133,7 @@ test("camera capture works and media tracks stop after capture", async ({
   await page
     .getByRole("button", { name: "ถ่ายภาพกระดาษ", exact: true })
     .click();
-  await expect(page.getByAltText("ภาพต้นฉบับที่ถ่าย")).toBeVisible();
+  await expect(page.getByAltText("ภาพต้นฉบับ")).toBeVisible();
   const stopped = await page
     .locator("video")
     .evaluate((el) =>

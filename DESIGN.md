@@ -327,6 +327,18 @@ Notice มีมุม 8px, padding 12px 14px, gap 9px, ข้อความ 12
 
 การเคลื่อนไหวมีเพียงการเปลี่ยนสีปุ่ม 150ms, drawer 200ms และ spinner 800ms linear. เมื่อ prefers-reduced-motion เป็น reduce ใช้ scroll-behavior auto และลด animation / transition เป็น 0.01ms.
 
+## Compact task workspaces — 9 October 2026
+
+คง Noto Sans Thai, ink-blue navigation, cool-white surfaces และสีสถานะเดิม งาน Designer/Print/Scanner/Review/Results ใช้ความสูง `100dvh` และเลื่อนเฉพาะรายการ/แผงข้อมูล ไม่ย่อทั้งหน้าให้ตัวอักษรอ่านยากหรือปิดการซูมของเบราว์เซอร์ แถบการกระทำหลักอยู่เหนือเมนูด่วนและ safe-area เสมอ
+
+- Desktop: กระดาษและเครื่องมือขนานกัน; ตาราง/คิวเลื่อนภายใน
+- Phone/iPad: สลับส่วนตัวอย่าง–ตั้งค่า และภาพ–คำตอบ–คิวด้วยปุ่มเลือกส่วน; ขนาดช่องกรอก 16px ป้องกัน iOS auto-zoom; มุมกระดาษสัมผัสได้ 48px
+- Scanner: QR เป็นขั้นแรก ขอบและพื้นที่แรเงาตรงระนาบภาพจริง โหลด OpenCV ไม่ขวาง manual fallback; ไม่ใช้ความนิ่งของขอบเป็นหลักฐานว่าคะแนนถูกต้อง
+- Print: พรีวิวหนึ่งใบ ดาวน์โหลด PDF เพียงไฟล์เดียว; metadata JSON ใช้ภายใน ไม่ใช่ไฟล์สำหรับครูพิมพ์ ชื่อ/ชั้นเติมบนเส้นจุด โลโก้ 16mm รักษาสัดส่วนและ orientation; พิกัดรุ่นเก่าไม่เปลี่ยนย้อนหลัง
+- Copy: เอาคำอธิบายสถาปัตยกรรม/ความพร้อมเชื่อมต่อที่ไม่ช่วยงานออก คงข้อผิดพลาด สิทธิ์อ่านอย่างเดียว สถานะข้อมูลตัวอย่าง และคำเตือนการแทนที่/ยืนยันคะแนน
+
+ตรวจ browser emulation ไม่ใช่ physical Safari/iPad camera certification; รายชื่อยาวและข้อมูลหลายหน้าใช้ internal scrolling/pagination ไม่รับรองว่าทุกรายการจะเห็นพร้อมกันโดยไม่เลื่อน
+
 ## Do's and Don'ts
 
 ### Do:

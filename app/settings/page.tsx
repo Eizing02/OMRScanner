@@ -60,10 +60,7 @@ export default function Settings() {
   const settings = branding.settings ?? defaultWorkspaceSettings;
   return (
     <>
-      <PageHeading
-        title="การตั้งค่าระบบ"
-        description="ข้อมูลโรงเรียนและค่าเริ่มต้นของพื้นที่นี้ พร้อมการจัดการสิทธิ์บัญชี"
-      />
+      <PageHeading title="การตั้งค่าระบบ" />
       <div className="settings-stack">
         <section
           className="panel settings-section"
@@ -73,7 +70,7 @@ export default function Settings() {
             <h2 id="account-settings-title">บัญชีที่เข้าสู่ระบบ</h2>
             <Badge tone={mode === "connected" ? "blue" : "amber"}>
               {mode === "connected"
-                ? "เชื่อม Supabase"
+                ? "บัญชีของคุณ"
                 : mode === "demo"
                   ? "ข้อมูลทดลองในเครื่อง"
                   : "ยังไม่ตั้งค่าการเชื่อมต่อ"}
@@ -124,11 +121,6 @@ export default function Settings() {
               และไม่ใช้ตรวจสิทธิ์จริง
             </p>
           )}
-          <p className="settings-help">
-            รายชื่อ ชุดสอบ และการตั้งค่าแยกตามบัญชี
-            เจ้าของระบบเปิดดูพื้นที่อื่นได้แบบอ่านอย่างเดียว
-            การอนุมัติบัญชีไม่ได้แชร์งานระหว่างครู
-          </p>
         </section>
         <WorkspaceSettingsEditor
           key={`${branding.school}:${JSON.stringify(settings)}`}
@@ -137,35 +129,6 @@ export default function Settings() {
         {auth.access?.role === "owner" && mode === "connected" && !readOnly && (
           <UserAccessManager />
         )}
-        <section
-          className="panel settings-section"
-          aria-labelledby="system-readiness-title"
-        >
-          <h2 id="system-readiness-title">สถานะและขอบเขตการใช้งาน</h2>
-          <ul className="settings-list">
-            <li>
-              ข้อมูลบัญชี รายชื่อนักเรียน ชุดสอบ การตั้งค่า และโลโก้
-              ใช้ฐานข้อมูลและ Storage ของ Supabase เมื่อเชื่อมระบบแล้ว
-            </li>
-            <li>
-              รายชื่อบนกระดาษและช่องรหัส 5 หลักพิมพ์จากข้อมูลนักเรียน ส่วน QR
-              ใช้ระบุชุดสอบเดียวกันทั้งชุด
-            </li>
-            <li>
-              กล้องและปรับมุมกระดาษทำงานบนเครื่อง ยังไม่ใช่การตรวจคะแนน OMR
-              อัตโนมัติที่ยืนยันพร้อมใช้งานจริง
-            </li>
-            <li>
-              TODO: การตรวจรอยฝน บันทึกภาพสแกน ตรวจทานคะแนน และส่งออกผลสอบจริง
-              ต้องพัฒนาและทดสอบครบวงจรก่อนใช้ตัดสินคะแนน
-            </li>
-          </ul>
-          <p className="settings-help">
-            หากระบบแจ้งว่าฐานข้อมูลหรือ Google Login ยังไม่พร้อม ให้ติดตั้งชุด
-            SQL และตั้งค่าผู้ให้บริการ Google ตามคู่มือของโครงการ
-            ไม่ต้องใส่คีย์ลับในหน้านี้
-          </p>
-        </section>
       </div>
     </>
   );
@@ -684,7 +647,10 @@ function UserAccessManager() {
                           <button
                             className="btn btn-secondary"
                             onClick={() => {
-                              inspectWorkspace(user.schoolId, `${user.displayName || "บัญชีผู้ใช้"} (${user.email})`);
+                              inspectWorkspace(
+                                user.schoolId,
+                                `${user.displayName || "บัญชีผู้ใช้"} (${user.email})`,
+                              );
                               router.push("/dashboard");
                             }}
                           >

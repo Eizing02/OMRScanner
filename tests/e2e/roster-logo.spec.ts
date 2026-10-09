@@ -261,7 +261,10 @@ test("original PNG logo works on desktop/mobile, reprints old exams with latest 
   ] as const) {
     await page.setViewportSize({ width, height });
     if (viewport === "mobile")
-      await page.locator(".mobile-logo-controls summary").click();
+      await page
+        .getByRole("button", { name: "หัวกระดาษและโลโก้", exact: true })
+        .click();
+    await page.getByLabel("ส่วนที่ต้องการแก้ไข").selectOption("logo");
     await page.evaluate(() => document.fonts.ready);
     await capture(page, `.impeccable/review/school-logo-${viewport}.png`);
     expect(
@@ -296,12 +299,15 @@ test("original PNG logo works on desktop/mobile, reprints old exams with latest 
   );
 });
 
-test("mobile JPEG upload keeps bytes and PDF embeds JPEG rather than PNG re-encoding", async ({
+test("mobile JPEG upload keeps original bytes while PDF embeds lossless orientation-correct PNG", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/exams/demo-math/omr-generate");
-  await page.locator(".mobile-logo-controls summary").click();
+  await page
+    .getByRole("button", { name: "หัวกระดาษและโลโก้", exact: true })
+    .click();
+  await page.getByLabel("ส่วนที่ต้องการแก้ไข").selectOption("logo");
   const dataUrl = await page.evaluate(async () => {
     const image = new Image();
     image.src = "/omr-assets/school-logo.png";
@@ -323,16 +329,16 @@ test("mobile JPEG upload keeps bytes and PDF embeds JPEG rather than PNG re-enco
   const logo = page.locator("[data-sheet-logo]");
   await expect(logo).toHaveAttribute("href", dataUrl);
   await page.getByRole("link", { name: "ดูตัวอย่างก่อนพิมพ์" }).click();
-  await page.getByRole("checkbox").check();
   const download = page.waitForEvent("download", (d) =>
     d.suggestedFilename().endsWith(".pdf"),
   );
   await page
-    .getByRole("button", { name: "ดาวน์โหลด PDF ทดสอบ", exact: true })
+    .getByRole("button", { name: "ดาวน์โหลด PDF", exact: true })
     .click();
   const file = await (await download).path();
   const pdf = (await readFile(file!)).toString("latin1");
-  expect(pdf).toContain("/DCTDecode");
+  expect(pdf).not.toContain("/DCTDecode");
+  expect(pdf).toContain("/FlateDecode");
   expect(pdf).toContain("/Width 742");
   expect(pdf).toContain("/Height 763");
 });

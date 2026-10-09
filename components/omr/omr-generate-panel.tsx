@@ -13,7 +13,6 @@ import {
   ImagePlus,
   Grid2X2,
   ScanQrCode,
-  CheckCircle2,
   ShieldCheck,
   SlidersHorizontal,
   Layers,
@@ -31,6 +30,7 @@ import {
 } from "@/lib/omr/generate-template";
 import { SheetPreview } from "./omr-sheet-preview";
 import { Badge, Notice, EmptyState, Modal } from "@/components/ui/primitives";
+import { WorkspaceTabs } from "@/components/ui/workspace-tabs";
 import { resizeAnswerKey, examSchema } from "@/types/exam";
 export function Designer({ examId }: { examId: string }) {
   const { exams, loading } = useWorkspace();
@@ -71,6 +71,7 @@ function DesignerEditor({ examId }: { examId: string }) {
   const [zoom, setZoom] = useState(80);
   const [guides, setGuides] = useState(true);
   const [tab, setTab] = useState("elements");
+  const [pane, setPane] = useState("preview");
   const [confirmStructure, setConfirmStructure] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -202,7 +203,7 @@ function DesignerEditor({ examId }: { examId: string }) {
             height={80}
           />
           <span className="small muted">
-            กรอบ 12 × 12 มม.
+            กรอบ 16 × 16 มม.
             <br />
             รักษาสัดส่วน ไม่ครอปตรา
           </span>
@@ -226,14 +227,6 @@ function DesignerEditor({ examId }: { examId: string }) {
         PNG / JPG ไม่เกิน 5 MB · เก็บความละเอียดต้นฉบับ
         ย่อเฉพาะขนาดที่แสดงบนกระดาษ
       </p>
-      <p className="small muted">
-        พิมพ์ชุดเดิมใหม่ใช้โลโก้ล่าสุด PDF ที่ดาวน์โหลดไปแล้วไม่เปลี่ยน
-      </p>
-      {mode === "demo" && (
-        <p className="small muted">
-          พื้นที่ทดลอง: บันทึกในเบราว์เซอร์นี้เท่านั้น
-        </p>
-      )}
       {(logoError || brandingError) && (
         <Notice tone="error">{logoError || brandingError}</Notice>
       )}
@@ -257,20 +250,16 @@ function DesignerEditor({ examId }: { examId: string }) {
     </div>
   );
   return (
-    <>
+    <div className="task-workspace designer-task" data-pane={pane}>
       <div className="designer-heading">
         <div>
           <Link href="/exams" className="text-link">
             คลังชุดสอบ
           </Link>
           <h1>{exam.title}</h1>
-          <span className="muted small">
-            ออกแบบกระดาษคำตอบ ·{" "}
-            {readOnly ? "เปิดดูแบบอ่านอย่างเดียว" : "บันทึกแม่แบบก่อนพิมพ์"}
-          </span>
         </div>
         <div className="heading-actions">
-          <Badge tone="blue">ข้อสอบรุ่น {exam.version} · แม่แบบทดลอง</Badge>
+          <Badge tone="blue">รุ่น {exam.version}</Badge>
           <button
             className="btn btn-secondary"
             disabled={
@@ -300,24 +289,20 @@ function DesignerEditor({ examId }: { examId: string }) {
           </Link>
         </div>
       </div>
-      <p className="small muted">
-        เฉลย {exam.questionCount} ข้อ / {exam.choiceCount} ตัวเลือก ·{" "}
-        <Link className="text-link" href={`/exams/${examId}/answer-key`}>
-          ตรวจหรือแก้เฉลย
-        </Link>
-      </p>
+      <WorkspaceTabs
+        value={pane}
+        onChange={setPane}
+        items={[
+          { id: "preview", label: "กระดาษคำตอบ" },
+          { id: "properties", label: "หัวกระดาษและโลโก้" },
+        ]}
+      />
       {saveError && <Notice tone="error">{saveError}</Notice>}
       {readOnly && (
         <Notice>
           เปิดดูแม่แบบของผู้ใช้อื่นได้ แต่บันทึกหรือเปลี่ยนข้อมูลไม่ได้
         </Notice>
       )}
-      <div className="mobile-designer-notice">
-        <Notice>
-          บนมือถือปรับจำนวนข้อและตัวเลือกได้ และอัปโหลดโลโก้ด้านล่างได้
-          ใช้คอมพิวเตอร์เพื่อแก้หัวกระดาษ
-        </Notice>
-      </div>
       <div className="designer-workspace">
         <aside className="designer-tools">
           <div className="tool-tabs">
@@ -384,15 +369,10 @@ function DesignerEditor({ examId }: { examId: string }) {
                   </button>
                 ))}
               </div>
-              <div className="safe-note">
-                <ShieldCheck size={21} />
-                <strong>ออกแบบอย่างมั่นใจ</strong>
-                <p>พื้นที่สแกนถูกล็อก เพื่อรักษาตำแหน่งวงฝนและรหัสนักเรียน</p>
-              </div>
             </>
           )}
         </aside>
-        <section className="canvas-workarea">
+        <section className="canvas-workarea" data-work-pane="preview">
           <div className="canvas-toolbar">
             <div className="toolbar-group">
               <button
@@ -502,8 +482,9 @@ function DesignerEditor({ examId }: { examId: string }) {
             <div
               className="canvas-paper"
               style={{
-                width: `${zoom * (g.sheetsPerPage === 2 ? 5 : 9)}px`,
-                maxWidth: zoom <= 100 ? "100%" : "none",
+                width: "auto",
+                height: `${(zoom / 80) * 100}%`,
+                maxWidth: zoom <= 80 ? "100%" : "none",
               }}
             >
               <div className="ruler-horizontal">
@@ -540,10 +521,21 @@ function DesignerEditor({ examId }: { examId: string }) {
             </div>
           </div>
         </section>
-        <aside className="properties-panel">
+        <aside className="properties-panel" data-work-pane="properties">
           <div className="properties-title">
             <SlidersHorizontal size={18} />
             <h2>คุณสมบัติ</h2>
+            <select
+              className="property-section-select"
+              aria-label="ส่วนที่ต้องการแก้ไข"
+              value={selection}
+              onChange={(e) => setSelection(e.target.value)}
+            >
+              <option value="heading">หัวกระดาษ</option>
+              <option value="logo">โลโก้</option>
+              <option value="notes">คำชี้แจง</option>
+              <option value="fields">ข้อมูลนักเรียน</option>
+            </select>
           </div>
           <div className="property-content">
             {selection === "heading" ? (
@@ -565,9 +557,12 @@ function DesignerEditor({ examId }: { examId: string }) {
                   วิชา
                   <input value={layout.subject} maxLength={80} readOnly />
                 </label>
-                <p className="small muted">
-                  ชื่อชุดสอบและวิชามาจากข้อมูลข้อสอบ เพื่อให้กระดาษและเฉลยตรงกัน
-                </p>
+                <Link
+                  className="text-link"
+                  href={`/exams/${examId}/answer-key`}
+                >
+                  แก้ข้อมูลและเฉลยชุดสอบ
+                </Link>
                 <label>
                   เลื่อนหัวข้อในพื้นที่ปลอดภัย
                   <input
@@ -638,20 +633,11 @@ function DesignerEditor({ examId }: { examId: string }) {
               <ShieldCheck size={18} />
               ตรวจความพร้อมพิมพ์
             </h3>
-            {validation.checks.map((check) => (
-              <div className="validator-check" key={check}>
-                <CheckCircle2 size={15} />
-                {check}
-              </div>
-            ))}
             {validation.errors.map((error) => (
               <Notice key={error} tone="error">
                 {error}
               </Notice>
             ))}
-            <Notice tone="warning">
-              ต้องพิมพ์ทดสอบและยืนยันความแม่นยำก่อนใช้งานจริง
-            </Notice>
           </div>
           <button
             className="btn btn-ghost full-width"
@@ -674,10 +660,6 @@ function DesignerEditor({ examId }: { examId: string }) {
           </button>
         </aside>
       </div>
-      <details className="mobile-logo-controls panel">
-        <summary>โลโก้โรงเรียน</summary>
-        {logoControls}
-      </details>
       <Modal
         open={confirmStructure}
         onOpenChange={setConfirmStructure}
@@ -710,6 +692,6 @@ function DesignerEditor({ examId }: { examId: string }) {
           </button>
         </div>
       </Modal>
-    </>
+    </div>
   );
 }

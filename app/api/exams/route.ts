@@ -18,6 +18,11 @@ export async function GET() {
       .eq("school_id", schoolId)
       .order("created_at", { ascending: false });
     if (error) throw new ApiError("READ_FAILED", "โหลดชุดสอบไม่สำเร็จ", 500);
+    const [prints, layouts, roster] = await Promise.all([
+      db.from("print_jobs").select("exam_id").eq("school_id", schoolId),
+      db.from("omr_layouts").select("exam_id").eq("school_id", schoolId),
+      db.from("students").select("classroom_name").eq("school_id", schoolId),
+    ]);
     return json(
       data.map((e) => {
         const version = [...e.exam_versions].sort(
@@ -27,9 +32,16 @@ export async function GET() {
           ...version?.config_json,
           id: e.id,
           version: version?.version_no ?? 1,
-          stage: 0,
+          stage: prints.data?.some((p) => p.exam_id === e.id)
+            ? 3
+            : layouts.data?.some((l) => l.exam_id === e.id)
+              ? 2
+              : 1,
           scanned: 0,
-          students: 0,
+          students:
+            roster.data?.filter(
+              (s) => s.classroom_name === version?.config_json.classroom,
+            ).length ?? 0,
           reviewCount: 0,
           archived: e.archived,
           updatedAt: e.created_at,

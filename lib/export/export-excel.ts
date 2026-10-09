@@ -17,7 +17,7 @@ export function downloadScores(
   if (format === "xlsx") {
     const book = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(book, sheet, "Scores");
-    XLSX.writeFile(book, "คะแนนตัวอย่าง.xlsx");
+    XLSX.writeFile(book, "ผลคะแนน.xlsx");
   } else {
     const blob = new Blob(["\uFEFF", XLSX.utils.sheet_to_csv(sheet)], {
       type: "text/csv;charset=utf-8",
@@ -25,7 +25,7 @@ export function downloadScores(
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "คะแนนตัวอย่าง.csv";
+    a.download = "ผลคะแนน.csv";
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }

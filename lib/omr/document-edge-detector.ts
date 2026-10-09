@@ -8,12 +8,15 @@ export function loadOpenCv() {
     const script = document.createElement("script");
     script.src = "/omr-assets/opencv.js";
     script.async = true;
+    const failed = (message: string) => {
+      clearTimeout(timer);
+      loading = null;
+      script.remove();
+      reject(new Error(message));
+    };
     const timer = setTimeout(
-      () =>
-        reject(
-          new Error("โหลดตัวตรวจขอบกระดาษไม่สำเร็จ กรุณาใช้การปรับมุมด้วยมือ"),
-        ),
-      30000,
+      () => failed("โหลดตัวตรวจขอบไม่สำเร็จ ใช้การปรับมุมด้วยมือได้"),
+      15000,
     );
     script.onload = async () => {
       try {
@@ -22,14 +25,11 @@ export function loadOpenCv() {
         clearTimeout(timer);
         resolve(cv);
       } catch {
-        clearTimeout(timer);
-        loading = null;
-        reject(new Error("เปิดตัวตรวจขอบกระดาษไม่สำเร็จ"));
+        failed("เปิดตัวตรวจขอบกระดาษไม่สำเร็จ");
       }
     };
     script.onerror = () => {
-      clearTimeout(timer);
-      reject(new Error("ไม่พบตัวตรวจขอบกระดาษ"));
+      failed("ไม่พบตัวตรวจขอบกระดาษ");
     };
     document.head.appendChild(script);
   });

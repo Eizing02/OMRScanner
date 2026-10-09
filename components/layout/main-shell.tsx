@@ -15,7 +15,6 @@ import {
   PanelLeftClose,
   Menu,
   X,
-  CircleHelp,
   School,
   FileCheck2,
   ArrowUpRight,
@@ -40,9 +39,9 @@ const nav = [
 export function MainShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const [mobileNav, setMobileNav] = useState(false);
-  const [help, setHelp] = useState(false);
   const [notifications, setNotifications] = useState(false);
-  const { mode, error, loading, reviews, exams, branding, notify } = useWorkspace();
+  const { mode, error, loading, reviews, exams, branding, notify } =
+    useWorkspace();
   const auth = useAuth();
   const pending = reviews.filter((r) => r.status === "needs_review").length;
   const title = path.includes("omr-generate")
@@ -51,25 +50,82 @@ export function MainShell({ children }: { children: ReactNode }) {
       ? "ดูตัวอย่างก่อนพิมพ์"
       : (nav.find((n) => path.startsWith(n.href))?.title ?? "ชุดสอบ");
   if (path === "/login") return <>{children}</>;
-  if (mode === "connected" && (auth.loading || auth.error || !auth.access || auth.access.status !== "approved")) {
+  if (
+    mode === "connected" &&
+    (auth.loading ||
+      auth.error ||
+      !auth.access ||
+      auth.access.status !== "approved")
+  ) {
     const status = auth.access?.status;
-    const message = status === "pending" ? "บัญชีของคุณกำลังรออนุมัติ" : status === "suspended" ? "บัญชีนี้ถูกระงับการใช้งาน"
-      : status === "rejected" ? "บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งาน" : "เข้าสู่ระบบเพื่อเปิดพื้นที่ส่วนตัว";
-    return <main className="login-page"><section className="account-gate panel">
-      <span className="brand-icon"><FileCheck2 size={28} /></span>
-      <h1>{auth.loading ? "กำลังตรวจสอบสิทธิ์…" : auth.error ? "ยังเปิดพื้นที่ทำงานไม่ได้" : message}</h1>
-      {auth.loading ? <p role="status">กำลังตรวจสอบบัญชีและสถานะล่าสุดจากระบบ</p> : <>
-        <p>{auth.error || (auth.access ? "เจ้าของระบบเป็นผู้อนุมัติการใช้งาน คุณยังสร้างชุดสอบหรือเข้าถึงรายชื่อนักเรียนไม่ได้ในสถานะนี้" : "ใช้บัญชี Google ของคุณ งานและการตั้งค่าจะไม่ปะปนกับบัญชีอื่น")}</p>
-        {auth.access && <p className="small muted">บัญชี: {auth.access.email}</p>}
-        <div className="account-actions">
-          {auth.access || auth.error ? <button className="btn btn-primary" onClick={() => void auth.refresh()}>ตรวจสอบสถานะอีกครั้ง</button> : <Link className="btn btn-primary" href="/login">เข้าสู่ระบบด้วย Google</Link>}
-          <button className="btn btn-secondary" onClick={() => void auth.signOut().catch((error: Error) => notify(error.message))}>เปลี่ยนบัญชี / ออกจากระบบ</button>
-        </div>
-      </>}
-    </section></main>;
+    const message =
+      status === "pending"
+        ? "บัญชีของคุณกำลังรออนุมัติ"
+        : status === "suspended"
+          ? "บัญชีนี้ถูกระงับการใช้งาน"
+          : status === "rejected"
+            ? "บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งาน"
+            : "เข้าสู่ระบบเพื่อเปิดพื้นที่ส่วนตัว";
+    return (
+      <main className="login-page">
+        <section className="account-gate panel">
+          <span className="brand-icon">
+            <FileCheck2 size={28} />
+          </span>
+          <h1>
+            {auth.loading
+              ? "กำลังตรวจสอบสิทธิ์…"
+              : auth.error
+                ? "ยังเปิดพื้นที่ทำงานไม่ได้"
+                : message}
+          </h1>
+          {auth.loading ? (
+            <p role="status">กำลังตรวจสอบบัญชีและสถานะล่าสุดจากระบบ</p>
+          ) : (
+            <>
+              <p>
+                {auth.error ||
+                  (auth.access
+                    ? "เจ้าของระบบเป็นผู้อนุมัติการใช้งาน คุณยังสร้างชุดสอบหรือเข้าถึงรายชื่อนักเรียนไม่ได้ในสถานะนี้"
+                    : "ใช้บัญชี Google ของคุณ งานและการตั้งค่าจะไม่ปะปนกับบัญชีอื่น")}
+              </p>
+              {auth.access && (
+                <p className="small muted">บัญชี: {auth.access.email}</p>
+              )}
+              <div className="account-actions">
+                {auth.access || auth.error ? (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => void auth.refresh()}
+                  >
+                    ตรวจสอบสถานะอีกครั้ง
+                  </button>
+                ) : (
+                  <Link className="btn btn-primary" href="/login">
+                    เข้าสู่ระบบด้วย Google
+                  </Link>
+                )}
+                <button
+                  className="btn btn-secondary"
+                  onClick={() =>
+                    void auth
+                      .signOut()
+                      .catch((error: Error) => notify(error.message))
+                  }
+                >
+                  เปลี่ยนบัญชี / ออกจากระบบ
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      </main>
+    );
   }
   return (
-    <div className={`app-shell ${path === "/scan" ? "scanner-shell" : ""}`}>
+    <div
+      className={`app-shell ${path === "/scan" || path.endsWith("/scan") || path === "/review" || path.endsWith("/review") || path.includes("omr-generate") || path.endsWith("/print") || path === "/export" || path.endsWith("/results") ? "task-shell" : ""}`}
+    >
       <a className="skip-link" href="#main">
         ข้ามไปเนื้อหาหลัก
       </a>
@@ -136,10 +192,6 @@ export function MainShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <button className="nav-item" onClick={() => setHelp(true)}>
-            <CircleHelp size={19} />
-            คู่มือใช้งาน
-          </button>
           <Link className="nav-item" href="/settings">
             <Settings size={19} />
             การตั้งค่า
@@ -148,12 +200,16 @@ export function MainShell({ children }: { children: ReactNode }) {
             <span className="avatar">ค</span>
             <span>
               <strong>
-                {mode === "demo" ? "ครูตัวอย่าง" : auth.access?.displayName || auth.access?.email}
+                {mode === "demo"
+                  ? "ครูตัวอย่าง"
+                  : auth.access?.displayName || auth.access?.email}
               </strong>
               <small>
                 {mode === "demo"
                   ? "พื้นที่ทดลองส่วนตัว"
-                  : auth.access?.role === "owner" ? "เจ้าของระบบ" : "พื้นที่ส่วนตัว"}
+                  : auth.access?.role === "owner"
+                    ? "เจ้าของระบบ"
+                    : "พื้นที่ส่วนตัว"}
               </small>
             </span>
             <ArrowUpRight size={16} />
@@ -179,8 +235,15 @@ export function MainShell({ children }: { children: ReactNode }) {
           <div className="header-right">
             <label className="term-select">
               <span className="sr-only">ภาคเรียน</span>
-              <select value={branding.settings?.term ?? 1} onChange={() => undefined} aria-label="ภาคเรียนเริ่มต้น เปลี่ยนได้ในการตั้งค่า">
-                <option value={branding.settings?.term ?? 1}>ภาคเรียนที่ {branding.settings?.term ?? 1} / {branding.settings?.academicYear ?? 2569}</option>
+              <select
+                value={branding.settings?.term ?? 1}
+                onChange={() => undefined}
+                aria-label="ภาคเรียนเริ่มต้น เปลี่ยนได้ในการตั้งค่า"
+              >
+                <option value={branding.settings?.term ?? 1}>
+                  ภาคเรียนที่ {branding.settings?.term ?? 1} /{" "}
+                  {branding.settings?.academicYear ?? 2569}
+                </option>
               </select>
               <ChevronDown size={14} />
             </label>
@@ -197,17 +260,23 @@ export function MainShell({ children }: { children: ReactNode }) {
         {mode === "demo" && (
           <div className="demo-banner">
             <FlaskConical size={15} />
-            <span>
-              พื้นที่ทดลอง · ข้อมูลนักเรียนสังเคราะห์ ·
-              บันทึกเฉพาะเบราว์เซอร์นี้
-            </span>
-            <Link href="/settings">ตั้งค่าระบบจริง</Link>
+            <span>โหมดตัวอย่าง · ข้อมูลสังเคราะห์</span>
           </div>
         )}
-        {auth.readOnly && <div className="inspection-banner" role="status">
-          <span>กำลังเปิดดูพื้นที่ของ {auth.inspectionLabel} · อ่านอย่างเดียว · ไม่มีสิทธิ์แก้ไข</span>
-          <button className="text-button" onClick={() => auth.inspectWorkspace(null)}>กลับพื้นที่ของฉัน</button>
-        </div>}
+        {auth.readOnly && (
+          <div className="inspection-banner" role="status">
+            <span>
+              กำลังเปิดดูพื้นที่ของ {auth.inspectionLabel} · อ่านอย่างเดียว ·
+              ไม่มีสิทธิ์แก้ไข
+            </span>
+            <button
+              className="text-button"
+              onClick={() => auth.inspectWorkspace(null)}
+            >
+              กลับพื้นที่ของฉัน
+            </button>
+          </div>
+        )}
         <main id="main" className="main-content">
           {mode === "unconfigured" && (
             <Notice tone="warning">
@@ -250,18 +319,6 @@ export function MainShell({ children }: { children: ReactNode }) {
           </Link>
         ))}
       </nav>
-      <Modal open={help} onOpenChange={setHelp} title="เริ่มงานตรวจข้อสอบ">
-        <ol className="help-steps">
-          <li>สร้างชุดสอบและกำหนดเฉลยครบทุกข้อ สูงสุด 60 ข้อ</li>
-          <li>ดูพรีวิวใบเดียว ระบบจัด 2 ใบต่อ A4 หรือเต็ม A4 ตามพื้นที่</li>
-          <li>พิมพ์ทดสอบที่ขนาดจริง 100% ก่อนพิมพ์ทั้งห้อง</li>
-          <li>สแกนและตรวจรายการที่ระบบอ่านไม่ชัด</li>
-          <li>ยืนยันคะแนนก่อนส่งออก</li>
-        </ol>
-        <Notice>
-          ระบบสแกนและการพิมพ์ยังต้องผ่านการทดสอบกับเครื่องพิมพ์และโทรศัพท์จริง
-        </Notice>
-      </Modal>
       <Modal
         open={notifications}
         onOpenChange={setNotifications}

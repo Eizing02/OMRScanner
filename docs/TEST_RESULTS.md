@@ -1,16 +1,55 @@
 # Test results — 9 October 2026
 
-## ล่าสุด: account / private logo / personalized print
+## ล่าสุด: scanner / review / reports / compact responsive
 
-| Command | Result | Boundary |
-|---|---|---|
-| npm test | PASS: 81 tests / 14 files; final rerun 11.63 s | domain/API/Storage mocks และ PGlite PostgreSQL |
-| npm run test:e2e | PASS: 15 tests, 1.4 min | Chromium demo/synthetic camera/actual PDF downloads |
-| npm run test:accounts | PASS: 4 tests, 9.2 s; rerun หลังแก้ hooks ผ่านอีก 4 | Mock connected Google/access APIs ไม่ใช่ Google จริง |
-| npm run typecheck | PASS | Application/config/tests |
-| npm run lint | PASS: 0 errors / 0 warnings | full project หลังแก้ hook dependencies/cleanup |
-| npm run build | PASS: Next.js 16.4 production build / 25 generated pages / API + proxy | แก้ compatibility route ให้ runtime ประกาศตรงในไฟล์ ไม่ reexport |
-| git diff --check | PASS | มี warning เรื่อง LF→CRLF เท่านั้น |
+| Command/check                                  | Result                                                              | Boundary                                                                                                 |
+| ---------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| npm test -- --maxWorkers=2                     | PASS: 104 tests / 17 files; 1 optional raster test skipped; 32.07 s | Domain/API mocks และ PGlite PostgreSQL                                                                   |
+| PRINT_QA_ARTIFACTS=true + optical-reader suite | PASS: 6 tests, 2.30 s                                               | อ่าน rasterized PDF 20 ข้อจริง รวม QR และ ID สองคน; synthetic full 60 ข้อ/5 ตัวเลือก ไม่ใช่ภาพถ่ายกระดาษ |
+| npm run typecheck                              | PASS                                                                | Application/config/tests                                                                                 |
+| npm run lint                                   | PASS: 0 errors / 0 warnings                                         | Full project                                                                                             |
+| npm run build                                  | PASS: Next.js 16.4 / 27 generated pages / new scan and export APIs  | Production compile ไม่ใช่ Netlify deploy                                                                 |
+| npm audit --omit=dev                           | PASS: 0 known vulnerabilities                                       | Runtime packages only; full audit เดิมยังมี development-only braces chain                                |
+| git diff --check                               | PASS                                                                | มี LF→CRLF warning เท่านั้น                                                                              |
+
+รอบแรก export API fixture ขาด fields ที่ examSchema บังคับ แก้ fixture ให้เป็น config รุ่นจริงครบถ้วนแล้วผ่าน รอบที่รันพร้อม production build มี logo-route mock timeout 5 วินาที; rerun full suite โดยไม่ชน build ผ่าน โดยไม่ได้เพิ่ม timeout หรือข้าม assertions
+
+### Live Supabase — ติดตั้งตามการยืนยันของผู้ใช้
+
+SQL 005 มีอยู่ก่อนแล้ว ติดตั้ง 006 และ 007 สำเร็จบน `bbtgulutbvxeafktntxg` ผ่าน SQL Editor ตรวจ query แบบ read-only หลังติดตั้งพบ:
+
+- markers: `202610090005, 202610090006, 202610090007`
+- RLS enabled tables: 6
+- private scan bucket: true
+- anon blocked from scan_records SELECT: true
+- authenticated direct exam_results UPDATE blocked: true
+- authenticated review_scan RPC available: true
+
+ไม่ได้เพิ่ม/ลบรายชื่อ ข้อสอบ หรือคะแนนทดสอบบนฐานข้อมูลจริง ไม่ใช้ service-role key และยังไม่ใช่ live Google/Storage request end-to-end test
+
+### Browser / PDF confirmation
+
+- ยืนยัน viewport จริงผ่าน DOM: mobile 375×812 (Designer, Review dialog, results และ scanner), iPad portrait 768×1024 (Review/Print Preview) และ landscape 1024×768 (Review); desktop print/review ตรวจในรอบ confirmation ก่อนหน้า
+- Designer paper SVG อยู่ภายใน canvas, footer/action buttons อยู่เหนือ mobile navigation ไม่มี document-wide horizontal/vertical overflow ใน states ที่วัด; รายละเอียดภายใน panel เลื่อนได้ตามจำเป็น
+- Mobile Review: เหตุผลว่างบันทึกไม่ได้ → กรอกเหตุผลข้อมูลสังเคราะห์ → คะแนน 19/20 เป็น 20/20 → audit count 1 → ยืนยันผ่าน dialog → รายการอยู่ใน confirmed report
+- ดาวน์โหลด PDF รายบุคคลจาก browser จริง เปิดด้วย Poppler พบ A4 1 หน้า และ raster ตรวจข้อความไทย/คะแนน/คำตอบ 20 ข้อ ไม่พบ clipping ในไฟล์ที่ตรวจ
+- ภาพไม่มี QR: แสดงคำเตือน อ่าน QR อีกครั้ง/เลือกใหม่ อยู่ในจอ ไม่เปิดให้ตรวจคะแนน; manual corner มีขนาด 48×48 และ ArrowRight เปลี่ยน data-x +0.005
+- PDF กระดาษคำตอบ 20/60 ข้อสร้าง/rasterize/ตรวจภาพแล้ว; การแก้ EXIF โลโก้ JPEG เป็น logic ที่เพิ่มและ build ผ่าน แต่ยังไม่มี native Safari/physical print orientation benchmark
+- ปรับ selectors/fixtures ของ browser regression tests ให้ตรง UI ใหม่แล้ว **ยังไม่ได้รัน Playwright regression suite เต็มรอบนี้** ผล suite เดิมด้านล่างเป็นประวัติ ไม่ใช่การรับรองรอบล่าสุด
+
+ยังไม่ได้ push/deploy โค้ดรอบนี้ ต้องทดสอบ Google → พิมพ์ → ถ่ายกระดาษจริง → private upload → review → confirm → export บนเว็บหลัง deploy ก่อนใช้คะแนนจริง ดู [SCANNING_PRINT_IMPLEMENTATION.md](SCANNING_PRINT_IMPLEMENTATION.md)
+
+## ประวัติ: account / private logo / personalized print
+
+| Command               | Result                                                                 | Boundary                                                         |
+| --------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| npm test              | PASS: 81 tests / 14 files; final rerun 11.63 s                         | domain/API/Storage mocks และ PGlite PostgreSQL                   |
+| npm run test:e2e      | PASS: 15 tests, 1.4 min                                                | Chromium demo/synthetic camera/actual PDF downloads              |
+| npm run test:accounts | PASS: 4 tests, 9.2 s; rerun หลังแก้ hooks ผ่านอีก 4                    | Mock connected Google/access APIs ไม่ใช่ Google จริง             |
+| npm run typecheck     | PASS                                                                   | Application/config/tests                                         |
+| npm run lint          | PASS: 0 errors / 0 warnings                                            | full project หลังแก้ hook dependencies/cleanup                   |
+| npm run build         | PASS: Next.js 16.4 production build / 25 generated pages / API + proxy | แก้ compatibility route ให้ runtime ประกาศตรงในไฟล์ ไม่ reexport |
+| git diff --check      | PASS                                                                   | มี warning เรื่อง LF→CRLF เท่านั้น                               |
 
 เพิ่มเติมที่ทดสอบ: pending/suspend session denial; verified Google owner bootstrap; workspace isolation/owner read-only/forged UID; account-cache remount and request cancellation; original logo bytes/revision races/failed deletion queue/no-op removal metadata proof; actual-roster classroom selectors/empty state; immutable print hash/geometry/Unicode text-fit/ownership/transaction snapshot/idempotent replay; fresh snapshot install+rerun rejection. Account suite หลังเพิ่มชื่อ/อีเมลพื้นที่ที่เปิดดูผ่านอีก 4/4 (10.4 s) รวม mobile wrapping/axe; typecheck และ full lint หลังแก้ผ่าน
 
@@ -26,13 +65,13 @@ Impeccable detector รันครั้งเดียว exit0 แต่ผ�
 
 ## Current command results
 
-| Command | Result | Scope |
-|---|---|---|
-| npm run typecheck | PASS | TypeScript application/config/tests |
-| npm run lint | PASS | ไม่ lint generated upstream public OpenCV |
-| npm test | PASS: 26 tests / 4 files | domain 11, adaptive layout 6, actual PDF 4, PostgreSQL 5 |
-| npm run test:e2e | PASS: 6 tests, 43.1 s | Chromium; synthetic data/camera fixtures |
-| npm run build | PASS | Next.js 16.4 production routes + proxy compile |
+| Command           | Result                   | Scope                                                    |
+| ----------------- | ------------------------ | -------------------------------------------------------- |
+| npm run typecheck | PASS                     | TypeScript application/config/tests                      |
+| npm run lint      | PASS                     | ไม่ lint generated upstream public OpenCV                |
+| npm test          | PASS: 26 tests / 4 files | domain 11, adaptive layout 6, actual PDF 4, PostgreSQL 5 |
+| npm run test:e2e  | PASS: 6 tests, 43.1 s    | Chromium; synthetic data/camera fixtures                 |
+| npm run build     | PASS                     | Next.js 16.4 production routes + proxy compile           |
 
 Vite เตือนเรื่อง CommonJS/ESM config loader ในรุ่นอนาคต; ปัจจุบัน tests ผ่าน. NO_COLOR/FORCE_COLOR warning ไม่กระทบ tests
 

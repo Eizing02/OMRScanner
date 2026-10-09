@@ -79,3 +79,44 @@ export async function originalLogoDataUrl(file: File) {
   });
   return { dataUrl, ...dimensions };
 }
+
+/** PDF libraries don't honor JPEG EXIF; the browser does. Lossless PNG at
+ * the oriented original pixel dimensions keeps preview and PDF consistent.
+ * The stored source bytes are never changed or downsampled. */
+export async function printableLogo(source: string) {
+  const response = await fetch(source);
+  if (!response.ok) throw new Error("โหลดโลโก้ไม่สำเร็จ กรุณาลองใหม่");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  const dimensions = inspectLogo(bytes);
+  if (dimensions.format === "PNG") {
+    let binary = "";
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return {
+      dataUrl: `data:image/png;base64,${btoa(binary)}`,
+      width: dimensions.width,
+      height: dimensions.height,
+    };
+  }
+  const blob = new Blob([bytes], {
+    type: bytes[0] === 137 ? "image/png" : "image/jpeg",
+  });
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("เปิดภาพโลโก้ไม่ได้");
+    ctx.drawImage(image, 0, 0);
+    return {
+      dataUrl: canvas.toDataURL("image/png"),
+      width: canvas.width,
+      height: canvas.height,
+    };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}

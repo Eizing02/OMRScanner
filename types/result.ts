@@ -15,7 +15,7 @@ export type ReviewItem = {
   studentCode: string;
   name: string;
   classroom: string;
-  number: number;
+  number: number | null;
   reason: string;
   status: SubmissionStatus;
   rawAnswers: Observation[];
