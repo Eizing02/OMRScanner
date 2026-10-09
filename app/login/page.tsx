@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileCheck2, ArrowRight, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/components/layout/auth-provider";
 import { Notice } from "@/components/ui/primitives";
+import { AppLogo } from "@/components/layout/app-logo";
 export default function Login() {
   const auth = useAuth();
   const [busy, setBusy] = useState(false),
@@ -53,9 +54,7 @@ export default function Login() {
   return (
     <main className="login-page">
       <section className="login-story">
-        <span className="brand-icon">
-          <FileCheck2 size={28} />
-        </span>
+        <AppLogo large />
         <h1>
           พื้นที่ทำงานของครู
           <br />

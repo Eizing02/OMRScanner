@@ -1,5 +1,5 @@
 ---
-name: Smart Answer Sheet
+name: ScanSob
 description: พื้นที่ทำงานครูไทยสีอ่อน อ่านชัด และตรวจย้อนกลับได้
 colors:
   mint: "#defcf9"
@@ -183,7 +183,7 @@ components:
     size: "68px"
 ---
 
-# Design System: Smart Answer Sheet
+# Design System: ScanSob
 
 ## Overview
 
@@ -191,7 +191,7 @@ components:
 
 “ทะเบียนตรวจข้อสอบสีอ่อน” ทำให้พื้นที่ทำงานครูเข้าถึงง่ายด้วยเมนูมิ้นต์ พื้นข้อมูลฟ้าอ่อน การเลือกลาเวนเดอร์ และรายละเอียดไลแลค หมึกพลัมเข้มรักษาความชัดของหัวเรื่อง ตาราง ช่องกรอก และปุ่มหลัก สีอ่อนเป็นพื้นรองรับงานเอกสารที่มีลำดับและสถานะชัดเจน ปุ่มและการสลับส่วนตอบสนองสั้น ๆ เพื่อให้รู้สึกเบาและเป็นมิตร โดยยังอ่านคะแนนและคำเตือนได้ทันที.
 
-ทิศทางนี้บันทึกการแทนโลกสีเดิมตามคำขอผู้ใช้เมื่อ 9 ตุลาคม 2026: พาเลต DEFCF9 / CADEFC / C3BEF0 / CCA8E9 ข้อความไทยกระชับ และการเคลื่อนไหวสั้นที่นุ่มนวล สัญญาทิศทางอยู่ใน .impeccable/surfaces/app-layout-tsx.md (assessment register, candidate 4, seed e0df4ce4). ค่าจริงสกัดจาก app/globals.css, components/layout/main-shell.tsx และองค์ประกอบ UI/กระดาษ ระบบยังใช้ Noto Sans Thai และไอคอนเส้น Lucide เดิม; ไม่มีภาพประกอบ raster ใหม่ที่ส่งมอบ.
+ทิศทางนี้บันทึกการแทนโลกสีเดิมตามคำขอผู้ใช้เมื่อ 9 ตุลาคม 2026: พาเลต DEFCF9 / CADEFC / C3BEF0 / CCA8E9 ข้อความไทยกระชับ และการเคลื่อนไหวสั้นที่นุ่มนวล สัญญาทิศทางอยู่ใน .impeccable/surfaces/app-layout-tsx.md (assessment register, candidate 4, seed e0df4ce4). ค่าจริงสกัดจาก app/globals.css, components/layout/main-shell.tsx และองค์ประกอบ UI/กระดาษ ระบบยังใช้ Noto Sans Thai และไอคอนเส้น Lucide เดิม; วันที่ 10 ตุลาคม 2026 เพิ่มโลโก้ ScanSob ที่ผู้ใช้จัดให้ โดยไม่เปลี่ยนโลกสีหรือวาดตราใหม่ ที่มาและขนาดไฟล์อยู่ใน docs/APP_BRANDING.md.
 
 หลักฐานรอบรีเฟรชใน .impeccable/review ครอบคลุม 9 หน้าบน desktop/phone และ Designer, Print, Scanner, Review บน iPad จำลองทั้งสองแนว พร้อมภาพ school-print-pdf.png ที่เรนเดอร์จาก jsPDF จริง การตรวจที่รายงานไม่พบ axe violations หรือ page overflow ในหน้าที่จับภาพ และผู้ตรวจให้ verdict ship โดยไม่มีข้อแก้ไข ขอบเขตนี้ไม่รับรองกล้องหรือเครื่องพิมพ์จริง การติดตั้ง SQL/การ deploy สด หรือผลสอบที่มีข้อมูลครบทุกสถานะ.
 
@@ -293,6 +293,12 @@ Designer, Print, Scanner, Review และ Results ใช้พื้นที�
 มุมโค้งแบ่งตามหน้าที่: badge 5px, ปุ่มไอคอน 6px, ช่องกรอกและเมนู 7px, ปุ่มและ Notice 8px, แผง 12px และ dialog/กล้อง 14px. เส้นขอบทั่วไป 1px; เส้นเลือกแท็บ 2px. กระดาษเป็นสี่เหลี่ยมตามวัตถุจริง. วงกลมใช้กับ avatar จุดขั้นตอน ชัตเตอร์ และตัวจับมุม.
 
 ## Components
+
+### App identity
+
+ใช้ภาพ ScanSob ฉบับเต็ม ไม่ครอป ไม่เปลี่ยนสี และไม่หมุน ใน `AppLogo` ร่วมกันทั้งเมนูหลัก หน้าเข้าสู่ระบบ และหน้ารอสิทธิ์ กรอบ compact 56×56px; large 112×112px ลดเป็น 88×88px บน phone และหน้ารอสิทธิ์ รักษาสัดส่วนด้วย object-fit: contain บนพื้นขาว เมนูมีชื่อ ScanSob อ่านชัดแยกจากภาพขนาดเล็ก รูปมี width/height ที่แน่นอนและโหลด eager เพื่อไม่ให้แบรนด์กระโดดหลังโหลด.
+
+ชื่อแท็บและชื่อเมื่อติดตั้งเป็น ScanSob ไอคอน browser 32px, Apple 180px และ manifest 192/512px พร้อม maskable 512px ที่ภาพทั้งหมดอยู่ในวง safe zone กลาง 80% ไม่ใช้ไอคอนแอปแทนตราโรงเรียนบน OMR การติดตั้งเป็นทางเข้าเว็บแบบ standalone และยังใช้อินเทอร์เน็ต/Google approval/RLS ตามเดิม ไม่เพิ่ม offline cache ของข้อมูลนักเรียน.
 
 ### Buttons
 

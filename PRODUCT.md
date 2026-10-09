@@ -62,6 +62,8 @@ Document detection in the browser and optical-mark recognition on the server are
 
 ## Operating Context
 
+- Approved 10 October 2026: the app-facing identity is ScanSob, using the supplied full logo in app branding, browser icons and mobile home-screen installation metadata. Keep app identity separate from each teacher's school logo and printed OMR sheet. Home-screen installation remains an online web app with the existing Google sign-in, approval and private workspaces; offline grading is not implied.
+
 - Primary locale: Thai (`th-TH`); labels, forms, validation and printable school information must support Thai text correctly. Plan for Thai Buddhist Era academic years as entered by schools. Use familiar Thai terms such as `ชื่อ`, `สกุล`, `ชั้น`, `เลขที่`, `วิชา`, `เก็บคะแนน`, `กลางภาค`, and `ปลายภาค`.
 - Common users work in a school environment with standard black-and-white A4 printers, varying printer margins, variable room lighting, different phone cameras and sometimes unstable internet.
 - The default page is **A4 landscape, 297 × 210 mm**, with **two answer sheets per A4 page**. Presets for one, three or four per page may be offered only when the print-and-scan validator confirms sufficient space. Each detachable sheet must remain independently scannable.

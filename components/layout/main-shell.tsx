@@ -23,6 +23,7 @@ import {
 import { useWorkspace } from "./workspace-provider";
 import { useAuth } from "./auth-provider";
 import { Notice, Modal } from "@/components/ui/primitives";
+import { AppLogo } from "./app-logo";
 const nav = [
   { href: "/dashboard", title: "ภาพรวม", icon: LayoutDashboard },
   { href: "/exams", title: "คลังชุดสอบ", icon: BookOpen },
@@ -90,9 +91,7 @@ export function MainShell({ children }: { children: ReactNode }) {
     return (
       <main className="login-page">
         <section className="account-gate panel">
-          <span className="brand-icon">
-            <FileCheck2 size={28} />
-          </span>
+          <AppLogo large />
           <h1>
             {auth.loading
               ? "กำลังตรวจสอบสิทธิ์…"
@@ -159,11 +158,9 @@ export function MainShell({ children }: { children: ReactNode }) {
       )}
       <aside className={`sidebar ${mobileNav ? "is-open" : ""}`}>
         <div className="brand">
-          <span className="brand-icon">
-            <FileCheck2 size={25} />
-          </span>
+          <AppLogo decorative />
           <div>
-            <strong>Smart Answer Sheet</strong>
+            <strong>ScanSob</strong>
             <span>พื้นที่ทำงานของครู</span>
           </div>
           <button

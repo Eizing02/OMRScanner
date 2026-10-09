@@ -393,27 +393,30 @@ svg {
   margin: 0 8px 30px;
 }
 .brand strong {
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--ink);
   display: block;
   letter-spacing: -0.015em;
 }
-.brand span:not(.brand-icon) {
+.brand span {
   font-size: 10px;
   display: block;
   margin-top: 2px;
   color: #58647a;
 }
-.brand-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 42px;
-  background: var(--blue);
-  color: white;
-  border-radius: 9px;
+.app-logo {
+  display: block;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  object-fit: contain;
+  background: var(--surface);
+  border-radius: 8px;
+}
+.app-logo--large {
+  width: 112px;
+  height: 112px;
 }
 .school-context {
   padding: 15px 12px;
@@ -2373,7 +2376,7 @@ svg {
     margin-left: 2px;
   }
   .brand strong {
-    font-size: 12px;
+    font-size: 18px;
   }
   .nav-item {
     padding: 10px;
@@ -3280,10 +3283,19 @@ svg {
   max-width: 680px;
   padding: 32px;
 }
-.account-gate .brand-icon {
-  color: var(--blue);
-  background: var(--blue-light);
+.account-gate .app-logo {
+  width: 88px;
+  height: 88px;
   margin-bottom: 20px;
+}
+.login-story .app-logo--large {
+  align-self: flex-start;
+}
+@media (max-width: 640px) {
+  .app-logo--large {
+    width: 88px;
+    height: 88px;
+  }
 }
 .account-gate h1 {
   font-size: 26px;

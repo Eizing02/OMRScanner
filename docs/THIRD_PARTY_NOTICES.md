@@ -61,6 +61,10 @@ No clone/source incorporation/Python adapter/health/pytest/real-image run in thi
 
 Scanic/alternative document scanners are proposals only, not installed/bundled/benchmarked. No third-party performance claims have been adopted as our measurements
 
+## User-supplied ScanSob app artwork
+
+`public/omr-assets/scansob-logo.png` supplied by the user as the app's own logo on 10 October 2026, with authorization to use in the web UI/home-screen icons and publish to the project GitHub. No third-party source or public-domain license is asserted. The source bytes are preserved; five PNG delivery variants resize/pad the complete image without redrawing/cropping/recoloring. Provenance, hash and dimensions: `docs/APP_BRANDING.md`. This is separate from the supplied school crest and does not replace it on printed OMR sheets.
+
 ## Tooling, not product runtime
 
 Impeccable is installed as the design skill/CLI under .agents/.impeccable, not a Next.js dependency or grading engine; upstream [pbakaus/impeccable](https://github.com/pbakaus/impeccable) Apache-2.0. Playwright/axe/PGlite/Vitest/TypeScript/ESLint/Prettier/Tailwind are development dependencies, locked in package-lock.json; keep their respective package notices in any distributed tooling environment. Poppler and bundled Python were used to inspect PDF output, not shipped inside the application

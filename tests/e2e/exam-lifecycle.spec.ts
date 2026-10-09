@@ -5,6 +5,8 @@ test("exam permanent deletion requires exact name and keeps the roster", async (
   page,
 }) => {
   await page.goto("/students");
+  // Wait for demo hydration before taking the baseline, not an empty SSR table.
+  await expect(page.locator("tbody tr").first()).toBeVisible();
   const before = await page.locator("tbody tr").count();
   await page.goto("/exams");
   const row = page.locator("tbody tr").first();
@@ -23,7 +25,7 @@ test("exam permanent deletion requires exact name and keeps the roster", async (
   await page.reload();
   await expect(page.locator("tbody")).not.toContainText(title);
   await page.goto("/students");
-  expect(await page.locator("tbody tr").count()).toBe(before);
+  await expect(page.locator("tbody tr")).toHaveCount(before);
 });
 
 test("review gives questions the main scroll area on desktop, phones and both iPad orientations", async ({
