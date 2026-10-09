@@ -6,6 +6,7 @@ import "@fontsource/noto-sans-thai/700.css";
 import "./globals.css";
 import { WorkspaceProvider } from "@/components/layout/workspace-provider";
 import { MainShell } from "@/components/layout/main-shell";
+import { AuthProvider } from "@/components/layout/auth-provider";
 export const metadata: Metadata = {
   title: "Smart Answer Sheet · พื้นที่ทำงานของครู",
   description: "ออกแบบ พิมพ์ และตรวจสอบกระดาษคำตอบสำหรับครูไทย",
@@ -16,9 +17,9 @@ export default function RootLayout({
   return (
     <html lang="th">
       <body>
-        <WorkspaceProvider>
+        <AuthProvider><WorkspaceProvider>
           <MainShell>{children}</MainShell>
-        </WorkspaceProvider>
+        </WorkspaceProvider></AuthProvider>
       </body>
     </html>
   );

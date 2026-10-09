@@ -1,10 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { UploadCloud, ArrowRight, Download, Check } from "lucide-react";
 import {
-  columnAliases,
   inferMapping,
   previewStudents,
   type ColumnMapping,
@@ -12,7 +11,8 @@ import {
 import { useWorkspace } from "@/components/layout/workspace-provider";
 import { Notice, PageHeading, Badge } from "@/components/ui/primitives";
 export function ImportStudents() {
-  const { mode, students, setStudents, notify } = useWorkspace();
+  const { mode, students, setStudents, notify, request, readOnly } =
+    useWorkspace();
   const router = useRouter();
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -20,22 +20,47 @@ export function ImportStudents() {
   const [filename, setFilename] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const preview = previewStudents(rows, mapping);
-  const invalid = preview.filter((r) => r.errors.length);
-  const existingConflict = preview.some((r) =>
-    students.some((s) => s.student_code === r.data.student_code),
+  const [reading, setReading] = useState(false);
+  const [previewPage, setPreviewPage] = useState(0);
+  const preview = useMemo(
+    () => previewStudents(rows, mapping),
+    [rows, mapping],
   );
+  const invalid = preview.filter((r) => r.errors.length);
+  const existingCodes = new Set(students.map((s) => s.student_code));
+  const conflicts = preview.filter((r) =>
+    existingCodes.has(r.data.student_code),
+  );
+  const existingConflict = conflicts.length > 0;
   async function read(file: File | undefined) {
     if (!file) return;
+    setRows([]);
+    setHeaders([]);
+    setFilename("");
+    setPreviewPage(0);
     setError("");
     if (!/\.(xlsx|csv)$/i.test(file.name) || file.size > 5 * 1024 * 1024) {
       setError("ใช้ XLSX / CSV ขนาดไม่เกิน 5 MB");
       return;
     }
+    setReading(true);
     try {
-      const book = XLSX.read(await file.arrayBuffer(), {
-        type: "array",
+      const buffer = await file.arrayBuffer();
+      const csv = /\.csv$/i.test(file.name);
+      let input: string | ArrayBuffer = buffer;
+      if (csv) {
+        try {
+          input = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+        } catch {
+          throw new Error(
+            "CSV ต้องเป็น UTF-8 กรุณาบันทึกไฟล์ด้วย UTF-8 แล้วลองใหม่",
+          );
+        }
+      }
+      const book = XLSX.read(input, {
+        type: csv ? "string" : "array",
         cellText: true,
+        raw: true, // CSV values stay strings; XLSX uses its formatted cell text.
         sheetRows: 2002,
       });
       const sheet = book.Sheets[book.SheetNames[0]];
@@ -54,22 +79,36 @@ export function ImportStudents() {
       setFilename(file.name);
     } catch (e) {
       setError(e instanceof Error ? e.message : "เปิดไฟล์ไม่ได้");
+    } finally {
+      setReading(false);
     }
   }
   async function commit() {
-    if (invalid.length || existingConflict || !preview.length) return;
+    if (
+      readOnly ||
+      busy ||
+      reading ||
+      invalid.length ||
+      existingConflict ||
+      !preview.length
+    )
+      return;
     setBusy(true);
     setError("");
     try {
       if (mode === "connected") {
-        const response = await fetch("/api/students", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            students: preview.map((r) => r.data),
-            filename,
-          }),
-        });
+        const response = await request(
+          "/api/students",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              students: preview.map((r) => r.data),
+              filename,
+            }),
+          },
+          true,
+        );
         const body = await response.json();
         if (!response.ok)
           throw new Error(body.error?.messageTh ?? "นำเข้าไม่สำเร็จ");
@@ -99,23 +138,40 @@ export function ImportStudents() {
     <>
       <PageHeading
         title="นำเข้ารายชื่อนักเรียน"
-        description="จับคู่คอลัมน์และตรวจทุกแถว ก่อนบันทึกเข้าสู่ห้องเรียน"
+        description="ใช้ 4 คอลัมน์: รหัสประจำตัว · ชื่อ · นามสกุล · ระดับชั้น แล้วตรวจข้อมูลก่อนบันทึก"
       />
       {error && <Notice tone="error">{error}</Notice>}
+      {readOnly && (
+        <Notice tone="warning">
+          พื้นที่ของผู้ใช้อื่นเป็นแบบอ่านอย่างเดียว กลับพื้นที่ของคุณก่อนนำเข้า
+        </Notice>
+      )}
       <section className="panel import-panel">
         <label className="file-drop">
           <UploadCloud size={34} />
-          <strong>{filename || "เลือกไฟล์รายชื่อนักเรียน"}</strong>
+          <strong>
+            {reading
+              ? "กำลังอ่านไฟล์…"
+              : filename || "เลือกไฟล์รายชื่อนักเรียน"}
+          </strong>
           <span>XLSX / CSV · UTF-8 · ไม่เกิน 5 MB</span>
           <input
             type="file"
             accept=".xlsx,.csv"
-            onChange={(e) => read(e.target.files?.[0])}
+            aria-label="เลือกไฟล์รายชื่อนักเรียน"
+            disabled={busy || reading}
+            onChange={(e) => {
+              void read(e.target.files?.[0]);
+              e.target.value = "";
+            }}
           />
         </label>
         <Notice>
           รหัสต้องมี 5 หลัก และเก็บเป็นข้อความ เช่น 04217
           ระบบไม่เติมศูนย์ให้รหัสที่สั้นเอง
+          <br />
+          ใส่คำนำหน้าในช่องชื่อ เช่น เด็กชายกิตติกร · ระดับชั้น ม.1–ม.6 เช่น ม.1
+          หรือ ม.1/2 · ไม่จำเป็นต้องมีเลขที่
         </Notice>
         <button
           className="btn btn-ghost"
@@ -123,7 +179,7 @@ export function ImportStudents() {
             const url = URL.createObjectURL(
               new Blob(
                 [
-                  "\uFEFFรหัสนักเรียน,ชื่อ,สกุล,ชั้น,เลขที่\n04217,ณัฐภัทร,ตัวอย่าง,ม.3/1,1\n",
+                  "\uFEFFรหัสประจำตัว,ชื่อ,นามสกุล,ระดับชั้น\n04217,เด็กชายกิตติกร,ตัวอย่าง,ม.1\n02074,เด็กหญิงมณี,ตัวอย่าง,ม.1/2\n",
                 ],
                 { type: "text/csv;charset=utf-8" },
               ),
@@ -141,23 +197,31 @@ export function ImportStudents() {
         {rows.length > 0 && (
           <>
             <h2>จับคู่คอลัมน์</h2>
-            <div className="mapping-grid">
-              {Object.keys(columnAliases).map((key) => (
+            <div className="mapping-grid roster-mapping">
+              {(
+                [
+                  "student_code",
+                  "first_name",
+                  "last_name",
+                  "classroom_name",
+                ] as const
+              ).map((key) => (
                 <label key={key}>
                   {
                     (
                       {
-                        student_code: "รหัสนักเรียน",
+                        student_code: "รหัสประจำตัว",
                         first_name: "ชื่อ",
-                        last_name: "สกุล",
-                        full_name: "ชื่อ-สกุลรวม (ถ้ามี)",
-                        classroom_name: "ชั้น / ห้อง",
+                        last_name: "นามสกุล",
+                        full_name: "ชื่อ-สกุล",
+                        classroom_name: "ระดับชั้น",
                         number: "เลขที่",
                       } as Record<string, string>
                     )[key]
                   }
                   <select
-                    value={mapping[key as keyof ColumnMapping]}
+                    value={mapping[key]}
+                    disabled={busy}
                     onChange={(e) =>
                       setMapping({ ...mapping, [key]: e.target.value })
                     }
@@ -170,6 +234,40 @@ export function ImportStudents() {
                 </label>
               ))}
             </div>
+            <details
+              className="legacy-mapping"
+              open={Boolean(mapping.full_name)}
+            >
+              <summary>ไฟล์ชื่อ–สกุลรวม หรือมีเลขที่</summary>
+              <p className="small muted">
+                ยังรองรับไฟล์ 3 คอลัมน์ที่ใช้ชื่อ-สกุลรวม หากเลือกทั้งสองแบบ
+                ระบบใช้ชื่อ-สกุลรวมก่อน เลขที่เว้นว่างได้
+              </p>
+              <div className="mapping-grid">
+                {(["full_name", "number"] as const).map((key) => (
+                  <label key={key}>
+                    {
+                      {
+                        full_name: "ชื่อ-สกุล (รวมคอลัมน์)",
+                        number: "เลขที่ (ไม่บังคับ)",
+                      }[key]
+                    }
+                    <select
+                      value={mapping[key]}
+                      disabled={busy}
+                      onChange={(e) =>
+                        setMapping({ ...mapping, [key]: e.target.value })
+                      }
+                    >
+                      <option value="">ไม่เลือก</option>
+                      {headers.map((h) => (
+                        <option key={h}>{h}</option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </details>
             <div className="section-title">
               <h2>ตัวอย่างข้อมูล</h2>
               <Badge tone={invalid.length ? "red" : "green"}>
@@ -178,53 +276,100 @@ export function ImportStudents() {
             </div>
             {existingConflict && (
               <Notice tone="error">
-                มีรหัสซ้ำกับรายชื่อที่มีอยู่ กรุณาแก้ไขไฟล์ก่อนนำเข้า
+                มีรหัสซ้ำกับรายชื่อที่มีอยู่ {conflicts.length} แถว:{" "}
+                {conflicts
+                  .slice(0, 10)
+                  .map((r) => r.data.student_code)
+                  .join(", ")}{" "}
+                กรุณาแก้ไขไฟล์ ระบบจะไม่เขียนทับรายชื่อเดิม
               </Notice>
             )}
-            <div className="table-scroll">
+            <div
+              className="table-scroll"
+              role="region"
+              aria-label="ตารางตรวจข้อมูลนำเข้า เลื่อนดูได้"
+              tabIndex={0}
+            >
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>แถว</th>
-                    <th>รหัส</th>
-                    <th>ชื่อ-สกุล</th>
-                    <th>ห้อง</th>
+                    <th>รหัสประจำตัว</th>
+                    <th>ชื่อ</th>
+                    <th>นามสกุล</th>
+                    <th>ระดับชั้น</th>
                     <th>ผลตรวจ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.slice(0, 100).map((r) => (
-                    <tr key={r.row}>
-                      <td>{r.row}</td>
-                      <td>{r.data.student_code}</td>
-                      <td>
-                        {r.data.first_name} {r.data.last_name}
-                      </td>
-                      <td>{r.data.classroom_name}</td>
-                      <td>
-                        {r.errors.length ? (
-                          <span className="error-text">
-                            {r.errors.join(" · ")}
-                          </span>
-                        ) : (
-                          <span className="success-text">
-                            <Check size={15} />
-                            ถูกต้อง
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {preview
+                    .slice(previewPage * 100, (previewPage + 1) * 100)
+                    .map((r) => (
+                      <tr key={r.row}>
+                        <td>{r.row}</td>
+                        <td>{r.data.student_code}</td>
+                        <td>
+                          {r.data.prefix}
+                          {r.data.first_name}
+                        </td>
+                        <td>{r.data.last_name}</td>
+                        <td>{r.data.classroom_name}</td>
+                        <td>
+                          {r.errors.length ||
+                          existingCodes.has(r.data.student_code) ? (
+                            <span className="error-text">
+                              {[
+                                ...r.errors,
+                                ...(existingCodes.has(r.data.student_code)
+                                  ? ["รหัสมีอยู่ในระบบแล้ว"]
+                                  : []),
+                              ].join(" · ")}
+                            </span>
+                          ) : (
+                            <span className="success-text">
+                              <Check size={15} />
+                              ถูกต้อง
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
             <p className="small muted">
-              แสดงสูงสุด 100 แถว · การตรวจและบันทึกใช้ทุกแถวในไฟล์
+              แสดงแถว {previewPage * 100 + 1}–
+              {Math.min((previewPage + 1) * 100, preview.length)} จาก{" "}
+              {preview.length} · ตรวจและบันทึกทุกแถว
             </p>
+            {preview.length > 100 && (
+              <div className="roster-pagination">
+                <button
+                  className="btn btn-secondary"
+                  disabled={previewPage === 0}
+                  onClick={() => setPreviewPage(previewPage - 1)}
+                >
+                  ก่อนหน้า
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  disabled={(previewPage + 1) * 100 >= preview.length}
+                  onClick={() => setPreviewPage(previewPage + 1)}
+                >
+                  ถัดไป
+                </button>
+              </div>
+            )}
             <div className="dialog-actions">
               <button
                 className="btn btn-primary"
-                disabled={invalid.length > 0 || existingConflict || busy}
+                disabled={
+                  readOnly ||
+                  invalid.length > 0 ||
+                  existingConflict ||
+                  busy ||
+                  reading
+                }
                 onClick={commit}
               >
                 {busy ? "กำลังนำเข้า…" : `นำเข้า ${preview.length} รายชื่อ`}

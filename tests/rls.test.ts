@@ -31,6 +31,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    await readFile(
+      "supabase/migrations/202610080003_roster_school_logo.sql",
+      "utf8",
+    ),
+  );
   for (const user of [a, b, reviewer, colleague])
     await db.query("insert into auth.users(id) values($1)", [user]);
   await asUser(
@@ -52,6 +58,88 @@ afterAll(async () => {
   await db.close();
 });
 describe("actual PostgreSQL RLS/RPC (local auth stub)", () => {
+  it("stores prefixes/full names and keeps a missing room null", async () => {
+    const row = {
+      student_code: "00009",
+      prefix: "เด็กหญิง",
+      first_name: "มณี",
+      last_name: "ตัวอย่าง",
+      classroom_name: "ม.6",
+      number: null,
+    };
+    await asUser(a, "select import_students($1::jsonb)", [
+      JSON.stringify({ school_id: sa, filename: "three.csv", students: [row] }),
+    ]);
+    expect(
+      (
+        await asUser(
+          a,
+          "select student_code,prefix,full_name,grade_level,room,number from students where student_code='00009'",
+        )
+      ).rows,
+    ).toEqual([
+      {
+        student_code: "00009",
+        prefix: "เด็กหญิง",
+        full_name: "เด็กหญิงมณี ตัวอย่าง",
+        grade_level: "ม.6",
+        room: null,
+        number: null,
+      },
+    ]);
+    await expect(
+      asUser(a, "select import_students($1::jsonb)", [
+        JSON.stringify({
+          school_id: sa,
+          filename: "bad.csv",
+          students: [{ ...row, student_code: "00010", classroom_name: "ม.7" }],
+        }),
+      ]),
+    ).rejects.toThrow();
+    await db.exec("delete from public.students where student_code='00009'");
+  });
+  it("locks school logo updates by revision, audits and isolates tenants", async () => {
+    const current = (
+      await asUser(a, "select logo_revision from schools where id=$1", [sa])
+    ).rows[0] as { logo_revision: string };
+    const id = `school-logos/${sa}/30000000-0000-4000-8000-000000000001`;
+    const input = {
+      school_id: sa,
+      expected_revision: current.logo_revision,
+      image_url: `https://res.cloudinary.com/test/image/upload/fl_original/v1/${id}.png`,
+      image_public_id: id,
+    };
+    for (const denied of [b, reviewer])
+      await expect(
+        asUser(denied, "select update_school_logo($1::jsonb)", [
+          JSON.stringify(input),
+        ]),
+      ).rejects.toThrow();
+    await asUser(a, "select update_school_logo($1::jsonb)", [
+      JSON.stringify(input),
+    ]);
+    await expect(
+      asUser(a, "select update_school_logo($1::jsonb)", [
+        JSON.stringify(input),
+      ]),
+    ).rejects.toThrow();
+    expect(
+      (
+        await asUser(
+          a,
+          "select action from audit_logs where action='update_school_logo'",
+        )
+      ).rows,
+    ).toEqual([{ action: "update_school_logo" }]);
+    expect(
+      (
+        await asUser(
+          b,
+          "select action from audit_logs where action='update_school_logo'",
+        )
+      ).rows,
+    ).toEqual([]);
+  });
   it("only exposes one's school and rejects forged ownership", async () => {
     expect((await asUser(a, "select id from schools")).rows).toEqual([
       { id: sa },

@@ -1,5 +1,13 @@
 # Architecture decisions — 8 October 2026
 
+## Supplemental decisions — 9 October 2026
+
+- Latest human instructions supersede no-login/Cloudinary-logo plans: Google Auth, approval gate, one private `schools.created_by` workspace per approved teacher; configured verified Google owner may inspect other workspaces read-only and manage account access. Database permissions are not derived from user_metadata, browser state or the first signup.
+- School-logo originals use private Supabase Storage, CAS replacement and durable retired-file cleanup. New reprints use latest branding while immutable key/geometry identity omits the logo URL. Cloudinary remains for future scanned images under AGENTS.md, not logos.
+- Personalized print identity snapshots are stored alongside immutable templates and print jobs. One exam/key/layout QR is shared; roster ID is separately prefilled solid black, remains a five-digit string and never enters the QR payload. Live preview stays one sheet; two-up PDF uses distinct selected students.
+- Connected layouts are persisted per exam version; account/workspace transitions remount client data and cancel pending requests. APIs use fresh user session/approval checks; RLS prevents cross-user writes even for the platform owner.
+- Historical decisions below describe the earlier delivery. They do not override approved 1–60 question/adaptive printing or the latest per-account access policy. Real scanner/grading remains TODO and no external Python worker was introduced.
+
 1. Preserve the single Next.js App Router structure required by AGENTS.md. Do not introduce apps/web or a separate PDF service. Layout, scoring, import and camera are modules under lib. The attached Blueprint is a proposed specification, not authority to overwrite repository instructions.
 2. PRODUCT.md is unchanged. A4 landscape/two-up, opaque per-sheet QR, five-digit IDs and scanned/needs_review/verified/published/voided states follow the user-approved product context. Earlier portrait/PII-in-QR requirements conflict; use the privacy-preserving product design and document the difference.
 3. This delivery begins Phase 0–1 and includes executable UI and geometry/PDF tools. Cloud mutations require a real Supabase connection and membership. Demo data is synthetic, browser-local, explicitly labeled and unavailable in production. A successful demo action is never reported as server confirmation.

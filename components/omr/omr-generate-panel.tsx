@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Undo2,
@@ -45,7 +46,22 @@ export function Designer({ examId }: { examId: string }) {
   return <DesignerEditor key={examId} examId={examId} />;
 }
 function DesignerEditor({ examId }: { examId: string }) {
-  const { exams, getLayout, setLayout, updateExam, notify } = useWorkspace();
+  const {
+    exams,
+    getLayout,
+    setLayout,
+    updateExam,
+    notify,
+    branding,
+    brandingError,
+    canUploadLogo,
+    uploadSchoolLogo,
+    mode,
+    readOnly,
+    saveLayout,
+    isCurrentWorkspace,
+  } = useWorkspace();
+  const router = useRouter();
   const exam = exams.find((e) => e.id === examId);
   const [history, setHistory] = useState<SheetLayout[]>([
     exam ? getLayout(exam) : defaultLayout,
@@ -58,6 +74,12 @@ function DesignerEditor({ examId }: { examId: string }) {
   const [confirmStructure, setConfirmStructure] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState("");
+  const editor = useRef({ history, index });
+  useEffect(() => {
+    editor.current = { history, index };
+  }, [history, index]);
   const layout = history[index];
   const g = resolveGeometry(layout);
   const structureChanged = Boolean(
@@ -78,17 +100,22 @@ function DesignerEditor({ examId }: { examId: string }) {
       </EmptyState>
     );
   function update(patch: Partial<SheetLayout>) {
-    const next = { ...layout, ...patch };
-    setHistory([...history.slice(0, index + 1), next]);
-    setIndex(index + 1);
+    if (readOnly) return;
+    const current = editor.current;
+    const next = { ...current.history[current.index], ...patch };
+    const nextHistory = [...current.history.slice(0, current.index + 1), next];
+    editor.current = { history: nextHistory, index: current.index + 1 };
+    setHistory(nextHistory);
+    setIndex(current.index + 1);
     setLayout(next);
   }
   function go(nextIndex: number) {
+    if (readOnly) return;
     setIndex(nextIndex);
     setLayout(history[nextIndex]);
   }
   async function saveStructure() {
-    if (!exam) return;
+    if (!exam || readOnly) return;
     setSaving(true);
     setSaveError("");
     try {
@@ -113,6 +140,7 @@ function DesignerEditor({ examId }: { examId: string }) {
       setHistory([nextLayout]);
       setIndex(0);
       setLayout(nextLayout);
+      await saveLayout(nextLayout);
       setConfirmStructure(false);
       notify("บันทึกเป็นเวอร์ชันใหม่แล้ว กรุณาตรวจเฉลยก่อนพิมพ์");
     } catch (e) {
@@ -121,33 +149,113 @@ function DesignerEditor({ examId }: { examId: string }) {
       setSaving(false);
     }
   }
-  async function logo(file: File | undefined) {
-    if (!file) return;
-    if (
-      !["image/png", "image/jpeg"].includes(file.type) ||
-      file.size > 2 * 1024 * 1024
-    ) {
-      notify("ใช้ไฟล์ PNG หรือ JPG ขนาดไม่เกิน 2 MB");
+  async function saveDesign(continueToPrint = false) {
+    if (readOnly || saving || structureChanged || validation.errors.length)
       return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      await saveLayout(layout);
+      if (!isCurrentWorkspace()) return;
+      notify(
+        mode === "demo"
+          ? "บันทึกแม่แบบในเบราว์เซอร์ทดลองแล้ว"
+          : "บันทึกแม่แบบในพื้นที่ส่วนตัวแล้ว",
+      );
+      if (continueToPrint) router.push(`/exams/${examId}/print`);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : "บันทึกแม่แบบไม่สำเร็จ",
+      );
+    } finally {
+      setSaving(false);
     }
-    const url = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      const canvas = document.createElement("canvas");
-      const scale = Math.min(1, 600 / Math.max(image.width, image.height));
-      canvas.width = Math.round(image.width * scale);
-      canvas.height = Math.round(image.height * scale);
-      const ctx = canvas.getContext("2d");
-      ctx?.drawImage(image, 0, 0, canvas.width, canvas.height);
-      update({ logo: canvas.toDataURL("image/png") });
-      URL.revokeObjectURL(url);
-    };
-    image.onerror = () => {
-      notify("เปิดภาพไม่ได้ กรุณาเลือกไฟล์ใหม่");
-      URL.revokeObjectURL(url);
-    };
-    image.src = url;
   }
+  async function logo(file: File | undefined) {
+    if (!file || logoBusy || readOnly) return;
+    setLogoBusy(true);
+    setLogoError("");
+    try {
+      const next = await uploadSchoolLogo(file);
+      update({ logo: next.image_url });
+      notify(
+        mode === "demo"
+          ? "ใช้โลโก้ต้นฉบับแล้ว · บันทึกเฉพาะเบราว์เซอร์ทดลอง"
+          : "บันทึกโลโก้โรงเรียนแล้ว",
+      );
+    } catch (error) {
+      setLogoError(error instanceof Error ? error.message : "อัปโหลดไม่สำเร็จ");
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+  const logoControls = (
+    <div className="logo-controls" aria-busy={logoBusy}>
+      {layout.logo && (
+        <div className="logo-thumbnail">
+          {/* Original source: no Next image optimization or raster resizing. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={layout.logo}
+            alt="โลโก้โรงเรียนบนกระดาษคำตอบ"
+            width={80}
+            height={80}
+          />
+          <span className="small muted">
+            กรอบ 12 × 12 มม.
+            <br />
+            รักษาสัดส่วน ไม่ครอปตรา
+          </span>
+        </div>
+      )}
+      <label className="upload-logo">
+        <ImagePlus size={26} />
+        {logoBusy ? "กำลังอัปโหลด…" : "อัปโหลดเป็นโลโก้เริ่มต้น"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg"
+          aria-label="อัปโหลดโลโก้โรงเรียน"
+          disabled={logoBusy || !canUploadLogo}
+          onChange={(e) => {
+            void logo(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+      </label>
+      <p className="small muted">
+        PNG / JPG ไม่เกิน 5 MB · เก็บความละเอียดต้นฉบับ
+        ย่อเฉพาะขนาดที่แสดงบนกระดาษ
+      </p>
+      <p className="small muted">
+        พิมพ์ชุดเดิมใหม่ใช้โลโก้ล่าสุด PDF ที่ดาวน์โหลดไปแล้วไม่เปลี่ยน
+      </p>
+      {mode === "demo" && (
+        <p className="small muted">
+          พื้นที่ทดลอง: บันทึกในเบราว์เซอร์นี้เท่านั้น
+        </p>
+      )}
+      {(logoError || brandingError) && (
+        <Notice tone="error">{logoError || brandingError}</Notice>
+      )}
+      {!canUploadLogo && !brandingError && (
+        <Notice>
+          ยังอัปโหลดไม่ได้ กรุณาตรวจสิทธิ์และการติดตั้ง Supabase Storage
+        </Notice>
+      )}
+      <button
+        className="btn btn-secondary full-width"
+        disabled={
+          readOnly ||
+          logoBusy ||
+          !branding.image_url ||
+          layout.logo === branding.image_url
+        }
+        onClick={() => update({ logo: branding.image_url })}
+      >
+        ใช้โลโก้โรงเรียนปัจจุบัน
+      </button>
+    </div>
+  );
   return (
     <>
       <div className="designer-heading">
@@ -157,15 +265,35 @@ function DesignerEditor({ examId }: { examId: string }) {
           </Link>
           <h1>{exam.title}</h1>
           <span className="muted small">
-            ออกแบบกระดาษคำตอบ · แบบร่างในเครื่อง
+            ออกแบบกระดาษคำตอบ ·{" "}
+            {readOnly ? "เปิดดูแบบอ่านอย่างเดียว" : "บันทึกแม่แบบก่อนพิมพ์"}
           </span>
         </div>
         <div className="heading-actions">
           <Badge tone="blue">ข้อสอบรุ่น {exam.version} · แม่แบบทดลอง</Badge>
+          <button
+            className="btn btn-secondary"
+            disabled={
+              readOnly ||
+              saving ||
+              structureChanged ||
+              validation.errors.length > 0
+            }
+            onClick={() => saveDesign()}
+          >
+            {saving ? "กำลังบันทึก…" : "บันทึกแม่แบบ"}
+          </button>
           <Link
             href={`/exams/${examId}/print`}
             className="btn btn-primary"
-            onClick={() => setLayout(layout)}
+            onClick={(event) => {
+              if (readOnly || structureChanged) {
+                setLayout(layout);
+                return;
+              }
+              event.preventDefault();
+              void saveDesign(true);
+            }}
           >
             ดูตัวอย่างก่อนพิมพ์
             <ArrowRight size={17} />
@@ -178,10 +306,16 @@ function DesignerEditor({ examId }: { examId: string }) {
           ตรวจหรือแก้เฉลย
         </Link>
       </p>
+      {saveError && <Notice tone="error">{saveError}</Notice>}
+      {readOnly && (
+        <Notice>
+          เปิดดูแม่แบบของผู้ใช้อื่นได้ แต่บันทึกหรือเปลี่ยนข้อมูลไม่ได้
+        </Notice>
+      )}
       <div className="mobile-designer-notice">
         <Notice>
-          บนมือถือปรับจำนวนข้อและตัวเลือกได้
-          ใช้คอมพิวเตอร์เพื่อแก้หัวกระดาษและโลโก้
+          บนมือถือปรับจำนวนข้อและตัวเลือกได้ และอัปโหลดโลโก้ด้านล่างได้
+          ใช้คอมพิวเตอร์เพื่อแก้หัวกระดาษ
         </Notice>
       </div>
       <div className="designer-workspace">
@@ -263,7 +397,7 @@ function DesignerEditor({ examId }: { examId: string }) {
             <div className="toolbar-group">
               <button
                 className="icon-button"
-                disabled={index === 0}
+                disabled={readOnly || index === 0}
                 onClick={() => go(index - 1)}
                 aria-label="เลิกทำ"
               >
@@ -271,7 +405,7 @@ function DesignerEditor({ examId }: { examId: string }) {
               </button>
               <button
                 className="icon-button"
-                disabled={index === history.length - 1}
+                disabled={readOnly || index === history.length - 1}
                 onClick={() => go(index + 1)}
                 aria-label="ทำซ้ำ"
               >
@@ -299,6 +433,7 @@ function DesignerEditor({ examId }: { examId: string }) {
                 min={1}
                 max={60}
                 value={layout.questionCount}
+                disabled={readOnly || saving}
                 onChange={(e) =>
                   update({
                     questionCount: Math.max(
@@ -314,6 +449,7 @@ function DesignerEditor({ examId }: { examId: string }) {
               <select
                 aria-label="ตัวเลือก"
                 value={layout.choiceCount}
+                disabled={readOnly || saving}
                 onChange={(e) =>
                   update({ choiceCount: Number(e.target.value) as 4 | 5 })
                 }
@@ -327,6 +463,7 @@ function DesignerEditor({ examId }: { examId: string }) {
               <select
                 aria-label="ขนาดกระดาษ"
                 value={layout.paperMode}
+                disabled={readOnly || saving}
                 onChange={(e) =>
                   update({ paperMode: e.target.value as "auto" | "full" })
                 }
@@ -349,6 +486,7 @@ function DesignerEditor({ examId }: { examId: string }) {
               </Notice>
               <button
                 className="btn btn-secondary"
+                disabled={readOnly || saving}
                 onClick={() => setConfirmStructure(true)}
               >
                 บันทึกโครงข้อสอบ
@@ -415,25 +553,21 @@ function DesignerEditor({ examId }: { examId: string }) {
                   <input
                     value={layout.school}
                     maxLength={60}
+                    disabled={readOnly || saving}
                     onChange={(e) => update({ school: e.target.value })}
                   />
                 </label>
                 <label>
                   ชื่อชุดสอบ
-                  <input
-                    value={layout.title}
-                    maxLength={120}
-                    onChange={(e) => update({ title: e.target.value })}
-                  />
+                  <input value={layout.title} maxLength={120} readOnly />
                 </label>
                 <label>
                   วิชา
-                  <input
-                    value={layout.subject}
-                    maxLength={80}
-                    onChange={(e) => update({ subject: e.target.value })}
-                  />
+                  <input value={layout.subject} maxLength={80} readOnly />
                 </label>
+                <p className="small muted">
+                  ชื่อชุดสอบและวิชามาจากข้อมูลข้อสอบ เพื่อให้กระดาษและเฉลยตรงกัน
+                </p>
                 <label>
                   เลื่อนหัวข้อในพื้นที่ปลอดภัย
                   <input
@@ -442,6 +576,7 @@ function DesignerEditor({ examId }: { examId: string }) {
                     max="5"
                     step="0.5"
                     value={layout.headerOffsetMm}
+                    disabled={readOnly || saving}
                     onChange={(e) =>
                       update({ headerOffsetMm: Number(e.target.value) })
                     }
@@ -452,28 +587,7 @@ function DesignerEditor({ examId }: { examId: string }) {
                 </label>
               </>
             ) : selection === "logo" ? (
-              <>
-                <label className="upload-logo">
-                  <ImagePlus size={26} />
-                  เลือกโลโก้โรงเรียน
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    onChange={(e) => logo(e.target.files?.[0])}
-                  />
-                </label>
-                <p className="small muted">
-                  PNG / JPG ไม่เกิน 2 MB · รักษาสัดส่วนภาพ
-                </p>
-                {layout.logo && (
-                  <button
-                    className="btn btn-secondary full-width"
-                    onClick={() => update({ logo: null })}
-                  >
-                    นำโลโก้ออก
-                  </button>
-                )}
-              </>
+              logoControls
             ) : selection === "notes" ? (
               <label>
                 คำชี้แจง
@@ -482,6 +596,7 @@ function DesignerEditor({ examId }: { examId: string }) {
                   maxLength={140}
                   onChange={(e) => update({ instructions: e.target.value })}
                   rows={5}
+                  disabled={readOnly || saving}
                 />
                 <small>
                   {layout.instructions.length}/140 ตัวอักษร · จัดบรรทัดอัตโนมัติ
@@ -491,15 +606,13 @@ function DesignerEditor({ examId }: { examId: string }) {
               <>
                 <h3>ข้อมูลนักเรียน</h3>
                 <p>
-                  ชื่อ สกุล ชั้น เลขที่ และวิชา เป็นช่องว่างสำหรับกรอกด้วยมือ
+                  พิมพ์รายบุคคลจากรายชื่อจริง ชื่อ ชั้น และรหัส 5
+                  หลักจะถูกพิมพ์พร้อมฝนรหัสให้แล้ว
+                  เลือกใบสำรองเปล่าได้ในหน้าพิมพ์
                 </p>
                 <label>
                   ชั้น / ห้อง
-                  <input
-                    value={layout.classroom}
-                    maxLength={20}
-                    onChange={(e) => update({ classroom: e.target.value })}
-                  />
+                  <input value={layout.classroom} maxLength={20} readOnly />
                 </label>
               </>
             ) : (
@@ -542,13 +655,29 @@ function DesignerEditor({ examId }: { examId: string }) {
           </div>
           <button
             className="btn btn-ghost full-width"
-            onClick={() => update(layoutForExam(defaultLayout, exam))}
+            disabled={readOnly || saving}
+            onClick={() =>
+              update(
+                layoutForExam(
+                  {
+                    ...defaultLayout,
+                    school: branding.school,
+                    logo: branding.image_url,
+                  },
+                  exam,
+                ),
+              )
+            }
           >
             <RotateCcw size={15} />
             คืนค่าแม่แบบอ้างอิง
           </button>
         </aside>
       </div>
+      <details className="mobile-logo-controls panel">
+        <summary>โลโก้โรงเรียน</summary>
+        {logoControls}
+      </details>
       <Modal
         open={confirmStructure}
         onOpenChange={setConfirmStructure}
@@ -567,7 +696,7 @@ function DesignerEditor({ examId }: { examId: string }) {
         <div className="dialog-actions">
           <button
             className="btn btn-secondary"
-            disabled={saving}
+            disabled={readOnly || saving}
             onClick={() => setConfirmStructure(false)}
           >
             ยกเลิก

@@ -2,12 +2,23 @@ import QRCode from "qrcode";
 import {
   compileOmrTemplate,
   layoutSchema,
+  resolveGeometry,
   type SheetLayout,
 } from "./generate-template";
 export const createSheetToken = () => `SAS:${crypto.randomUUID()}`;
 export async function createSetIdentity(layout: SheetLayout) {
   const parsed = layoutSchema.parse(layout);
-  const snapshot = { layout: parsed, omr: compileOmrTemplate(parsed) };
+  // A signed URL expires and the current school logo can change on reprint.
+  // Neither is part of the answer geometry or the exam/key identity.
+  const locked = {
+    ...parsed,
+    logo: null,
+    paperMode:
+      resolveGeometry(parsed).sheetsPerPage === 1
+        ? ("full" as const)
+        : ("auto" as const),
+  };
+  const snapshot = { layout: locked, omr: compileOmrTemplate(locked) };
   const digest = await crypto.subtle.digest(
     "SHA-256",
     new TextEncoder().encode(JSON.stringify(snapshot)),

@@ -1,4 +1,26 @@
-# Test results — 8 October 2026
+# Test results — 9 October 2026
+
+## ล่าสุด: account / private logo / personalized print
+
+| Command | Result | Boundary |
+|---|---|---|
+| npm test | PASS: 81 tests / 14 files; final rerun 11.63 s | domain/API/Storage mocks และ PGlite PostgreSQL |
+| npm run test:e2e | PASS: 15 tests, 1.4 min | Chromium demo/synthetic camera/actual PDF downloads |
+| npm run test:accounts | PASS: 4 tests, 9.2 s; rerun หลังแก้ hooks ผ่านอีก 4 | Mock connected Google/access APIs ไม่ใช่ Google จริง |
+| npm run typecheck | PASS | Application/config/tests |
+| npm run lint | PASS: 0 errors / 0 warnings | full project หลังแก้ hook dependencies/cleanup |
+| npm run build | PASS: Next.js 16.4 production build / 25 generated pages / API + proxy | แก้ compatibility route ให้ runtime ประกาศตรงในไฟล์ ไม่ reexport |
+| git diff --check | PASS | มี warning เรื่อง LF→CRLF เท่านั้น |
+
+เพิ่มเติมที่ทดสอบ: pending/suspend session denial; verified Google owner bootstrap; workspace isolation/owner read-only/forged UID; account-cache remount and request cancellation; original logo bytes/revision races/failed deletion queue/no-op removal metadata proof; actual-roster classroom selectors/empty state; immutable print hash/geometry/Unicode text-fit/ownership/transaction snapshot/idempotent replay; fresh snapshot install+rerun rejection. Account suite หลังเพิ่มชื่อ/อีเมลพื้นที่ที่เปิดดูผ่านอีก 4/4 (10.4 s) รวม mobile wrapping/axe; typecheck และ full lint หลังแก้ผ่าน
+
+ตรวจ PDF จริง `tmp/pdfs/personalized-20.pdf` → 1 หน้า A4/สองคน และ `personalized-60.pdf` → 2 หน้า/สองคน ทั้งสาม rendered pages มีชื่อคนละคน รหัส `02074`/`00005` รักษาศูนย์นำหน้า ID ฝนดำ 5 ตำแหน่ง คำตอบว่าง และ QR ร่วมของรุ่นชุดนั้น เห็นตราโรงเรียนต้นฉบับ/score box/markers โดยไม่มี collision ที่ตรวจพบ
+
+สภาพ cloud ก่อนติดตั้ง: public tables=0, Auth users=0, buckets=0, storage.objects policies=0; Google provider disabled. ชุด SQL เตรียมใน Dashboard แต่ยังไม่ Run ไม่ได้ migrate/deploy และไม่ใช้ exposed service-role. PGlite ใช้ auth/storage stubs การทดสอบนี้ไม่รับรอง Supabase network/Google consent/JWT expiry/Storage service จริง หรือการอ่านรอยฝนจากเครื่องพิมพ์/โทรศัพท์
+
+Impeccable detector รันครั้งเดียว exit0 แต่ผลยาวถูก truncate: advisory สี/ขนาดตัวอักษร/radius เทียบ sidecar เดิม จึงไม่อ้างว่าทุก finding ผ่าน/ไม่มี defect รักษา incumbent design system; provenance scan `public/omr-assets` 1 raster/0 missing. Independent reviewer พบ target-account identity และ mobile Designer documentation gap; แก้ batch เดียว แล้ว verdict `ship`/resolved ทั้งสองประเด็น **เฉพาะ fix list** ไม่ใช่ certification ทั้งระบบ ดู [ACCOUNT_PRINT_FINISH_REVIEW.md](ACCOUNT_PRINT_FINISH_REVIEW.md)
+
+## บันทึกเดิม — 8 October 2026
 
 ผลต่อไปนี้รันจริงใน Windows workspace `D:/Omr scanner` สำหรับ adaptive answer-sheet extension ไม่ใช่ผล Supabase staging หรือ physical OMR benchmark
 

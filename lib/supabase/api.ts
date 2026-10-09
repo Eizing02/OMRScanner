@@ -1,6 +1,9 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { createClient } from "./server";
+import { headers } from "next/headers";
+import { z } from "zod";
+import { accessContextSchema } from "@/types/access";
 export class ApiError extends Error {
   constructor(
     public code: string,
@@ -41,36 +44,54 @@ export function failure(error: unknown) {
     new ApiError("INTERNAL_ERROR", "ทำรายการไม่สำเร็จ กรุณาลองใหม่", 500),
   );
 }
-export async function context(write = false) {
+export async function accessContext() {
   const db = await createClient();
   const { data, error } = await db.auth.getUser();
   if (error || !data.user)
     throw new ApiError("UNAUTHENTICATED", "กรุณาเข้าสู่ระบบก่อนทำรายการ", 401);
-  const member = await db
-    .from("school_members")
-    .select("school_id,role")
-    .eq("user_id", data.user.id)
-    .eq("status", "active")
-    .order("created_at")
-    .limit(1)
-    .maybeSingle();
-  if (member.error || !member.data)
+  const result = await db.rpc("get_access_context");
+  if (result.error)
     throw new ApiError(
-      "FORBIDDEN",
-      "บัญชีนี้ยังไม่มีสิทธิ์ในโรงเรียน กรุณาติดต่อผู้ดูแล",
+      "ACCESS_SETUP_REQUIRED",
+      result.error.message?.includes("WORKSPACE_CONFLICT")
+        ? "พบหลายพื้นที่ของบัญชีนี้ กรุณาให้เจ้าของระบบตรวจข้อมูลก่อนเข้าใช้งาน"
+        : "ยังติดตั้งฐานข้อมูลไม่ครบ กรุณาให้เจ้าของระบบใช้ชุด SQL ติดตั้งก่อน",
+      503,
+    );
+  const parsed = accessContextSchema.safeParse(result.data);
+  if (!parsed.success || parsed.data.userId !== data.user.id)
+    throw new ApiError("INVALID_ACCESS", "ตรวจสอบสิทธิ์บัญชีไม่สำเร็จ กรุณาเข้าสู่ระบบใหม่", 403);
+  return { db, user: data.user, access: parsed.data };
+}
+export async function ownerContext() {
+  const result = await accessContext();
+  if (result.access.role !== "owner" || result.access.status !== "approved")
+    throw new ApiError("FORBIDDEN", "เฉพาะเจ้าของระบบเท่านั้นที่จัดการผู้ใช้ได้", 403);
+  return result;
+}
+export async function context(write = false) {
+  const { db, user, access } = await accessContext();
+  if (access.status !== "approved" || !access.schoolId)
+    throw new ApiError("ACCESS_NOT_APPROVED", "บัญชีนี้ยังไม่ได้รับอนุมัติหรือถูกระงับการใช้งาน", 403);
+  const requested = (await headers()).get("x-workspace-id");
+  if (requested && !z.uuid().safeParse(requested).success)
+    throw new ApiError("FORBIDDEN", "พื้นที่ที่ร้องขอไม่ถูกต้อง", 403);
+  const schoolId = requested || access.schoolId;
+  const readOnly = schoolId !== access.schoolId;
+  if (readOnly && (access.role !== "owner" || write))
+    throw new ApiError(
+      "READ_ONLY_WORKSPACE",
+      "การดูพื้นที่ของผู้ใช้อื่นเป็นแบบอ่านอย่างเดียว กลับพื้นที่ของคุณก่อนบันทึก",
       403,
     );
-  if (write && !["admin", "teacher"].includes(member.data.role))
-    throw new ApiError(
-      "FORBIDDEN",
-      "บัญชีผู้ตรวจไม่มีสิทธิ์เปลี่ยนข้อมูลนี้",
-      403,
-    );
+  if (readOnly) {
+    const target = await db.from("schools").select("id").eq("id", schoolId).maybeSingle();
+    if (target.error || !target.data)
+      throw new ApiError("FORBIDDEN", "ไม่พบพื้นที่หรือไม่มีสิทธิ์เปิดดู", 403);
+  }
   return {
-    db,
-    user: data.user,
-    schoolId: member.data.school_id as string,
-    role: member.data.role as string,
+    db, user, schoolId, readOnly, access,
+    role: readOnly ? "viewer" : "admin",
   };
 }
 export async function requestBody(request: Request) {

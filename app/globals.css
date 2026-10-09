@@ -2095,6 +2095,63 @@ svg {
 .mapping-grid label {
   font-size: 12px;
 }
+.roster-mapping {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.legacy-mapping {
+  margin-bottom: 24px;
+}
+.legacy-mapping summary,
+.mobile-logo-controls summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.roster-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 20px;
+}
+.logo-controls {
+  display: grid;
+  gap: 12px;
+}
+.logo-controls p {
+  margin: 0;
+}
+.logo-thumbnail {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.logo-thumbnail img {
+  object-fit: contain;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.mobile-logo-controls {
+  display: none;
+}
+.file-drop:focus-within,
+.upload-logo:focus-within {
+  outline: 3px solid #6892e5;
+  outline-offset: 3px;
+}
+.upload-logo:has(input:disabled) {
+  cursor: not-allowed;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .mobile-logo-controls {
+    display: block;
+    margin-top: 20px;
+  }
+  .mobile-logo-controls .logo-controls {
+    margin-top: 16px;
+  }
+}
 .import-panel > .btn {
   margin-bottom: 28px;
 }
@@ -2841,7 +2898,8 @@ svg {
     padding: 6px 8px;
     font-size: 9px;
   }
-  .mapping-grid {
+  .mapping-grid,
+  .roster-mapping {
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
@@ -2884,8 +2942,312 @@ svg {
 .camera-viewport:has(> img) {
   max-height: none;
 }
+.settings-stack {
+  display: grid;
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  min-width: 0;
+}
+.settings-section {
+  padding: 22px;
+  min-width: 0;
+}
+.settings-section > .notice {
+  margin: 16px 0;
+}
+.settings-section h2 {
+  font-size: 17px;
+}
+.settings-section > .section-title {
+  flex-wrap: wrap;
+}
+.settings-help {
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 75ch;
+}
+.settings-account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 20px 0 16px;
+}
+.settings-account-details {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  overflow-wrap: anywhere;
+}
+.settings-account-details > span {
+  color: var(--muted);
+}
+.settings-account-details > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 5px;
+}
+.settings-fields,
+.exam-form-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.settings-fields:disabled input,
+.settings-fields:disabled select,
+.settings-fields:disabled textarea,
+.exam-form-fields:disabled input,
+.exam-form-fields:disabled select {
+  background: var(--canvas);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.settings-fields textarea,
+.settings-reason-field textarea {
+  resize: vertical;
+}
+.settings-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.settings-logo-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.settings-logo-row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 16px;
+  align-items: start;
+}
+.settings-logo-preview {
+  min-height: 128px;
+  display: grid;
+  place-items: center;
+  background: var(--canvas);
+  border-radius: 7px;
+  padding: 12px;
+  text-align: center;
+}
+.settings-logo-preview img {
+  object-fit: contain;
+  width: 104px;
+  height: 104px;
+}
+.settings-logo-controls {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  min-width: 0;
+}
+.settings-logo-controls p {
+  max-width: 75ch;
+}
+.settings-logo-upload {
+  position: relative;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  min-height: 42px;
+  gap: 8px;
+  padding: 9px 15px;
+  background: var(--surface);
+  border: 1px solid #cdd6e3;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+.settings-logo-upload:hover {
+  background: #f0f4fa;
+}
+.settings-logo-upload input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.settings-logo-upload:focus-within {
+  outline: 3px solid #6892e5;
+  outline-offset: 3px;
+}
+.settings-logo-upload:has(input:disabled) {
+  opacity: 0.46;
+  cursor: not-allowed;
+}
+.settings-logo-section > .notice {
+  margin-top: 20px;
+}
+.settings-logo-section .notice .btn {
+  margin-top: 12px;
+}
+.settings-users-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 22px 0;
+}
+.settings-users-toolbar label {
+  min-width: 180px;
+  font-size: 13px;
+}
+.settings-users-table {
+  min-width: 760px;
+}
+.settings-users-table td:first-child {
+  max-width: 280px;
+}
+.settings-user-email {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.settings-user-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 420px;
+}
+.settings-user-actions .btn {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.settings-users-loading {
+  display: grid;
+  gap: 12px;
+}
+.settings-users-loading > div {
+  height: 58px;
+  background: var(--canvas);
+  border-radius: 7px;
+}
+.settings-decision-account {
+  display: grid;
+  gap: 5px;
+  margin: 20px 0;
+  overflow-wrap: anywhere;
+}
+.settings-decision-account span {
+  color: var(--muted);
+}
+.settings-reason-field {
+  margin-top: 20px;
+  font-size: 13px;
+}
+.form-panel .notice a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.login-form > .notice {
+  margin: 20px 0;
+}
+.login-form > .full-width {
+  margin-top: 22px;
+}
+.login-form .small {
+  margin-top: 18px;
+  overflow-wrap: anywhere;
+}
+.login-page:has(> .account-gate) {
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  padding: 40px 24px;
+}
+.account-gate {
+  width: 100%;
+  max-width: 680px;
+  padding: 32px;
+}
+.account-gate .brand-icon {
+  color: var(--blue);
+  background: var(--blue-light);
+  margin-bottom: 20px;
+}
+.account-gate h1 {
+  font-size: 26px;
+  margin-bottom: 14px;
+}
+.account-gate p {
+  max-width: 65ch;
+  overflow-wrap: anywhere;
+}
+.account-gate p + p {
+  margin-top: 16px;
+}
+.account-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+.inspection-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 32px;
+  background: var(--amber-light);
+  color: var(--amber);
+  border-bottom: 1px solid var(--line);
+}
+.inspection-banner > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 @media (max-width: 640px) {
   .scanner-context {
     display: block;
+  }
+  .settings-section {
+    padding: 17px;
+  }
+  .settings-account-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .settings-logo-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .settings-logo-preview {
+    width: 128px;
+  }
+  .settings-form-actions .btn,
+  .settings-users-toolbar > .btn {
+    width: 100%;
+  }
+  .settings-users-toolbar label {
+    width: 100%;
+  }
+  .login-page:has(> .account-gate) {
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  .account-gate {
+    padding: 22px;
+  }
+  .account-gate h1 {
+    font-size: 23px;
+  }
+  .account-actions > .btn {
+    width: 100%;
+  }
+  .inspection-banner {
+    padding: 14px 16px;
   }
 }

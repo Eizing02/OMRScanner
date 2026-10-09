@@ -10,6 +10,7 @@ import {
 import { createSetIdentity, qrDataUrl } from "@/lib/omr/qr";
 import { choices, thaiChoices } from "@/types/exam";
 import type { Observation } from "@/types/result";
+import type { PrintStudent } from "@/types/print";
 
 export function SheetContent({
   layout,
@@ -17,12 +18,14 @@ export function SheetContent({
   guides = false,
   marked,
   highlight,
+  student,
 }: {
   layout: SheetLayout;
   qr: string;
   guides?: boolean;
   marked?: Observation[];
   highlight?: number;
+  student?: PrintStudent;
 }) {
   const g = resolveGeometry(layout);
   return (
@@ -55,6 +58,7 @@ export function SheetContent({
       ))}
       {layout.logo && (
         <image
+          data-sheet-logo="true"
           href={layout.logo}
           {...g.logo}
           preserveAspectRatio="xMidYMid meet"
@@ -63,6 +67,7 @@ export function SheetContent({
       <rect {...g.score} fill="none" stroke="#333" strokeWidth="0.2" />
       {qr && (
         <image
+          data-sheet-qr="true"
           href={qr}
           x={g.qr.x}
           y={g.qr.y}
@@ -70,7 +75,7 @@ export function SheetContent({
           height={g.qr.width}
         />
       )}
-      {printTexts(layout, g).map((t, i) => (
+      {printTexts(layout, g, student).map((t, i) => (
         <text
           key={i}
           x={t.x}
@@ -82,38 +87,53 @@ export function SheetContent({
         </text>
       ))}
       {Array.from({ length: 5 }, (_, i) => (
-        <rect
-          key={i}
-          x={g.idStart.x + i * g.idStepX - 2}
-          y="75"
-          width="4"
-          height="4"
-          fill="none"
-          stroke="#222"
-          strokeWidth="0.2"
-        />
+        <g key={i}>
+          <rect
+            x={g.idStart.x + i * g.idStepX - 2}
+            y="75"
+            width="4"
+            height="4"
+            fill="none"
+            stroke="#222"
+            strokeWidth="0.2"
+          />
+          {student && (
+            <text
+              x={g.idStart.x + i * g.idStepX}
+              y="78"
+              textAnchor="middle"
+              fontSize="2.6"
+            >
+              {student.student_code[i]}
+            </text>
+          )}
+        </g>
       ))}
       {idBubbles(g).map((b) => {
-        const fill = marked && "04217"[b.digit] === String(b.value);
+        const fill = student?.student_code[b.digit] === String(b.value);
         return (
           <g key={`${b.digit}-${b.value}`}>
             <circle
               cx={b.x}
               cy={b.y}
               r={g.bubbleRadius}
-              fill={fill ? "#333" : "none"}
+              data-id-digit={b.digit}
+              data-id-value={b.value}
+              fill={fill ? "#000" : "none"}
               stroke="#333"
               strokeWidth="0.2"
             />
-            <text
-              x={b.x}
-              y={b.y + 0.85}
-              textAnchor="middle"
-              fontSize="2.2"
-              fill={fill ? "white" : "#333"}
-            >
-              {b.value}
-            </text>
+            {!fill && (
+              <text
+                x={b.x}
+                y={b.y + 0.85}
+                textAnchor="middle"
+                fontSize="2.2"
+                fill="#333"
+              >
+                {b.value}
+              </text>
+            )}
           </g>
         );
       })}
@@ -174,6 +194,8 @@ export function SheetPreview({
   marked,
   highlight,
   copies = 2,
+  student,
+  secondStudent,
 }: {
   layout: SheetLayout;
   guides?: boolean;
@@ -181,6 +203,8 @@ export function SheetPreview({
   marked?: Observation[];
   highlight?: number;
   copies?: number;
+  student?: PrintStudent;
+  secondStudent?: PrintStudent;
 }) {
   const g = resolveGeometry(layout);
   const [qr, setQr] = useState("");
@@ -212,12 +236,18 @@ export function SheetPreview({
         guides={guides}
         marked={marked}
         highlight={highlight}
+        student={student}
       />
       {!single && g.sheetsPerPage === 2 && (
         <>
           {copies > 1 && (
             <g transform="translate(148.5 0)">
-              <SheetContent layout={layout} qr={qr} guides={guides} />
+              <SheetContent
+                layout={layout}
+                qr={qr}
+                guides={guides}
+                student={secondStudent}
+              />
             </g>
           )}
           <path

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { choices, type Exam } from "@/types/exam";
+import type { PrintStudent } from "@/types/print";
 
 export const layoutSchema = z.object({
   schemaVersion: z.literal(1),
@@ -11,7 +12,22 @@ export const layoutSchema = z.object({
   term: z.number().int().min(1).max(3),
   instructions: z.string().max(140),
   headerOffsetMm: z.number().min(0).max(5),
-  logo: z.string().nullable(),
+  logo: z
+    .string()
+    .max(7 * 1024 * 1024)
+    .refine(
+      (value) =>
+        value === "/omr-assets/school-logo.png" ||
+        /^data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(value) ||
+        /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/sign\/school-logos\/[a-f0-9-]{36}\/[a-f0-9-]{36}\.(?:png|jpg)\?token=[A-Za-z0-9._~-]+$/.test(
+          value,
+        ) ||
+        /^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/fl_original\/v[0-9]+\/school-logos\/[a-f0-9-]+\/[a-f0-9-]+\.(?:png|jpg|jpeg)$/.test(
+          value,
+        ),
+      "โลโก้ต้องเป็นภาพต้นฉบับ PNG / JPG หรือ URL โลโก้ของระบบ",
+    )
+    .nullable(),
   questionCount: z.number().int().min(1).max(60),
   choiceCount: z.union([z.literal(4), z.literal(5)]),
   paperMode: z.enum(["auto", "full"]).default("auto"),
@@ -31,7 +47,7 @@ export const defaultLayout: SheetLayout = layoutSchema.parse({
   year: 2569,
   term: 1,
   instructions:
-    "ใช้ดินสอ 2B ฝนรหัสนักเรียนและคำตอบให้เต็มวง เพียงหนึ่งคำตอบต่อข้อ",
+    "ตรวจข้อมูลนักเรียน ใช้ดินสอ 2B ฝนคำตอบให้เต็มวง เพียงหนึ่งคำตอบต่อข้อ",
   headerOffsetMm: 0,
   logo: null,
   questionCount: 20,
@@ -200,6 +216,7 @@ export type PrintText = {
 export function printTexts(
   layout: SheetLayout,
   g = resolveGeometry(layout),
+  student?: PrintStudent,
 ): PrintText[] {
   const lines = (
     value: string,
@@ -253,28 +270,49 @@ export function printTexts(
       y: 51,
       size: 2.8,
     },
+    ...lines(
+      student
+        ? `ชื่อ–สกุล ${student.full_name}`
+        : "ชื่อ–สกุล ......................................................................",
+      12,
+      58,
+      g.sheetWidth - 24,
+      2.8,
+      3.5,
+    ),
     {
-      value:
-        "ชื่อ–สกุล ......................................................................",
-      x: 12,
-      y: 58,
-      size: 2.8,
-    },
-    {
-      value:
-        "ชั้น / ห้อง ....................... เลขที่ .......................",
+      value: student
+        ? `ชั้น / ห้อง ${student.classroom_name}${student.number === null ? "" : `  เลขที่ ${student.number}`}`
+        : "ชั้น / ห้อง ....................... เลขที่ .......................",
       x: 12,
       y: 65,
       size: 2.8,
     },
-    { value: "รหัสนักเรียน 5 หลัก", x: 26, y: 72, size: 2.6, align: "center" },
+    {
+      value: student ? `รหัส ${student.student_code}` : "รหัสนักเรียน 5 หลัก",
+      x: 26,
+      y: 72,
+      size: 2.6,
+      align: "center",
+    },
     {
       value: `คำตอบ ${layout.questionCount} ข้อ · ${layout.choiceCount} ตัวเลือก`,
       x: 59,
       y: 72,
       size: 2.8,
     },
-    ...lines(layout.instructions, 12, 188, g.sheetWidth - 24, 2.6, 4),
+    ...lines(
+      student &&
+        layout.instructions ===
+          "ใช้ดินสอ 2B ฝนรหัสนักเรียนและคำตอบให้เต็มวง เพียงหนึ่งคำตอบต่อข้อ"
+        ? "ตรวจชื่อและรหัสที่พิมพ์ไว้ ใช้ดินสอ 2B ฝนเฉพาะคำตอบให้เต็มวง เพียงหนึ่งคำตอบต่อข้อ"
+        : layout.instructions,
+      12,
+      188,
+      g.sheetWidth - 24,
+      2.6,
+      4,
+    ),
     {
       value: `พิมพ์ทดสอบ · รุ่นข้อสอบ ${layout.examVersion} · ขนาดจริง 100% · ห้ามปรับพอดีหน้า`,
       x: g.sheetWidth / 2,
@@ -283,6 +321,52 @@ export function printTexts(
       align: "center",
     },
   ];
+}
+export function printStudentErrors(
+  layout: SheetLayout,
+  students: PrintStudent[],
+) {
+  const g = resolveGeometry(layout);
+  const errors: string[] = [];
+  if (new Set(students.map((s) => s.id)).size !== students.length)
+    errors.push("รายชื่อนักเรียนซ้ำในชุดพิมพ์");
+  for (const student of students) {
+    if (!/^[0-9]{5}$/.test(student.student_code))
+      errors.push(
+        `รหัสนักเรียน ${student.full_name} ต้องเป็นข้อความตัวเลข 5 หลัก`,
+      );
+    if (
+      !student.full_name.trim() ||
+      wrapPrintText(`ชื่อ–สกุล ${student.full_name}`, g.sheetWidth - 24, 2.8)
+        .length > 2
+    )
+      errors.push(
+        `ชื่อ ${student.full_name} ยาวเกินพื้นที่หัวกระดาษ กรุณาตรวจรายชื่อ`,
+      );
+    if (student.classroom_name !== layout.classroom)
+      errors.push(
+        `นักเรียน ${student.student_code} ไม่อยู่ในชั้น ${layout.classroom}`,
+      );
+  }
+  return errors;
+}
+// Expand the whole batch, not individual papers: every student keeps one QR
+// and exactly the same physical bubble coordinates.
+export function resolvePrintLayout(
+  layout: SheetLayout,
+  students: PrintStudent[],
+): SheetLayout {
+  if (
+    layout.paperMode === "auto" &&
+    resolveGeometry(layout).sheetsPerPage === 2 &&
+    students.some(
+      (student) =>
+        wrapPrintText(`ชื่อ–สกุล ${student.full_name}`, 148.5 - 24, 2.8)
+          .length > 2,
+    )
+  )
+    return { ...layout, paperMode: "full" };
+  return layout;
 }
 export function validateLayout(layout: SheetLayout) {
   const result = layoutSchema.safeParse(layout);

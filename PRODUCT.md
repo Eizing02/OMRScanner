@@ -29,7 +29,7 @@ Administrators manage school membership, subject/class organization, permissions
 
 ### Indirect: Students
 
-Students normally do **not** need accounts. They write their name, surname, class, number and subject when required; fill a five-digit student-ID bubble grid; and mark answers on printed sheets.
+Students normally do **not** need accounts. Approved 9 October 2026: personalized sheets print their roster name, class and five-digit code, with solid black prefilled ID bubbles; students check their identity and mark answers only. Blank spare sheets retain manual fields and the five-digit ID grid. Never invent student numbers or discard leading zeroes.
 
 ## Product Purpose
 
@@ -69,6 +69,8 @@ Document detection in the browser and optical-mark recognition on the server are
 - Printed sheets can include a school logo, school name, exam type, unit/topic, instructions, time, total score, teacher-defined text, and fields for student first name, surname, class, number, and subject.
 - Every answer sheet includes a **five-digit numeric student-ID OMR area** (five columns, digits 0–9) and a QR token for exam/sheet/template identity. Preserve leading zeros: `04217` is a valid ID and must remain a string.
 - Teachers bring their own student datasets as Excel/CSV. Student-code matches are checked against the roster belonging to the exam/school, never blindly matched globally.
+- Updated with the supplied current-term roster on 9 October 2026: the primary import/list format has four columns (`รหัสประจำตัว`, `ชื่อ`, `นามสกุล`, `ระดับชั้น`); `ชื่อ` includes the name prefix. Previously approved three-column files (`รหัสประจำตัว`, `ชื่อ-สกุล`, `ชั้น`) remain supported. Preserve five-digit string IDs and actual ม.1–ม.6 classes with optional rooms. Exam creation uses only classrooms present in the signed-in teacher's roster; subjects and academic defaults come from that teacher's settings or prior exams.
+- Approved 9 October 2026: store original school-logo PNG/JPG bytes in private Supabase Storage, size only the display/print frame, and retire the previous logo after a successful replacement. Reprinting an old exam uses the latest school logo without changing its key/layout QR identity; already downloaded PDFs stay unchanged. Scanned-image storage remains Cloudinary under repository rules.
 - The scanning camera interface must be optimized for portrait-oriented mobile devices even though the printed A4 sheet is landscape.
 - The first release uses a verified fixed geometry for reliable scanning; progressively expose more drag-and-drop freedom only as validation coverage expands.
 
@@ -123,6 +125,7 @@ Document detection in the browser and optical-mark recognition on the server are
 - Use score workflow states: `scanned`, `needs_review`, `verified`, `published`, `voided`. Corrections are attributed to an authorized person and never overwrite raw reads.
 - Lock/preserve published template and answer-key versions. Corrections create new versions and auditable recalculations.
 - Prevent cross-school data exposure through Supabase Auth, role-based permissions, RLS and private Storage policies; use short-lived access to private files and never expose service credentials in client code.
+- Approved 9 October 2026: Google sign-in identifies the user but does not grant access. New accounts remain pending until approved. Verified Google account `piyawatpiwsiri@gmail.com` is the configured one-time platform owner. Each approved teacher owns one private workspace for settings, roster, exams and print history. The owner can approve, reject or suspend accounts and inspect other workspaces read-only; no teacher-to-teacher sharing or owner editing of another teacher's work is implied. Account/workspace changes clear client caches; API/RLS check current approval independently of client state.
 - Provide reasonable retention/deletion policies, backups for both database and storage files, privacy notices and administrative audit logs for student-related information.
 
 ### UX and visual direction for Impeccable
@@ -178,4 +181,4 @@ Offer recovery actions that preserve progress. Examples: retake image, adjust co
 - Exact school roster format, import mapping and retention policy once sample data and school policy are available.
 - Cloud hosting region, hosting provider, operating cost assumptions and expected peak scanning volumes.
 
-**Current status:** product blueprint/specification only. The proposed implementation, Supabase integration, device performance and OMR accuracy have not yet been verified in a deployed application.
+**Current status (9 October 2026):** executable Next.js UI, roster/exam APIs, account-approval/RLS/Storage migrations and experimental printable OMR geometry are implemented or being verified in this repository. See `docs/ACCOUNT_PRINT_IMPLEMENTATION.md` for the current tested and live-installation evidence. A compiled UI, registered print template or successful login does not certify physical OMR accuracy. Real QR/bubble reading, persisted grading/review and actual score reports remain separate unfinished work until tested end-to-end.

@@ -1,5 +1,5 @@
 import { beforeAll, describe, it, expect, vi } from "vitest";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { buildPrintPdf } from "@/lib/export/export-pdf";
 import {
   defaultLayout,
@@ -8,14 +8,48 @@ import {
   printTexts,
   resolveGeometry,
   wrapPrintText,
+  printStudentErrors,
+  resolvePrintLayout,
 } from "@/lib/omr/generate-template";
+import { createSetIdentity } from "@/lib/omr/qr";
+import type { PrintStudent } from "@/types/print";
+const printStudents: PrintStudent[] = [
+  {
+    id: "20000000-0000-4000-8000-000000000001",
+    student_code: "02074",
+    full_name: "เด็กชายสมชาย ทดสอบการพิมพ์",
+    classroom_name: "ม.3/1",
+    number: null,
+  },
+  {
+    id: "20000000-0000-4000-8000-000000000002",
+    student_code: "00005",
+    full_name: "เด็กหญิงสมใจ ทดสอบการพิมพ์",
+    classroom_name: "ม.3/1",
+    number: null,
+  },
+];
 beforeAll(() => {
-  vi.stubGlobal("fetch", async () => {
-    const file = await readFile("public/omr-assets/NotoSansThai-Regular.ttf");
+  vi.stubGlobal("fetch", async (url: string) => {
+    const file = await readFile(
+      url.endsWith("school-logo.png")
+        ? "public/omr-assets/school-logo.png"
+        : "public/omr-assets/NotoSansThai-Regular.ttf",
+    );
     return new Response(file);
   });
 });
 describe("print PDF actual output", () => {
+  it("embeds the original school logo dimensions without downsampling", async () => {
+    const result = await buildPrintPdf(
+      { ...defaultLayout, logo: "/omr-assets/school-logo.png" },
+      2,
+    );
+    const output = result.pdf.output();
+    expect(output).toContain("/Width 742");
+    expect(output).toContain("/Height 763");
+    expect(result.manifest.layout.logo).toBeNull();
+  });
   it("embeds a complete font, preserves geometry and shares one opaque set QR", async () => {
     const result = await buildPrintPdf(defaultLayout, 3);
     expect(result.pdf.getNumberOfPages()).toBe(2);
@@ -92,5 +126,97 @@ describe("print PDF actual output", () => {
       [2, 0],
       [3, 0],
     ]);
+  });
+  it("prints different named students left/right, preserving five-digit leading zeroes", async () => {
+    const result = await buildPrintPdf(
+      {
+        ...defaultLayout,
+        school: "โรงเรียนกุงแก้ววิทยาคาร",
+        logo: "/omr-assets/school-logo.png",
+      },
+      printStudents,
+    );
+    expect(result.pdf.getNumberOfPages()).toBe(1);
+    expect(
+      result.manifest.sheets.map((s) => [
+        s.studentCode,
+        s.studentId,
+        s.page,
+        s.slot,
+      ]),
+    ).toEqual([
+      ["02074", printStudents[0].id, 1, 0],
+      ["00005", printStudents[1].id, 1, 1],
+    ]);
+    expect(new Set(result.manifest.sheets.map((s) => s.token)).size).toBe(1);
+    expect(
+      printTexts(
+        defaultLayout,
+        resolveGeometry(defaultLayout),
+        printStudents[0],
+      ).some((t) => t.value.includes("02074")),
+    ).toBe(true);
+    expect(
+      printTexts(
+        defaultLayout,
+        resolveGeometry(defaultLayout),
+        printStudents[0],
+      ).some((t) => t.value.includes("เลขที่")),
+    ).toBe(false);
+    if (process.env.PRINT_QA_ARTIFACTS === "true") {
+      await mkdir("tmp/pdfs", { recursive: true });
+      await writeFile(
+        "tmp/pdfs/personalized-20.pdf",
+        new Uint8Array(result.pdf.output("arraybuffer")),
+      );
+      const full = await buildPrintPdf(
+        {
+          ...defaultLayout,
+          school: "โรงเรียนกุงแก้ววิทยาคาร",
+          logo: "/omr-assets/school-logo.png",
+          questionCount: 60,
+          choiceCount: 5,
+          totalScore: 60,
+        },
+        printStudents,
+      );
+      await writeFile(
+        "tmp/pdfs/personalized-60.pdf",
+        new Uint8Array(full.pdf.output("arraybuffer")),
+      );
+    }
+  });
+  it("keeps expiring/replaced logos out of identity and rejects invalid roster or registry mismatches", async () => {
+    const plain = await createSetIdentity(defaultLayout);
+    const branded = await createSetIdentity({
+      ...defaultLayout,
+      logo: "/omr-assets/school-logo.png",
+    });
+    expect(branded.token).toBe(plain.token);
+    expect(branded.snapshot.layout.logo).toBeNull();
+    expect(
+      printStudentErrors(defaultLayout, [
+        { ...printStudents[0], student_code: "2074" },
+      ]),
+    ).not.toHaveLength(0);
+    await expect(
+      buildPrintPdf(defaultLayout, [
+        { ...printStudents[0], student_code: "2074" },
+      ]),
+    ).rejects.toThrow();
+    const generated = await buildPrintPdf(defaultLayout, printStudents);
+    await expect(
+      buildPrintPdf(defaultLayout, printStudents, {
+        ...generated.manifest,
+        sheets: generated.manifest.sheets.map((s) => ({
+          ...s,
+          studentCode: "99999",
+        })),
+      }),
+    ).rejects.toThrow("ทะเบียน");
+    const longer = [{ ...printStudents[0], full_name: "ก".repeat(100) }];
+    const expanded = resolvePrintLayout(defaultLayout, longer);
+    expect(resolveGeometry(expanded).sheetsPerPage).toBe(1);
+    expect(printStudentErrors(expanded, longer)).toEqual([]);
   });
 });

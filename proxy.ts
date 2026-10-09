@@ -29,5 +29,8 @@ export const config = {
     "/api/:path*",
     "/login",
     "/settings",
+    "/scan/:path*",
+    "/review/:path*",
+    "/export/:path*",
   ],
 };

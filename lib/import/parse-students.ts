@@ -1,11 +1,33 @@
 import { studentSchema } from "@/types/student";
 import { normalizeName } from "./normalize-name";
+import { normalizeClassroom } from "./normalize-classroom";
 export const columnAliases = {
-  student_code: ["student_code", "รหัสนักเรียน", "รหัสนร", "id"],
+  student_code: [
+    "student_code",
+    "รหัสประจำตัว",
+    "รหัสประจำตัวนักเรียน",
+    "รหัสนักเรียน",
+    "รหัสนร",
+    "id",
+  ],
   first_name: ["first_name", "ชื่อ"],
   last_name: ["last_name", "สกุล", "นามสกุล"],
-  full_name: ["full_name", "name", "ชื่อ-สกุล"],
-  classroom_name: ["classroom_name", "class_name", "ชั้น", "grade"],
+  full_name: [
+    "full_name",
+    "name",
+    "ชื่อ-สกุล",
+    "ชื่อ–สกุล",
+    "ชื่อ-นามสกุล",
+    "ชื่อสกุล",
+  ],
+  classroom_name: [
+    "classroom_name",
+    "class_name",
+    "ระดับชั้น",
+    "ชั้น",
+    "ชั้น/ห้อง",
+    "grade",
+  ],
   number: ["number", "เลขที่"],
 };
 export type ColumnMapping = Record<keyof typeof columnAliases, string>;
@@ -21,14 +43,23 @@ export function previewStudents(
   rows: Record<string, unknown>[],
   mapping: ColumnMapping,
 ) {
-  const seen = new Set<string>();
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const code = String(row[mapping.student_code] ?? "").trim();
+    counts.set(code, (counts.get(code) ?? 0) + 1);
+  }
   return rows.map((row, i) => {
-    const name = normalizeName(String(row[mapping.full_name] ?? ""));
+    const full = String(row[mapping.full_name] ?? "").trim();
+    const name = normalizeName(
+      full ||
+        `${row[mapping.first_name] ?? ""} ${row[mapping.last_name] ?? ""}`,
+    );
     const code = String(row[mapping.student_code] ?? "").trim();
     const data = {
       student_code: code,
-      first_name: String(row[mapping.first_name] ?? name.first_name).trim(),
-      last_name: String(row[mapping.last_name] ?? name.last_name).trim(),
+      prefix: name.prefix,
+      first_name: name.first_name,
+      last_name: name.last_name,
       classroom_name: String(row[mapping.classroom_name] ?? "").trim(),
       number:
         row[mapping.number] === undefined || row[mapping.number] === ""
@@ -39,8 +70,20 @@ export function previewStudents(
     const errors = parsed.success
       ? []
       : parsed.error.issues.map((e) => e.message);
-    if (seen.has(code)) errors.push("รหัสซ้ำภายในไฟล์ กรุณาตรวจสอบทั้งสองแถว");
-    seen.add(code);
-    return { row: i + 2, data, errors };
+    if ((counts.get(code) ?? 0) > 1)
+      errors.push("รหัสซ้ำภายในไฟล์ กรุณาตรวจสอบทั้งสองแถว");
+    return {
+      row: i + 2,
+      data: parsed.success
+        ? parsed.data
+        : {
+            ...data,
+            full_name: `${name.prefix}${name.first_name} ${name.last_name}`,
+            grade_level:
+              normalizeClassroom(data.classroom_name)?.grade_level ?? "",
+            room: normalizeClassroom(data.classroom_name)?.room ?? null,
+          },
+      errors,
+    };
   });
 }

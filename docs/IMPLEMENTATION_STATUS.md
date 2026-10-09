@@ -1,4 +1,16 @@
-# Implementation status — 8 ตุลาคม 2569
+# Implementation status — 9 ตุลาคม 2569
+
+## สถานะล่าสุด: บัญชีและพิมพ์รายบุคคล
+
+รายละเอียดล่าสุดอยู่ใน [ACCOUNT_PRINT_IMPLEMENTATION.md](ACCOUNT_PRINT_IMPLEMENTATION.md) และ [SUPABASE_GOOGLE_SETUP.md](SUPABASE_GOOGLE_SETUP.md) ส่วนบันทึกด้านล่างเป็นหลักฐาน foundation/กระดาษคำตอบวันที่ 8 ตุลาคม ไม่ใช่สถานะปัจจุบันของทุกส่วน
+
+เพิ่ม Google-only login, pending/approved/rejected/suspended, owner approval และ read-only inspection, workspace isolation/API/RLS, settings, private Supabase logo พร้อม durable cleanup, ห้องจาก roster จริง, prefilled student identity และ immutable print registry/layout persistence แล้วในโค้ด แต่ยังไม่ apply snapshot บน Supabase, Google provider ยังปิด และยังไม่ deploy รอบนี้
+
+81 unit tests, 15 browser tests และ 4 mock-account tests ผ่าน พร้อม typecheck/lint ไม่มีคำเตือนและ production build; ไม่ใช่ live Google/Supabase E2E ระบบ QR/ID/bubble recognition, scan upload, persisted grading/review/report และ physical calibration **ยังไม่เสร็จ**
+
+ข้อกำหนดที่อนุมัติใหม่แทนสถานะเดิม: โลโก้ใช้ private Supabase Storage/พิมพ์ใหม่ใช้ภาพล่าสุด, login Google และเจ้าของเปิดดูงานคนอื่นได้แบบอ่านอย่างเดียว; Cloudinary ใช้สำหรับภาพสแกนในขั้นถัดไป ไม่เพิ่ม Python worker/microservice
+
+## บันทึกเดิม — 8 ตุลาคม 2569
 
 ## ขอบเขตการส่งมอบ
 

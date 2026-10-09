@@ -22,6 +22,7 @@ import {
   FlaskConical,
 } from "lucide-react";
 import { useWorkspace } from "./workspace-provider";
+import { useAuth } from "./auth-provider";
 import { Notice, Modal } from "@/components/ui/primitives";
 const nav = [
   { href: "/dashboard", title: "ภาพรวม", icon: LayoutDashboard },
@@ -41,7 +42,8 @@ export function MainShell({ children }: { children: ReactNode }) {
   const [mobileNav, setMobileNav] = useState(false);
   const [help, setHelp] = useState(false);
   const [notifications, setNotifications] = useState(false);
-  const { mode, error, loading, reviews, exams } = useWorkspace();
+  const { mode, error, loading, reviews, exams, branding, notify } = useWorkspace();
+  const auth = useAuth();
   const pending = reviews.filter((r) => r.status === "needs_review").length;
   const title = path.includes("omr-generate")
     ? "ออกแบบกระดาษคำตอบ"
@@ -49,6 +51,23 @@ export function MainShell({ children }: { children: ReactNode }) {
       ? "ดูตัวอย่างก่อนพิมพ์"
       : (nav.find((n) => path.startsWith(n.href))?.title ?? "ชุดสอบ");
   if (path === "/login") return <>{children}</>;
+  if (mode === "connected" && (auth.loading || auth.error || !auth.access || auth.access.status !== "approved")) {
+    const status = auth.access?.status;
+    const message = status === "pending" ? "บัญชีของคุณกำลังรออนุมัติ" : status === "suspended" ? "บัญชีนี้ถูกระงับการใช้งาน"
+      : status === "rejected" ? "บัญชีนี้ยังไม่ได้รับสิทธิ์ใช้งาน" : "เข้าสู่ระบบเพื่อเปิดพื้นที่ส่วนตัว";
+    return <main className="login-page"><section className="account-gate panel">
+      <span className="brand-icon"><FileCheck2 size={28} /></span>
+      <h1>{auth.loading ? "กำลังตรวจสอบสิทธิ์…" : auth.error ? "ยังเปิดพื้นที่ทำงานไม่ได้" : message}</h1>
+      {auth.loading ? <p role="status">กำลังตรวจสอบบัญชีและสถานะล่าสุดจากระบบ</p> : <>
+        <p>{auth.error || (auth.access ? "เจ้าของระบบเป็นผู้อนุมัติการใช้งาน คุณยังสร้างชุดสอบหรือเข้าถึงรายชื่อนักเรียนไม่ได้ในสถานะนี้" : "ใช้บัญชี Google ของคุณ งานและการตั้งค่าจะไม่ปะปนกับบัญชีอื่น")}</p>
+        {auth.access && <p className="small muted">บัญชี: {auth.access.email}</p>}
+        <div className="account-actions">
+          {auth.access || auth.error ? <button className="btn btn-primary" onClick={() => void auth.refresh()}>ตรวจสอบสถานะอีกครั้ง</button> : <Link className="btn btn-primary" href="/login">เข้าสู่ระบบด้วย Google</Link>}
+          <button className="btn btn-secondary" onClick={() => void auth.signOut().catch((error: Error) => notify(error.message))}>เปลี่ยนบัญชี / ออกจากระบบ</button>
+        </div>
+      </>}
+    </section></main>;
+  }
   return (
     <div className={`app-shell ${path === "/scan" ? "scanner-shell" : ""}`}>
       <a className="skip-link" href="#main">
@@ -81,10 +100,8 @@ export function MainShell({ children }: { children: ReactNode }) {
         <div className="school-context">
           <School size={18} />
           <span>
-            {mode === "demo"
-              ? "โรงเรียนตัวอย่างวิทยา"
-              : "พื้นที่โรงเรียนของคุณ"}
-            <small>ปีการศึกษา 2569</small>
+            {branding.school}
+            <small>ปีการศึกษา {branding.settings?.academicYear ?? 2569}</small>
           </span>
         </div>
         <nav aria-label="เมนูหลัก">
@@ -127,16 +144,16 @@ export function MainShell({ children }: { children: ReactNode }) {
             <Settings size={19} />
             การตั้งค่า
           </Link>
-          <Link href="/login" className="profile">
+          <Link href="/settings" className="profile">
             <span className="avatar">ค</span>
             <span>
               <strong>
-                {mode === "demo" ? "ครูตัวอย่าง" : "บัญชีผู้ใช้งาน"}
+                {mode === "demo" ? "ครูตัวอย่าง" : auth.access?.displayName || auth.access?.email}
               </strong>
               <small>
                 {mode === "demo"
                   ? "พื้นที่ทดลองส่วนตัว"
-                  : "เข้าสู่ระบบ / บัญชี"}
+                  : auth.access?.role === "owner" ? "เจ้าของระบบ" : "พื้นที่ส่วนตัว"}
               </small>
             </span>
             <ArrowUpRight size={16} />
@@ -162,8 +179,8 @@ export function MainShell({ children }: { children: ReactNode }) {
           <div className="header-right">
             <label className="term-select">
               <span className="sr-only">ภาคเรียน</span>
-              <select defaultValue="1">
-                <option value="1">ภาคเรียนที่ 1 / 2569</option>
+              <select value={branding.settings?.term ?? 1} onChange={() => undefined} aria-label="ภาคเรียนเริ่มต้น เปลี่ยนได้ในการตั้งค่า">
+                <option value={branding.settings?.term ?? 1}>ภาคเรียนที่ {branding.settings?.term ?? 1} / {branding.settings?.academicYear ?? 2569}</option>
               </select>
               <ChevronDown size={14} />
             </label>
@@ -187,6 +204,10 @@ export function MainShell({ children }: { children: ReactNode }) {
             <Link href="/settings">ตั้งค่าระบบจริง</Link>
           </div>
         )}
+        {auth.readOnly && <div className="inspection-banner" role="status">
+          <span>กำลังเปิดดูพื้นที่ของ {auth.inspectionLabel} · อ่านอย่างเดียว · ไม่มีสิทธิ์แก้ไข</span>
+          <button className="text-button" onClick={() => auth.inspectWorkspace(null)}>กลับพื้นที่ของฉัน</button>
+        </div>}
         <main id="main" className="main-content">
           {mode === "unconfigured" && (
             <Notice tone="warning">

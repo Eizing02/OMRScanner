@@ -53,6 +53,12 @@ test("create demo exam, fix with reason, verify, PDF download", async ({
   await page
     .getByLabel("ชื่อชุดสอบ", { exact: true })
     .fill("ชุดสอบทดสอบการทำงาน");
+  await page
+    .getByRole("combobox", { name: "วิชา", exact: true })
+    .selectOption("คณิตศาสตร์");
+  await page
+    .getByRole("combobox", { name: "ชั้น / ห้อง", exact: true })
+    .selectOption("ม.3/1");
   await page.getByRole("button", { name: "กำหนดเฉลย" }).click();
   await page
     .getByRole("button", { name: "สร้างชุดสอบและออกแบบกระดาษ" })
