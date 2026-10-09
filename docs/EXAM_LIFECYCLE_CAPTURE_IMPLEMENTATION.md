@@ -1,6 +1,8 @@
 # ลบชุดสอบ ถ่ายอัตโนมัติ เก็บภาพเดียว และโฉมใหม่ — 9 ตุลาคม 2569
 
-สถานะติดตั้ง 10 ตุลาคม 2569: **SQL 008 และ 009 ติดตั้งสำเร็จบน Supabase จริง** โครงการ `bbtgulutbvxeafktntxg` โดย SQL Editor แสดง Success และตรวจ marker `202610090008`/`202610090009` แล้ว ก่อน/หลังยังมีนักเรียน 202 คน ชุดสอบ 1 ชุด ผลคะแนน 1 รายการ ภาพสแกน 4 ไฟล์เท่าเดิม bucket ยัง private และ cleanup jobs = 0 ไม่มีการเรียก purge/ลบข้อมูลจริงระหว่างติดตั้ง โค้ดรอบนี้เตรียมเผยแพร่ผ่าน GitHub → Netlify; ผล deploy ตรวจแยกจาก SQL สำเร็จ
+สถานะติดตั้ง 10 ตุลาคม 2569: **SQL 008 และ 009 ติดตั้งสำเร็จบน Supabase จริง** โครงการ `bbtgulutbvxeafktntxg` โดย SQL Editor แสดง Success และตรวจ marker `202610090008`/`202610090009` แล้ว ก่อน/หลังยังมีนักเรียน 202 คน ชุดสอบ 1 ชุด ผลคะแนน 1 รายการ ภาพสแกน 4 ไฟล์เท่าเดิม bucket ยัง private และ cleanup jobs = 0 ไม่มีการเรียก purge/ลบข้อมูลจริงระหว่างติดตั้ง
+
+โค้ดพุช `main` แล้วใน commit [`8e1cbf9`](https://github.com/Eizing02/OMRScanner/commit/8e1cbf9f35855d397207038562768c235f03b556) และตรวจ Git remote SHA ตรงกับเครื่อง เว็บ `https://scansob.netlify.app/login` ตอบ HTTP 200 จาก Netlify หน้าเข้าสู่ระบบแสดง copy ใหม่และ CSS ที่เสิร์ฟมีพาเลต/primary/QR-motion รุ่นใหม่แล้ว หลักฐาน `.impeccable/review/live-pastel-login.jpg` เป็นหน้าออนไลน์จริง ไม่ใช่ localhost ขอบเขตนี้ยืนยันว่า UI ใหม่เผยแพร่แล้ว ไม่ใช่ production Google → camera → confirm → export E2E; GitHub connector อ่าน combined deploy status ไม่ได้ (404) จึงไม่อ้าง CI/deploy ID ที่ไม่ได้ตรวจ
 
 ## การทำงานที่เปลี่ยน
 
