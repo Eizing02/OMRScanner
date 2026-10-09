@@ -49,7 +49,6 @@ export function Students() {
     <>
       <PageHeading
         title="นักเรียนและห้องเรียน"
-        description="รายชื่อที่ใช้จับคู่รหัสนักเรียนในชุดสอบ"
         actions={
           <Link href="/students/import" className="btn btn-primary">
             <Upload size={17} />

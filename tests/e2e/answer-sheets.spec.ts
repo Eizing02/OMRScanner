@@ -79,7 +79,7 @@ test("live single-sheet layout, version-safe changes, matching keys and real PDF
   await expect(
     page.getByRole("button", { name: "ดาวน์โหลด PDF", exact: true }),
   ).toBeDisabled();
-  await page.getByRole("link", { name: "ออกแบบ" }).click();
+  await page.getByRole("link", { name: "ออกแบบ", exact: true }).click();
   await page
     .getByRole("button", { name: "บันทึกโครงข้อสอบ", exact: true })
     .click();
@@ -143,9 +143,10 @@ test("live single-sheet layout, version-safe changes, matching keys and real PDF
     ).toEqual([]);
   }
   await page.getByRole("link", { name: "ดูตัวอย่างก่อนพิมพ์" }).click();
+  await page.getByRole("button", { name: /^รายชื่อ ·/ }).click();
   await page.getByLabel("รูปแบบ").selectOption("blank");
   await page.getByLabel("จำนวนใบสำรอง").fill("3");
-  await expect(page.getByText("3 แผ่น", { exact: true })).toBeVisible();
+  await expect(page.getByText("3 แผ่น A4", { exact: true })).toBeVisible();
   const download = page.waitForEvent("download", (d) =>
     d.suggestedFilename().endsWith(".pdf"),
   );
@@ -154,10 +155,15 @@ test("live single-sheet layout, version-safe changes, matching keys and real PDF
     .click();
   await (await download).saveAs("output/pdf/answer-sheet-60-test.pdf");
   await page.goto("/review");
+  await page
+    .getByRole("button", { name: "แก้คำตอบข้อ 7", exact: true })
+    .scrollIntoViewIfNeeded();
   await expect(
     page.getByRole("button", { name: "แก้คำตอบข้อ 7", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("/ 20", { exact: true })).toBeVisible();
+  await expect(page.locator(".workspace-actionbar")).toContainText(
+    "19 / 20 คะแนน",
+  );
 });
 test("personalized print previews real roster names and five solid ID marks with a shared QR", async ({
   page,
@@ -165,7 +171,7 @@ test("personalized print previews real roster names and five solid ID marks with
   await page.goto("/exams/demo-math/print");
   const preview = page.getByRole("img", { name: "กระดาษคำตอบตัวอย่างหนึ่งใบ" });
   await expect(page.getByLabel("รูปแบบ")).toHaveValue("roster");
-  await expect(preview).toContainText("รหัส 02074");
+  await expect(preview).toContainText("รหัส …02074…");
   await expect(
     preview.locator('circle[data-id-digit][fill="#000"]'),
   ).toHaveCount(5);
@@ -173,9 +179,9 @@ test("personalized print previews real roster names and five solid ID marks with
   await expect(preview.locator("[data-sheet-qr]")).toHaveCount(1);
   const qr = await preview.locator("[data-sheet-qr]").getAttribute("href");
   await page.getByLabel("ตัวอย่างนักเรียน").selectOption("demo-student-1");
-  await expect(preview).toContainText("รหัส 04217");
+  await expect(preview).toContainText("รหัส …04217…");
   await expect(preview.locator("[data-sheet-qr]")).toHaveAttribute("href", qr!);
-  await expect(page.getByText("2 แผ่น", { exact: true })).toBeVisible();
+  await expect(page.getByText("2 แผ่น A4", { exact: true })).toBeVisible();
   const download = page.waitForEvent("download", (d) =>
     d.suggestedFilename().endsWith(".pdf"),
   );

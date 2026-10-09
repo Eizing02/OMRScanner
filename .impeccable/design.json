@@ -1,21 +1,77 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-08T10:23:10Z",
+  "generatedAt": "2026-10-09T17:02:06Z",
   "title": "Design System: Smart Answer Sheet",
   "extensions": {
     "colorMeta": {
+      "mint": {
+        "role": "secondary",
+        "displayName": "มิ้นต์นำทาง",
+        "tonalRamp": [
+          "oklch(15.00% 0.03134 189.33)",
+          "oklch(26.43% 0.03134 189.33)",
+          "oklch(37.86% 0.03134 189.33)",
+          "oklch(49.29% 0.03134 189.33)",
+          "oklch(60.71% 0.03134 189.33)",
+          "oklch(72.14% 0.03134 189.33)",
+          "oklch(83.57% 0.03134 189.33)",
+          "oklch(95.00% 0.03134 189.33)"
+        ]
+      },
+      "sky": {
+        "role": "secondary",
+        "displayName": "ฟ้าข้อมูล",
+        "tonalRamp": [
+          "oklch(15.00% 0.04664 258.37)",
+          "oklch(26.43% 0.04664 258.37)",
+          "oklch(37.86% 0.04664 258.37)",
+          "oklch(49.29% 0.04664 258.37)",
+          "oklch(60.71% 0.04664 258.37)",
+          "oklch(72.14% 0.04664 258.37)",
+          "oklch(83.57% 0.04664 258.37)",
+          "oklch(95.00% 0.04664 258.37)"
+        ]
+      },
+      "lavender": {
+        "role": "primary",
+        "displayName": "ลาเวนเดอร์เลือกงาน",
+        "tonalRamp": [
+          "oklch(15.00% 0.06985 289.35)",
+          "oklch(26.43% 0.06985 289.35)",
+          "oklch(37.86% 0.06985 289.35)",
+          "oklch(49.29% 0.06985 289.35)",
+          "oklch(60.71% 0.06985 289.35)",
+          "oklch(72.14% 0.06985 289.35)",
+          "oklch(83.57% 0.06985 289.35)",
+          "oklch(95.00% 0.06985 289.35)"
+        ]
+      },
+      "lilac": {
+        "role": "tertiary",
+        "displayName": "ไลแลคจุดเล็ก",
+        "tonalRamp": [
+          "oklch(15.00% 0.09808 309.43)",
+          "oklch(26.43% 0.09808 309.43)",
+          "oklch(37.86% 0.09808 309.43)",
+          "oklch(49.29% 0.09808 309.43)",
+          "oklch(60.71% 0.09808 309.43)",
+          "oklch(72.14% 0.09808 309.43)",
+          "oklch(83.57% 0.09808 309.43)",
+          "oklch(95.00% 0.09808 309.43)"
+        ]
+      },
       "canvas": {
         "role": "neutral",
-        "displayName": "ขาวเย็นกลางวัน",
+        "displayName": "ขาวเย็น",
         "tonalRamp": [
-          "oklch(15.00% 0.00453 258.32)",
-          "oklch(26.43% 0.00453 258.32)",
-          "oklch(37.86% 0.00453 258.32)",
-          "oklch(49.29% 0.00453 258.32)",
-          "oklch(60.71% 0.00453 258.32)",
-          "oklch(72.14% 0.00453 258.32)",
-          "oklch(83.57% 0.00453 258.32)",
-          "oklch(95.00% 0.00453 258.32)"
+          "oklch(15.00% 0.00574 264.53)",
+          "oklch(26.43% 0.00574 264.53)",
+          "oklch(37.86% 0.00574 264.53)",
+          "oklch(49.29% 0.00574 264.53)",
+          "oklch(60.71% 0.00574 264.53)",
+          "oklch(72.14% 0.00574 264.53)",
+          "oklch(83.57% 0.00574 264.53)",
+          "oklch(95.00% 0.00574 264.53)"
         ]
       },
       "surface": {
@@ -34,118 +90,146 @@
       },
       "ink": {
         "role": "neutral",
-        "displayName": "หมึกสำหรับเนื้อหา",
+        "displayName": "หมึกพลัม",
         "tonalRamp": [
-          "oklch(15.00% 0.04734 259.95)",
-          "oklch(26.43% 0.04734 259.95)",
-          "oklch(37.86% 0.04734 259.95)",
-          "oklch(49.29% 0.04734 259.95)",
-          "oklch(60.71% 0.04734 259.95)",
-          "oklch(72.14% 0.04734 259.95)",
-          "oklch(83.57% 0.04734 259.95)",
-          "oklch(95.00% 0.04734 259.95)"
+          "oklch(15.00% 0.04538 288.66)",
+          "oklch(26.43% 0.04538 288.66)",
+          "oklch(37.86% 0.04538 288.66)",
+          "oklch(49.29% 0.04538 288.66)",
+          "oklch(60.71% 0.04538 288.66)",
+          "oklch(72.14% 0.04538 288.66)",
+          "oklch(83.57% 0.04538 288.66)",
+          "oklch(95.00% 0.04538 288.66)"
         ]
       },
       "muted": {
         "role": "neutral",
-        "displayName": "หมึกอ่อนสำหรับคำอธิบาย",
+        "displayName": "หมึกรอง",
         "tonalRamp": [
-          "oklch(15.00% 0.03596 257.27)",
-          "oklch(26.43% 0.03596 257.27)",
-          "oklch(37.86% 0.03596 257.27)",
-          "oklch(49.29% 0.03596 257.27)",
-          "oklch(60.71% 0.03596 257.27)",
-          "oklch(72.14% 0.03596 257.27)",
-          "oklch(83.57% 0.03596 257.27)",
-          "oklch(95.00% 0.03596 257.27)"
+          "oklch(15.00% 0.04013 294.01)",
+          "oklch(26.43% 0.04013 294.01)",
+          "oklch(37.86% 0.04013 294.01)",
+          "oklch(49.29% 0.04013 294.01)",
+          "oklch(60.71% 0.04013 294.01)",
+          "oklch(72.14% 0.04013 294.01)",
+          "oklch(83.57% 0.04013 294.01)",
+          "oklch(95.00% 0.04013 294.01)"
         ]
       },
       "subtle": {
         "role": "neutral",
-        "displayName": "หมึกจางสำหรับเครื่องช่วย",
+        "displayName": "หมึกเครื่องช่วย",
         "tonalRamp": [
-          "oklch(15.00% 0.03115 256.53)",
-          "oklch(26.43% 0.03115 256.53)",
-          "oklch(37.86% 0.03115 256.53)",
-          "oklch(49.29% 0.03115 256.53)",
-          "oklch(60.71% 0.03115 256.53)",
-          "oklch(72.14% 0.03115 256.53)",
-          "oklch(83.57% 0.03115 256.53)",
-          "oklch(95.00% 0.03115 256.53)"
+          "oklch(15.00% 0.03797 296.51)",
+          "oklch(26.43% 0.03797 296.51)",
+          "oklch(37.86% 0.03797 296.51)",
+          "oklch(49.29% 0.03797 296.51)",
+          "oklch(60.71% 0.03797 296.51)",
+          "oklch(72.14% 0.03797 296.51)",
+          "oklch(83.57% 0.03797 296.51)",
+          "oklch(95.00% 0.03797 296.51)"
         ]
       },
       "line": {
         "role": "neutral",
-        "displayName": "เส้นแบ่งขาวเทา",
+        "displayName": "เส้นแบ่ง",
         "tonalRamp": [
-          "oklch(15.00% 0.01211 259.82)",
-          "oklch(26.43% 0.01211 259.82)",
-          "oklch(37.86% 0.01211 259.82)",
-          "oklch(49.29% 0.01211 259.82)",
-          "oklch(60.71% 0.01211 259.82)",
-          "oklch(72.14% 0.01211 259.82)",
-          "oklch(83.57% 0.01211 259.82)",
-          "oklch(95.00% 0.01211 259.82)"
-        ]
-      },
-      "nav": {
-        "role": "neutral",
-        "displayName": "น้ำเงินหมึกนำทาง",
-        "tonalRamp": [
-          "oklch(15.00% 0.04733 255.41)",
-          "oklch(26.43% 0.04733 255.41)",
-          "oklch(37.86% 0.04733 255.41)",
-          "oklch(49.29% 0.04733 255.41)",
-          "oklch(60.71% 0.04733 255.41)",
-          "oklch(72.14% 0.04733 255.41)",
-          "oklch(83.57% 0.04733 255.41)",
-          "oklch(95.00% 0.04733 255.41)"
+          "oklch(15.00% 0.01627 289.91)",
+          "oklch(26.43% 0.01627 289.91)",
+          "oklch(37.86% 0.01627 289.91)",
+          "oklch(49.29% 0.01627 289.91)",
+          "oklch(60.71% 0.01627 289.91)",
+          "oklch(72.14% 0.01627 289.91)",
+          "oklch(83.57% 0.01627 289.91)",
+          "oklch(95.00% 0.01627 289.91)"
         ]
       },
       "nav-text": {
         "role": "neutral",
-        "displayName": "ข้อความบนหมึกนำทาง",
+        "displayName": "ข้อความเมนู",
         "tonalRamp": [
-          "oklch(15.00% 0.02631 253.58)",
-          "oklch(26.43% 0.02631 253.58)",
-          "oklch(37.86% 0.02631 253.58)",
-          "oklch(49.29% 0.02631 253.58)",
-          "oklch(60.71% 0.02631 253.58)",
-          "oklch(72.14% 0.02631 253.58)",
-          "oklch(83.57% 0.02631 253.58)",
-          "oklch(95.00% 0.02631 253.58)"
+          "oklch(15.00% 0.04180 271.79)",
+          "oklch(26.43% 0.04180 271.79)",
+          "oklch(37.86% 0.04180 271.79)",
+          "oklch(49.29% 0.04180 271.79)",
+          "oklch(60.71% 0.04180 271.79)",
+          "oklch(72.14% 0.04180 271.79)",
+          "oklch(83.57% 0.04180 271.79)",
+          "oklch(95.00% 0.04180 271.79)"
         ]
       },
       "blue": {
         "role": "primary",
-        "displayName": "น้ำเงินลงมือทำ",
+        "displayName": "พลัมลงมือทำ",
         "tonalRamp": [
-          "oklch(15.00% 0.19676 263.02)",
-          "oklch(26.43% 0.19676 263.02)",
-          "oklch(37.86% 0.19676 263.02)",
-          "oklch(49.29% 0.19676 263.02)",
-          "oklch(60.71% 0.19676 263.02)",
-          "oklch(72.14% 0.19676 263.02)",
-          "oklch(83.57% 0.19676 263.02)",
-          "oklch(95.00% 0.19676 263.02)"
+          "oklch(15.00% 0.13390 290.03)",
+          "oklch(26.43% 0.13390 290.03)",
+          "oklch(37.86% 0.13390 290.03)",
+          "oklch(49.29% 0.13390 290.03)",
+          "oklch(60.71% 0.13390 290.03)",
+          "oklch(72.14% 0.13390 290.03)",
+          "oklch(83.57% 0.13390 290.03)",
+          "oklch(95.00% 0.13390 290.03)"
         ]
       },
       "blue-light": {
         "role": "primary",
-        "displayName": "น้ำเงินพื้นเลือก",
+        "displayName": "ลาเวนเดอร์อ่อน",
         "tonalRamp": [
-          "oklch(15.00% 0.01860 265.98)",
-          "oklch(26.43% 0.01860 265.98)",
-          "oklch(37.86% 0.01860 265.98)",
-          "oklch(49.29% 0.01860 265.98)",
-          "oklch(60.71% 0.01860 265.98)",
-          "oklch(72.14% 0.01860 265.98)",
-          "oklch(83.57% 0.01860 265.98)",
-          "oklch(95.00% 0.01860 265.98)"
+          "oklch(15.00% 0.02160 294.59)",
+          "oklch(26.43% 0.02160 294.59)",
+          "oklch(37.86% 0.02160 294.59)",
+          "oklch(49.29% 0.02160 294.59)",
+          "oklch(60.71% 0.02160 294.59)",
+          "oklch(72.14% 0.02160 294.59)",
+          "oklch(83.57% 0.02160 294.59)",
+          "oklch(95.00% 0.02160 294.59)"
+        ]
+      },
+      "action-hover": {
+        "role": "primary",
+        "displayName": "พลัมเมื่อชี้ปุ่ม",
+        "tonalRamp": [
+          "oklch(15.00% 0.12607 290.32)",
+          "oklch(26.43% 0.12607 290.32)",
+          "oklch(37.86% 0.12607 290.32)",
+          "oklch(49.29% 0.12607 290.32)",
+          "oklch(60.71% 0.12607 290.32)",
+          "oklch(72.14% 0.12607 290.32)",
+          "oklch(83.57% 0.12607 290.32)",
+          "oklch(95.00% 0.12607 290.32)"
+        ]
+      },
+      "focus": {
+        "role": "primary",
+        "displayName": "วงโฟกัสพลัม",
+        "tonalRamp": [
+          "oklch(15.00% 0.12568 292.03)",
+          "oklch(26.43% 0.12568 292.03)",
+          "oklch(37.86% 0.12568 292.03)",
+          "oklch(49.29% 0.12568 292.03)",
+          "oklch(60.71% 0.12568 292.03)",
+          "oklch(72.14% 0.12568 292.03)",
+          "oklch(83.57% 0.12568 292.03)",
+          "oklch(95.00% 0.12568 292.03)"
+        ]
+      },
+      "control-line": {
+        "role": "neutral",
+        "displayName": "ขอบควบคุม",
+        "tonalRamp": [
+          "oklch(15.00% 0.04401 297.74)",
+          "oklch(26.43% 0.04401 297.74)",
+          "oklch(37.86% 0.04401 297.74)",
+          "oklch(49.29% 0.04401 297.74)",
+          "oklch(60.71% 0.04401 297.74)",
+          "oklch(72.14% 0.04401 297.74)",
+          "oklch(83.57% 0.04401 297.74)",
+          "oklch(95.00% 0.04401 297.74)"
         ]
       },
       "teal": {
-        "role": "secondary",
+        "role": "tertiary",
         "displayName": "เขียวน้ำทะเลตรวจแล้ว",
         "tonalRamp": [
           "oklch(15.00% 0.09974 171.88)",
@@ -159,8 +243,8 @@
         ]
       },
       "teal-light": {
-        "role": "secondary",
-        "displayName": "เขียวพื้นตรวจแล้ว",
+        "role": "tertiary",
+        "displayName": "พื้นตรวจแล้ว",
         "tonalRamp": [
           "oklch(15.00% 0.01585 166.73)",
           "oklch(26.43% 0.01585 166.73)",
@@ -174,21 +258,21 @@
       },
       "amber": {
         "role": "tertiary",
-        "displayName": "เหลืองอำพันไม่แน่ใจ",
+        "displayName": "อำพันรอตรวจ",
         "tonalRamp": [
-          "oklch(15.00% 0.11230 72.09)",
-          "oklch(26.43% 0.11230 72.09)",
-          "oklch(37.86% 0.11230 72.09)",
-          "oklch(49.29% 0.11230 72.09)",
-          "oklch(60.71% 0.11230 72.09)",
-          "oklch(72.14% 0.11230 72.09)",
-          "oklch(83.57% 0.11230 72.09)",
-          "oklch(95.00% 0.11230 72.09)"
+          "oklch(15.00% 0.10304 72.78)",
+          "oklch(26.43% 0.10304 72.78)",
+          "oklch(37.86% 0.10304 72.78)",
+          "oklch(49.29% 0.10304 72.78)",
+          "oklch(60.71% 0.10304 72.78)",
+          "oklch(72.14% 0.10304 72.78)",
+          "oklch(83.57% 0.10304 72.78)",
+          "oklch(95.00% 0.10304 72.78)"
         ]
       },
       "amber-light": {
         "role": "tertiary",
-        "displayName": "อำพันพื้นเตือน",
+        "displayName": "พื้นเตือน",
         "tonalRamp": [
           "oklch(15.00% 0.03480 87.07)",
           "oklch(26.43% 0.03480 87.07)",
@@ -202,7 +286,7 @@
       },
       "red": {
         "role": "tertiary",
-        "displayName": "แดงตัวขัดขวาง",
+        "displayName": "แดงต้องจัดการ",
         "tonalRamp": [
           "oklch(15.00% 0.15325 22.61)",
           "oklch(26.43% 0.15325 22.61)",
@@ -216,7 +300,7 @@
       },
       "red-light": {
         "role": "tertiary",
-        "displayName": "แดงพื้นผิดพลาด",
+        "displayName": "พื้นผิดพลาด",
         "tonalRamp": [
           "oklch(15.00% 0.01406 17.40)",
           "oklch(26.43% 0.01406 17.40)",
@@ -226,48 +310,6 @@
           "oklch(72.14% 0.01406 17.40)",
           "oklch(83.57% 0.01406 17.40)",
           "oklch(95.00% 0.01406 17.40)"
-        ]
-      },
-      "blue-hover": {
-        "role": "primary",
-        "displayName": "น้ำเงินเมื่อชี้ปุ่ม",
-        "tonalRamp": [
-          "oklch(15.00% 0.18352 262.78)",
-          "oklch(26.43% 0.18352 262.78)",
-          "oklch(37.86% 0.18352 262.78)",
-          "oklch(49.29% 0.18352 262.78)",
-          "oklch(60.71% 0.18352 262.78)",
-          "oklch(72.14% 0.18352 262.78)",
-          "oklch(83.57% 0.18352 262.78)",
-          "oklch(95.00% 0.18352 262.78)"
-        ]
-      },
-      "secondary-line": {
-        "role": "neutral",
-        "displayName": "เส้นขอบปุ่มรอง",
-        "tonalRamp": [
-          "oklch(15.00% 0.02044 257.48)",
-          "oklch(26.43% 0.02044 257.48)",
-          "oklch(37.86% 0.02044 257.48)",
-          "oklch(49.29% 0.02044 257.48)",
-          "oklch(60.71% 0.02044 257.48)",
-          "oklch(72.14% 0.02044 257.48)",
-          "oklch(83.57% 0.02044 257.48)",
-          "oklch(95.00% 0.02044 257.48)"
-        ]
-      },
-      "secondary-hover": {
-        "role": "neutral",
-        "displayName": "พื้นปุ่มรองเมื่อชี้",
-        "tonalRamp": [
-          "oklch(15.00% 0.00910 258.34)",
-          "oklch(26.43% 0.00910 258.34)",
-          "oklch(37.86% 0.00910 258.34)",
-          "oklch(49.29% 0.00910 258.34)",
-          "oklch(60.71% 0.00910 258.34)",
-          "oklch(72.14% 0.00910 258.34)",
-          "oklch(83.57% 0.00910 258.34)",
-          "oklch(95.00% 0.00910 258.34)"
         ]
       },
       "ghost-hover": {
@@ -284,32 +326,32 @@
           "oklch(95.00% 0.01204 259.82)"
         ]
       },
-      "field-line": {
-        "role": "neutral",
-        "displayName": "เส้นขอบช่องกรอก",
+      "nav-hover": {
+        "role": "secondary",
+        "displayName": "มิ้นต์เมื่อชี้เมนู",
         "tonalRamp": [
-          "oklch(15.00% 0.02048 257.48)",
-          "oklch(26.43% 0.02048 257.48)",
-          "oklch(37.86% 0.02048 257.48)",
-          "oklch(49.29% 0.02048 257.48)",
-          "oklch(60.71% 0.02048 257.48)",
-          "oklch(72.14% 0.02048 257.48)",
-          "oklch(83.57% 0.02048 257.48)",
-          "oklch(95.00% 0.02048 257.48)"
+          "oklch(15.00% 0.03177 203.96)",
+          "oklch(26.43% 0.03177 203.96)",
+          "oklch(37.86% 0.03177 203.96)",
+          "oklch(49.29% 0.03177 203.96)",
+          "oklch(60.71% 0.03177 203.96)",
+          "oklch(72.14% 0.03177 203.96)",
+          "oklch(83.57% 0.03177 203.96)",
+          "oklch(95.00% 0.03177 203.96)"
         ]
       },
-      "focus": {
-        "role": "primary",
-        "displayName": "น้ำเงินวงโฟกัส",
+      "nav-active-ink": {
+        "role": "neutral",
+        "displayName": "หมึกเมนูปัจจุบัน",
         "tonalRamp": [
-          "oklch(15.00% 0.13240 262.94)",
-          "oklch(26.43% 0.13240 262.94)",
-          "oklch(37.86% 0.13240 262.94)",
-          "oklch(49.29% 0.13240 262.94)",
-          "oklch(60.71% 0.13240 262.94)",
-          "oklch(72.14% 0.13240 262.94)",
-          "oklch(83.57% 0.13240 262.94)",
-          "oklch(95.00% 0.13240 262.94)"
+          "oklch(15.00% 0.07062 292.01)",
+          "oklch(26.43% 0.07062 292.01)",
+          "oklch(37.86% 0.07062 292.01)",
+          "oklch(49.29% 0.07062 292.01)",
+          "oklch(60.71% 0.07062 292.01)",
+          "oklch(72.14% 0.07062 292.01)",
+          "oklch(83.57% 0.07062 292.01)",
+          "oklch(95.00% 0.07062 292.01)"
         ]
       },
       "badge-neutral": {
@@ -340,46 +382,18 @@
           "oklch(95.00% 0.03789 258.36)"
         ]
       },
-      "badge-blue-ink": {
-        "role": "primary",
-        "displayName": "หมึกสถานะสีน้ำเงิน",
-        "tonalRamp": [
-          "oklch(15.00% 0.14620 261.35)",
-          "oklch(26.43% 0.14620 261.35)",
-          "oklch(37.86% 0.14620 261.35)",
-          "oklch(49.29% 0.14620 261.35)",
-          "oklch(60.71% 0.14620 261.35)",
-          "oklch(72.14% 0.14620 261.35)",
-          "oklch(83.57% 0.14620 261.35)",
-          "oklch(95.00% 0.14620 261.35)"
-        ]
-      },
-      "nav-hover": {
+      "notice-ink": {
         "role": "neutral",
-        "displayName": "หมึกนำทางเมื่อชี้",
+        "displayName": "หมึกข้อความแจ้ง",
         "tonalRamp": [
-          "oklch(15.00% 0.05009 249.52)",
-          "oklch(26.43% 0.05009 249.52)",
-          "oklch(37.86% 0.05009 249.52)",
-          "oklch(49.29% 0.05009 249.52)",
-          "oklch(60.71% 0.05009 249.52)",
-          "oklch(72.14% 0.05009 249.52)",
-          "oklch(83.57% 0.05009 249.52)",
-          "oklch(95.00% 0.05009 249.52)"
-        ]
-      },
-      "nav-active": {
-        "role": "neutral",
-        "displayName": "หมึกนำทางหน้าปัจจุบัน",
-        "tonalRamp": [
-          "oklch(15.00% 0.07996 249.18)",
-          "oklch(26.43% 0.07996 249.18)",
-          "oklch(37.86% 0.07996 249.18)",
-          "oklch(49.29% 0.07996 249.18)",
-          "oklch(60.71% 0.07996 249.18)",
-          "oklch(72.14% 0.07996 249.18)",
-          "oklch(83.57% 0.07996 249.18)",
-          "oklch(95.00% 0.07996 249.18)"
+          "oklch(15.00% 0.05480 274.22)",
+          "oklch(26.43% 0.05480 274.22)",
+          "oklch(37.86% 0.05480 274.22)",
+          "oklch(49.29% 0.05480 274.22)",
+          "oklch(60.71% 0.05480 274.22)",
+          "oklch(72.14% 0.05480 274.22)",
+          "oklch(83.57% 0.05480 274.22)",
+          "oklch(95.00% 0.05480 274.22)"
         ]
       },
       "work-inset": {
@@ -395,12 +409,26 @@
           "oklch(83.57% 0.00453 258.32)",
           "oklch(95.00% 0.00453 258.32)"
         ]
+      },
+      "paper-canvas": {
+        "role": "neutral",
+        "displayName": "ผืนงานกระดาษ",
+        "tonalRamp": [
+          "oklch(15.00% 0.01119 269.55)",
+          "oklch(26.43% 0.01119 269.55)",
+          "oklch(37.86% 0.01119 269.55)",
+          "oklch(49.29% 0.01119 269.55)",
+          "oklch(60.71% 0.01119 269.55)",
+          "oklch(72.14% 0.01119 269.55)",
+          "oklch(83.57% 0.01119 269.55)",
+          "oklch(95.00% 0.01119 269.55)"
+        ]
       }
     },
     "typographyMeta": {
       "headline": {
         "displayName": "หัวหน้าจอ",
-        "purpose": "หัวหน้าจอหลัก; น้ำหนัก CSS 650 โดย self-host ไฟล์น้ำหนัก 400 / 500 / 600 / 700."
+        "purpose": "หัวหน้าจอทั่วไป 27px; task workspace 24 / 21 / 19px ตาม viewport. น้ำหนัก CSS 650 โดยโหลดไฟล์ 400 / 500 / 600 / 700."
       },
       "title": {
         "displayName": "ชื่อส่วนงาน",
@@ -412,7 +440,7 @@
       },
       "body": {
         "displayName": "เนื้อหาหลัก",
-        "purpose": "เนื้อหาที่ต้องอ่าน; ขนาดฐานบนโทรศัพท์เป็น 13px."
+        "purpose": "เนื้อหาที่ต้องอ่าน; ฐาน phone 13px และช่องกรอกหลัก phone 16px."
       },
       "label": {
         "displayName": "ป้ายการกระทำ",
@@ -420,7 +448,7 @@
       },
       "status": {
         "displayName": "ป้ายสถานะ",
-        "purpose": "Badge ที่มีคำสั้น; ไม่เป็นสเกลสำหรับย่อเนื้อหาหลัก."
+        "purpose": "Badge คำสั้น; ไม่ใช้ย่อเนื้อหาหลัก."
       },
       "score": {
         "displayName": "คะแนน",
@@ -441,7 +469,7 @@
       {
         "name": "print-paper",
         "value": "0 7px 24px #233b5a1f",
-        "purpose": "กระดาษตัวอย่างก่อนพิมพ์."
+        "purpose": "กระดาษก่อนพิมพ์."
       },
       {
         "name": "review-paper",
@@ -461,51 +489,101 @@
     ],
     "motion": [
       {
-        "name": "button-background",
-        "value": "background 0.15s ease",
-        "purpose": "การชี้ปุ่มเปลี่ยนสีพื้น; ไม่มีการเลื่อนวัตถุ."
+        "name": "motion-fast",
+        "value": "130ms",
+        "purpose": "Feedback สี/ขอบ/พื้นปุ่ม และ transform เมื่อกด."
+      },
+      {
+        "name": "motion-state",
+        "value": "220ms",
+        "purpose": "พื้นเมนู แท็บ และ stroke กรอบกล้อง."
+      },
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "ปุ่มกด การยืนยันเลือก dialog และ page transition."
+      },
+      {
+        "name": "button-press",
+        "value": "scale(0.98)",
+        "purpose": "กดปุ่มที่ไม่ disabled; ไม่มี transform เมื่อ reduced-motion."
+      },
+      {
+        "name": "selection-confirm",
+        "value": "scale(0.88) to scale(1), 220ms",
+        "purpose": "ไอคอนเมนูหน้าปัจจุบัน; ปิดเมื่อ reduced-motion."
+      },
+      {
+        "name": "page-transition",
+        "value": "opacity 0.85 to 1, translateY(3px) to 0, 180ms",
+        "purpose": "Web Animations API เมื่อเปลี่ยน route; reduced-motion เป็น opacity 0.9 to 1 ใน 80ms."
+      },
+      {
+        "name": "dialog-arrive",
+        "value": "opacity 0.8 to 1, translate 0 5px to 0 0, 220ms",
+        "purpose": "Dialog มาถึงสั้น; ปิดเมื่อ reduced-motion."
+      },
+      {
+        "name": "overlay-arrive",
+        "value": "opacity 0.7 to 1, 150ms ease-out",
+        "purpose": "Dialog overlay; toast ใช้ keyframe เดียวใน 160ms."
+      },
+      {
+        "name": "qr-lock",
+        "value": "background-color #3c3763 to #142333, 250ms",
+        "purpose": "แถบสถานะกล้องเมื่อ QR ล็อก; ไม่สื่อว่าคะแนนถูกต้อง."
       },
       {
         "name": "navigation-drawer",
         "value": "transform 0.2s",
-        "purpose": "Drawer ที่ความกว้างไม่เกิน 900px; easing ตามค่า CSS เริ่มต้น."
+        "purpose": "Drawer ที่ไม่เกิน 900px; easing ตาม CSS เริ่มต้น."
       },
       {
         "name": "loading-spinner",
         "value": "spin 0.8s linear infinite",
-        "purpose": "Spinner โหลดข้อมูล; keyframe หมุนไปที่ 360deg."
+        "purpose": "Spinner โหลดข้อมูล; หมุน 360deg."
       },
       {
-        "name": "reduced-motion",
+        "name": "reduced-motion-css",
         "value": "0.01ms",
-        "purpose": "ลด animation-duration และ transition-duration เมื่อ prefers-reduced-motion: reduce; scroll-behavior เป็น auto."
+        "purpose": "animation/transition durations และ scroll auto; page transition ใช้ opacity-only 80ms แยกใน JavaScript."
       }
     ],
     "breakpoints": [
       {
         "name": "wide",
         "value": "1600px",
-        "purpose": "min-width; gutter 40px และ Designer tools / properties 230px / 280px."
+        "purpose": "min-width; Designer tools/properties 230px / 280px; shell gutter สุดท้ายยัง 28px."
       },
       {
         "name": "compact-desktop",
         "value": "1300px",
-        "purpose": "max-width; sidebar 224px และ gutter 25px."
+        "purpose": "max-width; sidebar 224px."
+      },
+      {
+        "name": "single-task-pane",
+        "value": "1200px",
+        "purpose": "max-width; Designer/Review สลับส่วนแทนบีบหลายคอลัมน์."
       },
       {
         "name": "workspace-reflow",
         "value": "1100px",
-        "purpose": "max-width; sidebar 205px, Dashboard คอลัมน์เดียว, properties ใต้ canvas."
+        "purpose": "max-width; sidebar 205px และ Dashboard คอลัมน์เดียว."
       },
       {
         "name": "mobile-navigation",
         "value": "900px",
-        "purpose": "max-width; drawer, header 62px และเมนูด่วนด้านล่าง."
+        "purpose": "max-width; drawer, header 50px, content 14px 16px, bottom rail 62px พร้อม safe-area."
       },
       {
         "name": "phone",
         "value": "640px",
-        "purpose": "max-width; gutter 16px, Designer ดูตัวอย่าง, Print / Scanner / Review คอลัมน์เดียว."
+        "purpose": "max-width; task heading 19px, fields 16px, selector buttons แบ่งความกว้าง, filters แนวตั้ง."
+      },
+      {
+        "name": "short-mobile",
+        "value": "700px height / 900px width",
+        "purpose": "max-height/max-width; ซ่อนข้อมูลช่วยรอง Designer และลด gap งานเป็น 6px."
       }
     ]
   },
@@ -514,103 +592,103 @@
       "name": "ปุ่มหลัก",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "ปุ่มน้ำเงินสำหรับการกระทำหลัก เช่น สร้างชุดสอบหรือทำงานต่อ.",
+      "description": "ปุ่มพลัมเข้มสำหรับการกระทำหลัก พร้อม feedback เมื่อกด.",
       "html": "<button class=\"ds-btn-primary\" type=\"button\">สร้างชุดสอบ</button>",
-      "css": ".ds-btn-primary{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;min-height:42px;border:1px solid transparent;border-radius:8px;font-size:13px;font-weight:550;line-height:1.65;white-space:nowrap;transition:background 0.15s ease;cursor:pointer;background:var(--blue,#245bd5);color:var(--surface,#fff)}.ds-btn-primary:hover{background:#1649b8}.ds-btn-primary:focus-visible{outline:3px solid #6892e5;outline-offset:3px}.ds-btn-primary:disabled{cursor:not-allowed;opacity:0.46}@media(prefers-reduced-motion:reduce){.ds-btn-primary{transition-duration:0.01ms}}"
+      "css": ".ds-btn-primary{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;min-height:42px;border:1px solid transparent;border-radius:8px;font-size:13px;font-weight:550;line-height:1.65;white-space:nowrap;cursor:pointer;transition:background var(--motion-fast,130ms),border-color var(--motion-fast,130ms),color var(--motion-fast,130ms),transform var(--motion-fast,130ms) var(--ease-out,cubic-bezier(0.16,1,0.3,1));background:var(--blue,#534095);color:var(--surface,#fff)}.ds-btn-primary:hover{background:var(--action-hover,#44317f)}.ds-btn-primary:focus-visible{outline:3px solid var(--focus,#6653a4);outline-offset:3px}.ds-btn-primary:not(:disabled):active{transform:scale(0.98)}.ds-btn-primary:disabled{cursor:not-allowed;opacity:.46}@media(prefers-reduced-motion:reduce){.ds-btn-primary{transition-duration:.01ms}.ds-btn-primary:not(:disabled):active{transform:none}}"
     },
     {
       "name": "ปุ่มรอง",
       "kind": "button",
       "refersTo": "button-secondary",
-      "description": "ปุ่มขาวมีขอบสำหรับการกระทำรองที่ยังต้องมองเห็นชัด.",
-      "html": "<button class=\"ds-btn-secondary\" type=\"button\">เริ่มสแกน</button>",
-      "css": ".ds-btn-secondary{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;min-height:42px;border:1px solid transparent;border-radius:8px;font-size:13px;font-weight:550;line-height:1.65;white-space:nowrap;transition:background 0.15s ease;cursor:pointer;background:var(--surface,#fff);color:var(--ink,#18263d);border-color:#cdd6e3}.ds-btn-secondary:hover{background:#f0f4fa}.ds-btn-secondary:focus-visible{outline:3px solid #6892e5;outline-offset:3px}.ds-btn-secondary:disabled{cursor:not-allowed;opacity:0.46}@media(prefers-reduced-motion:reduce){.ds-btn-secondary{transition-duration:0.01ms}}"
+      "description": "ปุ่มขาวขอบเข้มกับพื้นลาเวนเดอร์อ่อนเมื่อชี้.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">ดูตัวอย่างก่อนพิมพ์</button>",
+      "css": ".ds-btn-secondary{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;min-height:42px;border:1px solid transparent;border-radius:8px;font-size:13px;font-weight:550;line-height:1.65;white-space:nowrap;cursor:pointer;transition:background var(--motion-fast,130ms),border-color var(--motion-fast,130ms),color var(--motion-fast,130ms),transform var(--motion-fast,130ms) var(--ease-out,cubic-bezier(0.16,1,0.3,1));background:var(--surface,#fff);color:var(--ink,#29263f);border-color:var(--control-line,#8a829f)}.ds-btn-secondary:hover{background:var(--blue-light,#eeebfb)}.ds-btn-secondary:focus-visible{outline:3px solid var(--focus,#6653a4);outline-offset:3px}.ds-btn-secondary:not(:disabled):active{transform:scale(0.98)}.ds-btn-secondary:disabled{cursor:not-allowed;opacity:.46}@media(prefers-reduced-motion:reduce){.ds-btn-secondary{transition-duration:.01ms}.ds-btn-secondary:not(:disabled):active{transform:none}}"
     },
     {
       "name": "ปุ่มเครื่องมือ",
       "kind": "button",
       "refersTo": "button-ghost",
-      "description": "ปุ่มพื้นใสที่เปลี่ยนเป็นน้ำเงินอ่อนเมื่อเลือกในแถบเครื่องมือ.",
+      "description": "ปุ่มใสสำหรับเครื่องมือ; พื้นพลัมอ่อนเมื่อเลือก.",
       "html": "<div class=\"ds-ghost-set\"><button class=\"ds-btn-ghost\" type=\"button\" aria-pressed=\"false\">พื้นที่ปลอดภัย</button><button class=\"ds-btn-ghost ds-selected\" type=\"button\" aria-pressed=\"true\">พื้นที่ปลอดภัย</button></div>",
-      "css": ".ds-ghost-set{display:flex;gap:10px;flex-wrap:wrap}.ds-btn-ghost{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;min-height:42px;border:1px solid transparent;border-radius:8px;font-size:13px;font-weight:550;line-height:1.65;white-space:nowrap;transition:background 0.15s ease;cursor:pointer;background:transparent;color:var(--muted,#5d6b7f)}.ds-btn-ghost:hover{background:#e8edf5}.ds-btn-ghost.ds-selected{background:var(--blue-light,#ecf2ff);color:var(--blue,#245bd5)}.ds-btn-ghost:focus-visible{outline:3px solid #6892e5;outline-offset:3px}.ds-btn-ghost:disabled{cursor:not-allowed;opacity:0.46}@media(prefers-reduced-motion:reduce){.ds-btn-ghost{transition-duration:0.01ms}}"
+      "css": ".ds-ghost-set{display:flex;gap:10px;flex-wrap:wrap}.ds-btn-ghost{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;min-height:42px;border:1px solid transparent;border-radius:8px;font-size:13px;font-weight:550;line-height:1.65;white-space:nowrap;cursor:pointer;transition:background var(--motion-fast,130ms),border-color var(--motion-fast,130ms),color var(--motion-fast,130ms),transform var(--motion-fast,130ms) var(--ease-out,cubic-bezier(0.16,1,0.3,1));background:transparent;color:var(--muted,#5f5a73)}.ds-btn-ghost.ds-selected{background:var(--blue-light,#eeebfb);color:var(--blue,#534095)}.ds-btn-ghost:hover{background:#e8edf5}.ds-btn-ghost:focus-visible{outline:3px solid var(--focus,#6653a4);outline-offset:3px}.ds-btn-ghost:not(:disabled):active{transform:scale(0.98)}.ds-btn-ghost:disabled{cursor:not-allowed;opacity:.46}@media(prefers-reduced-motion:reduce){.ds-btn-ghost{transition-duration:.01ms}.ds-btn-ghost:not(:disabled):active{transform:none}}"
     },
     {
       "name": "ช่องกรอก",
       "kind": "input",
       "refersTo": "input",
-      "description": "ช่องกรอกพร้อมป้ายไทย ขอบบางและวงโฟกัสที่ชัด.",
+      "description": "ช่องกรอกไทย ขอบเข้มที่ชัดบนพื้นขาว และขนาด phone 16px.",
       "html": "<label class=\"ds-field-label\">ชื่อชุดสอบ<input class=\"ds-input\" type=\"text\" placeholder=\"ระบุชื่อชุดสอบ\" value=\"สมการและอสมการเชิงเส้น\"></label>",
-      "css": ".ds-field-label{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:500;line-height:1.65;color:var(--ink,#18263d)}.ds-input{font-family:var(--font,\"Noto Sans Thai\",sans-serif);font-size:14px;font-weight:400;line-height:1.65;caret-color:var(--blue,#245bd5);border:1px solid #cbd4e1;border-radius:7px;padding:10px 12px;color:var(--ink,#18263d);background:var(--surface,#fff);width:100%;min-height:43px}.ds-input::placeholder{color:#68778a}.ds-input:focus-visible{outline:3px solid #6892e5;outline-offset:3px}"
+      "css": ".ds-field-label{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:flex;flex-direction:column;gap:7px;font-size:14px;font-weight:500;line-height:1.65;color:var(--ink,#29263f)}.ds-input{font-family:var(--font,\"Noto Sans Thai\",sans-serif);font-size:14px;font-weight:400;line-height:1.65;caret-color:var(--blue,#534095);border:1px solid var(--control-line,#8a829f);border-radius:7px;padding:10px 12px;color:var(--ink,#29263f);background:var(--surface,#fff);width:100%;min-height:43px}.ds-input::placeholder{color:var(--muted,#5f5a73)}.ds-input:hover{border-color:var(--control-line,#8a829f)}.ds-input:focus-visible{outline:3px solid var(--focus,#6653a4);outline-offset:3px}@media(max-width:640px){.ds-input{font-size:16px}}"
     },
     {
       "name": "รายการนำทาง",
       "kind": "nav",
       "refersTo": "nav-item",
-      "description": "รายการนำทางบนแถบน้ำเงินหมึก พร้อมสถานะหน้าปัจจุบัน.",
-      "html": "<nav class=\"ds-nav\" aria-label=\"ตัวอย่างเมนูหลัก\"><a class=\"ds-nav-item ds-active\" href=\"#dashboard\" aria-current=\"page\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\"></rect><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\"></rect><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\"></rect><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\"></rect></svg><span>ภาพรวม</span></a><a class=\"ds-nav-item\" href=\"#exams\">คลังชุดสอบ</a></nav>",
-      "css": ".ds-nav{background:var(--nav,#15263c);padding:18px;display:flex;flex-direction:column;gap:6px;max-width:248px}.ds-nav-item{font-family:var(--font,\"Noto Sans Thai\",sans-serif);min-height:44px;display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:7px;font-size:12px;font-weight:400;line-height:1.65;color:var(--nav-text,#c7d4e4);background:transparent;text-decoration:none}.ds-nav-item svg{color:#a8bed5;flex:none}.ds-nav-item:hover{background:#223950}.ds-nav-item.ds-active{background:#285178;color:#fff}.ds-nav-item.ds-active svg{color:#c4e4ff}.ds-nav-item:focus-visible{outline:3px solid #6892e5;outline-offset:3px}"
+      "description": "เมนูมิ้นต์ หมึกเข้ม และหน้าปัจจุบันลาเวนเดอร์.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"ตัวอย่างเมนูหลัก\"><a class=\"ds-nav-item ds-active\" href=\"#dashboard\" aria-current=\"page\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\"/><rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\"/><rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\"/></svg><span>ภาพรวม</span></a><a class=\"ds-nav-item\" href=\"#exams\">คลังชุดสอบ</a></nav>",
+      "css": ".ds-nav{background:var(--nav,var(--mint,#defcf9));padding:18px;display:flex;flex-direction:column;gap:6px;max-width:248px}.ds-nav-item{font-family:var(--font,\"Noto Sans Thai\",sans-serif);min-height:44px;display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:7px;font-size:12px;font-weight:400;line-height:1.65;color:var(--nav-text,#3e455d);background:transparent;text-decoration:none;transition:background var(--motion-state,220ms),color var(--motion-fast,130ms)}.ds-nav-item svg{color:#4d5c71;flex:none}.ds-nav-item:hover{background:#cae8eb}.ds-nav-item.ds-active{background:var(--lavender,#c3bef0);color:#30274f;font-weight:650}.ds-nav-item.ds-active svg{color:#473578;animation:ds-selection-confirm var(--motion-state,220ms) var(--ease-out,cubic-bezier(.16,1,.3,1))}.ds-nav-item:focus-visible{outline:3px solid var(--focus,#6653a4);outline-offset:3px}@keyframes ds-selection-confirm{from{transform:scale(.88)}to{transform:scale(1)}}@media(prefers-reduced-motion:reduce){.ds-nav-item{transition-duration:.01ms}.ds-nav-item.ds-active svg{animation:none}}"
     },
     {
       "name": "ป้ายสถานะ",
       "kind": "chip",
       "refersTo": "badge-neutral",
-      "description": "Badge สั้นห้าโทนที่แสดงสถานะด้วยภาษาไทย.",
+      "description": "Badge สั้นที่คงคำบอกสถานะไว้คู่กับสี; ตัวอย่างสีเขียวไม่ได้รับรองผลจริง.",
       "html": "<div class=\"ds-badge-set\"><span class=\"ds-badge\">แบบร่าง</span><span class=\"ds-badge ds-blue\">กำลังสแกน</span><span class=\"ds-badge ds-green\">ตรวจแล้ว</span><span class=\"ds-badge ds-amber\">รอตรวจสอบ</span><span class=\"ds-badge ds-red\">อ่านไม่ได้</span></div>",
-      "css": ".ds-badge-set{display:flex;flex-wrap:wrap;gap:8px}.ds-badge{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:5px;font-size:11px;line-height:1.8;font-weight:500;white-space:nowrap;background:#f0f3f7;color:#556378}.ds-badge.ds-blue{background:var(--blue-light,#ecf2ff);color:#2452a7}.ds-badge.ds-green{background:var(--teal-light,#e8f5ef);color:var(--teal,#087c63)}.ds-badge.ds-amber{background:var(--amber-light,#fff4db);color:var(--amber,#96620a)}.ds-badge.ds-red{background:var(--red-light,#fdf0f0);color:var(--red,#b33d40)}"
+      "css": ".ds-badge-set{display:flex;flex-wrap:wrap;gap:8px}.ds-badge{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:5px;font-size:11px;line-height:1.8;font-weight:500;white-space:nowrap;background:#f0f3f7;color:#556378}.ds-badge.ds-blue{background:var(--blue-light,#eeebfb);color:var(--blue,#534095)}.ds-badge.ds-green{background:var(--teal-light,#e8f5ef);color:var(--teal,#087c63)}.ds-badge.ds-amber{background:var(--amber-light,#fff4db);color:var(--amber,#855707)}.ds-badge.ds-red{background:var(--red-light,#fdf0f0);color:var(--red,#b33d40)}"
     },
     {
       "name": "แผงข้อมูล",
       "kind": "card",
       "refersTo": "panel",
-      "description": "แผงพื้นราบสีขาวที่ใช้ขอบบางแทนเงา.",
-      "html": "<section class=\"ds-panel\"><div class=\"ds-section-title\"><h2>ชุดสอบที่กำลังดำเนินการ</h2></div><p>ดูงานที่ค้าง และทำต่อจากจุดที่คุณหยุดไว้</p></section>",
-      "css": ".ds-panel{font-family:var(--font,\"Noto Sans Thai\",sans-serif);background:var(--surface,#fff);color:var(--ink,#18263d);border:1px solid var(--line,#e1e6ee);border-radius:var(--radius,12px);padding:22px;font-size:14px;line-height:1.65}.ds-section-title{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:16px}.ds-section-title h2{margin:0;font-size:17px;font-weight:600;line-height:1.6}.ds-panel p{margin:0;color:var(--muted,#5d6b7f);font-size:12px}@media(max-width:640px){.ds-panel{padding:17px}}"
+      "description": "แผงขาวพื้นราบที่ใช้ขอบบางและหมึกเข้ม.",
+      "html": "<section class=\"ds-panel\"><h2>ชุดสอบที่กำลังดำเนินการ</h2><p>เลือกชุดสอบเพื่อทำงานต่อ</p></section>",
+      "css": ".ds-panel{font-family:var(--font,\"Noto Sans Thai\",sans-serif);background:var(--surface,#fff);color:var(--ink,#29263f);border:1px solid var(--line,#dedde9);border-radius:var(--radius,12px);padding:22px;font-size:14px;line-height:1.65}.ds-panel h2{margin:0 0 16px;font-size:17px;font-weight:600;line-height:1.6}.ds-panel p{margin:0;color:var(--muted,#5f5a73);font-size:12px}@media(max-width:640px){.ds-panel{padding:17px}}"
     },
     {
       "name": "ข้อความเตือน",
       "kind": "custom",
       "refersTo": "notice-warning",
-      "description": "Notice เตือนด้วยพื้นอำพัน ไอคอนเส้น และข้อความอธิบาย.",
-      "html": "<div class=\"ds-notice ds-warning\" role=\"status\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"></path><path d=\"M12 9v4\"></path><path d=\"M12 17h.01\"></path></svg><div>ตรวจรอยฝนที่ไม่แน่ใจก่อนยืนยันคะแนน</div></div>",
-      "css": ".ds-notice{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border-radius:8px;font-size:12px;font-weight:400;line-height:1.75;margin:12px 0;background:var(--blue-light,#ecf2ff);color:#345281}.ds-notice svg{margin-top:2px;flex:none}.ds-notice.ds-warning{background:var(--amber-light,#fff4db);color:#7c560f}"
+      "description": "Notice อำพันที่ให้ครูตรวจรอยฝนก่อนยืนยันคะแนน.",
+      "html": "<div class=\"ds-notice ds-warning\" role=\"status\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4\"/><path d=\"M12 17h.01\"/></svg><div>ตรวจรอยฝนที่ไม่แน่ใจก่อนยืนยันคะแนน</div></div>",
+      "css": ".ds-notice{font-family:var(--font,\"Noto Sans Thai\",sans-serif);display:flex;align-items:flex-start;gap:9px;padding:12px 14px;border-radius:8px;font-size:12px;font-weight:400;line-height:1.75;margin:12px 0;background:var(--blue-light,#eeebfb);color:#3f4666}.ds-notice svg{margin-top:2px;flex:none}.ds-notice.ds-warning{background:var(--amber-light,#fff4db);color:#7c560f}"
     },
     {
-      "name": "เส้นทางชุดสอบ",
-      "kind": "custom",
-      "refersTo": "route-node",
-      "description": "จุดลำดับงานหกขั้น แยกเสร็จแล้ว ขั้นปัจจุบัน และขั้นถัดไป.",
-      "html": "<ol class=\"ds-route\" aria-label=\"ความคืบหน้าชุดสอบ\"><li class=\"ds-complete\"><span class=\"ds-route-node\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"></path></svg></span><span>สร้างชุดสอบ</span></li><li class=\"ds-complete\"><span class=\"ds-route-node\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"></path></svg></span><span>ออกแบบ</span></li><li class=\"ds-complete\"><span class=\"ds-route-node\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"></path></svg></span><span>พิมพ์</span></li><li class=\"ds-complete\"><span class=\"ds-route-node\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"></path></svg></span><span>สแกน</span></li><li class=\"ds-current\"><span class=\"ds-route-node\">5</span><span>ตรวจสอบ</span></li><li class=\"ds-future\"><span class=\"ds-route-node\">6</span><span>พร้อมเผยแพร่</span></li></ol>",
-      "css": ".ds-route{font-family:var(--font,\"Noto Sans Thai\",sans-serif);list-style:none;margin:0;padding:0;display:flex;justify-content:space-between;line-height:1.65}.ds-route li{flex:1;position:relative;display:flex;flex-direction:column;gap:9px;align-items:center;font-size:10px;color:#67768a}.ds-route li:not(:last-child)::after{content:\"\";position:absolute;top:13px;height:2px;width:calc(100% - 28px);left:calc(50% + 14px);background:#e5eaf1}.ds-route-node{width:27px;height:27px;display:flex;align-items:center;justify-content:center;background:#f0f3f7;color:#6d7c8f;border-radius:50%;font-size:10px;z-index:1}.ds-complete .ds-route-node{background:#dfefe9;color:var(--teal,#087c63)}.ds-route .ds-complete::after{background:#b4d5c8}.ds-route .ds-current{color:#8e610d;font-weight:600}.ds-current .ds-route-node{background:#eab85b;color:#483409}@media(max-width:640px){.ds-route li{font-size:8px}.ds-route-node{width:25px;height:25px}.ds-route li:not(:last-child)::after{top:12px}}"
+      "name": "ส่วนพื้นที่ทำงาน",
+      "kind": "nav",
+      "refersTo": "workspace-tab",
+      "description": "ปุ่มเลือกส่วนงานที่ใช้ aria-pressed; พื้นและเส้นเลือกบอกส่วนปัจจุบัน.",
+      "html": "<div class=\"ds-workspace-tabs\" role=\"group\" aria-label=\"ส่วนของพื้นที่ทำงาน\"><button type=\"button\" class=\"ds-workspace-tab ds-active\" aria-pressed=\"true\">คำตอบ</button><button type=\"button\" class=\"ds-workspace-tab\" aria-pressed=\"false\">ภาพกระดาษ</button><button type=\"button\" class=\"ds-workspace-tab\" aria-pressed=\"false\">คิวตรวจ</button></div>",
+      "css": ".ds-workspace-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line,#dedde9)}.ds-workspace-tab{font-family:var(--font,\"Noto Sans Thai\",sans-serif);min-height:44px;padding:8px 12px;font-size:13px;color:var(--muted,#5f5a73);background:transparent;border:0;border-bottom:2px solid transparent;cursor:pointer;transition:background var(--motion-state,220ms),color var(--motion-fast,130ms),border-color var(--motion-fast,130ms)}.ds-workspace-tab:not(.ds-active):hover{background:#f0eef9}.ds-workspace-tab.ds-active{background:var(--lavender,#c3bef0);color:var(--blue,#534095);border-bottom-color:var(--blue,#534095);border-radius:8px 8px 0 0}.ds-workspace-tab:focus-visible{outline:3px solid var(--focus,#6653a4);outline-offset:3px}@media(max-width:640px){.ds-workspace-tabs{gap:0}.ds-workspace-tab{flex:1;padding:6px 4px;font-size:12px}}@media(prefers-reduced-motion:reduce){.ds-workspace-tab{transition-duration:.01ms}}"
     },
     {
       "name": "ชัตเตอร์กล้อง",
       "kind": "button",
       "refersTo": "shutter",
-      "description": "ปุ่มวงกลมขนาดใหญ่ที่เห็นและกดง่ายในพื้นที่กล้อง.",
-      "html": "<div class=\"ds-camera-controls\"><button class=\"ds-shutter\" type=\"button\" aria-label=\"ถ่ายภาพกระดาษ\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z\"></path><circle cx=\"12\" cy=\"13\" r=\"3\"></circle></svg></button></div>",
-      "css": ".ds-camera-controls{display:flex;justify-content:space-evenly;align-items:center;gap:20px;padding:20px;background:#101d2d}.ds-shutter{width:68px;height:68px;border:4px solid #e2e9f1;background:var(--surface,#fff);color:#203853;border-radius:50%;display:flex;align-items:center;justify-content:center;outline:2px solid #5b6b80;outline-offset:3px;cursor:pointer}.ds-shutter:hover{background:#deebfa}.ds-shutter:focus-visible{outline:3px solid #6892e5;outline-offset:3px}.ds-shutter:disabled{cursor:not-allowed;opacity:0.46}"
+      "description": "ชัตเตอร์วงกลมใหญ่บนพื้นกล้องเข้ม; จับภาพก่อนบันทึกและยืนยันคะแนน.",
+      "html": "<div class=\"ds-camera-controls\"><button class=\"ds-shutter\" type=\"button\" aria-label=\"ถ่ายภาพกระดาษ\"><svg width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z\"/><circle cx=\"12\" cy=\"13\" r=\"3\"/></svg></button></div>",
+      "css": ".ds-camera-controls{display:flex;justify-content:space-evenly;align-items:center;gap:20px;padding:20px;background:#101d2d}.ds-shutter{width:68px;height:68px;border:4px solid #e2e9f1;background:var(--surface,#fff);color:#203853;border-radius:50%;display:flex;align-items:center;justify-content:center;outline:2px solid #5b6b80;outline-offset:3px;cursor:pointer}.ds-shutter:hover{background:#deebfa}.ds-shutter:focus-visible{outline:3px solid var(--focus,#6653a4);outline-offset:3px}.ds-shutter:disabled{cursor:not-allowed;opacity:.46}"
     }
   ],
   "narrative": {
-    "northStar": "เส้นทางตรวจข้อสอบ",
-    "overview": "“เส้นทางตรวจข้อสอบ” วางพื้นที่ทำงานของครูเป็นงานเอกสารที่มีลำดับและตรวจย้อนกลับได้ พื้นสีขาวเย็นรับแสงกลางวันอยู่คู่กับแถบนำทางสีน้ำเงินหมึก เส้นแบ่งบางและพื้นที่สี่เหลี่ยมช่วยจัดข้อมูลแน่นให้สงบ ปุ่ม สถานะ และรอยฝนเป็นจุดที่ใช้สีอย่างมีความหมาย ความรู้สึกหลักคือแม่นยำ ช่วยเหลือ และน่าเชื่อถือ ตามบุคลิกใน PRODUCT.md.\n\nชื่อทิศทางและคำบรรยายนี้สกัดจากโค้ดที่ส่งมอบและ docs/DIRECTION.md: grounded direction 4, seed 19bece82 ตามหลักฐานใน docs/DIRECTION_ROLL_EVIDENCE.md. ผู้ใช้มอบหมายการตัดสินใจออกแบบที่ย้อนกลับได้ผ่านคำขอให้ตรวจ Blueprint และนำไปสร้าง ภาพ decision comp มีสถานะเป็นภาพอ้างอิงสำหรับวิจารณ์ ยังไม่มีการอนุมัติ comp หรือถ้อยคำแบรนด์จากผู้ใช้ ค่าที่ใช้จริงใน app/globals.css, app/layout.tsx และองค์ประกอบ React เป็นหลักฐานของระบบนี้.",
+    "northStar": "ทะเบียนตรวจข้อสอบสีอ่อน",
+    "overview": "“ทะเบียนตรวจข้อสอบสีอ่อน” ทำให้พื้นที่ทำงานครูเข้าถึงง่ายด้วยเมนูมิ้นต์ พื้นข้อมูลฟ้าอ่อน การเลือกลาเวนเดอร์ และรายละเอียดไลแลค หมึกพลัมเข้มรักษาความชัดของหัวเรื่อง ตาราง ช่องกรอก และปุ่มหลัก สีอ่อนเป็นพื้นรองรับงานเอกสารที่มีลำดับและสถานะชัดเจน ปุ่มและการสลับส่วนตอบสนองสั้น ๆ เพื่อให้รู้สึกเบาและเป็นมิตร โดยยังอ่านคะแนนและคำเตือนได้ทันที.\n\nทิศทางนี้บันทึกการแทนโลกสีเดิมตามคำขอผู้ใช้เมื่อ 9 ตุลาคม 2026: พาเลต DEFCF9 / CADEFC / C3BEF0 / CCA8E9 ข้อความไทยกระชับ และการเคลื่อนไหวสั้นที่นุ่มนวล สัญญาทิศทางอยู่ใน .impeccable/surfaces/app-layout-tsx.md (assessment register, candidate 4, seed e0df4ce4). ค่าจริงสกัดจาก app/globals.css, components/layout/main-shell.tsx และองค์ประกอบ UI/กระดาษ ระบบยังใช้ Noto Sans Thai และไอคอนเส้น Lucide เดิม; ไม่มีภาพประกอบ raster ใหม่ที่ส่งมอบ.\n\nหลักฐานรอบรีเฟรชใน .impeccable/review ครอบคลุม 9 หน้าบน desktop/phone และ Designer, Print, Scanner, Review บน iPad จำลองทั้งสองแนว พร้อมภาพ school-print-pdf.png ที่เรนเดอร์จาก jsPDF จริง การตรวจที่รายงานไม่พบ axe violations หรือ page overflow ในหน้าที่จับภาพ และผู้ตรวจให้ verdict ship โดยไม่มีข้อแก้ไข ขอบเขตนี้ไม่รับรองกล้องหรือเครื่องพิมพ์จริง การติดตั้ง SQL/การ deploy สด หรือผลสอบที่มีข้อมูลครบทุกสถานะ.",
     "keyCharacteristics": [
-      "ผืนงานขาวเย็นกับแถบนำทางน้ำเงินหมึก",
-      "สีการกระทำและสีสถานะแยกหน้าที่ชัดเจน พร้อมคำอธิบายและไอคอน",
-      "Noto Sans Thai แบบ self-hosted สำหรับหัวเรื่อง ป้าย และเนื้อหา",
-      "เส้นแบ่งบาง พื้นราบ และเงาเฉพาะกระดาษหรือชั้นที่ลอย",
-      "มุมโค้งพอเหมาะสำหรับแผงและปุ่ม วงกลมสงวนให้จุดขั้นตอนและปุ่มกล้อง",
-      "พื้นที่ทำงานปรับรูปตามอุปกรณ์ โดย Designer บนโทรศัพท์เน้นดูตัวอย่าง"
+      "เมนูมิ้นต์ พื้นข้อมูลฟ้าอ่อน การเลือกลาเวนเดอร์ และรายละเอียดไลแลค",
+      "หมึกพลัมและปุ่มหลักเข้มที่อ่านชัดบนพื้นสีอ่อน",
+      "สถานะเขียว อำพัน และแดงพร้อมคำภาษาไทยหรือไอคอน",
+      "Noto Sans Thai แบบ self-hosted และตัวเลข tabular ในข้อมูลที่ต้องเทียบ",
+      "แผงพื้นราบ ขอบบาง และเงาเฉพาะกระดาษหรือชั้นที่ลอย",
+      "พื้นที่งานพอดี viewport สลับส่วนบน phone/iPad และเคลื่อนไหวสั้นตามสถานะ"
     ],
     "rules": [
       {
-        "name": "The Meaning Before Color Rule",
-        "body": "ใช้สีน้ำเงินกับการกระทำหรือการเลือก เขียวน้ำทะเลกับสิ่งที่ตรวจแล้ว เหลืองอำพันกับความไม่แน่ใจ และแดงกับตัวขัดขวาง แต่ละสถานะต้องมีข้อความหรือไอคอนประกอบ สีสำหรับหมวดวิชาเป็นเพียงเครื่องช่วยแยกหมวด ไม่แทนความหมายของสถานะ.",
+        "name": "The Readable Pastel Rule",
+        "body": "ใช้พาเลตสีอ่อนเป็นพื้น หมึก ink/muted และปุ่ม blue ที่เป็นพลัมเข้มใช้สำหรับข้อความและการกระทำสำคัญ สถานะต้องมีคำหรือไอคอนประกอบ; มิ้นต์ในเมนูไม่ได้หมายความว่าตรวจผ่าน.",
         "section": "colors"
       },
       {
         "name": "The Thai Reading Rule",
-        "body": "ใช้ Noto Sans Thai และระยะบรรทัดที่เปิดไว้ในสเกลหลัก ข้อความสำคัญใช้ขนาด body หรือ label; ค่าขนาด 8–10px ที่พบในรายละเอียดแน่นเป็นข้อจำกัดเฉพาะจุดของงานที่ส่งมอบ ไม่ยกเป็นมาตรฐานข้อความที่ต้องอ่านบนหน้าจอใหม่.",
+        "body": "ใช้ Noto Sans Thai และระยะบรรทัดที่เปิดไว้ในสเกลหลัก ข้อความสำคัญใช้ขนาด body หรือ label; ขนาด 8–10px ที่พบในรายละเอียดแน่นเป็นข้อจำกัดเฉพาะจุด ไม่เป็นมาตรฐานเนื้อหาหน้าจอใหม่.",
         "section": "typography"
       },
       {
@@ -620,17 +698,20 @@
       }
     ],
     "dos": [
+      "Do ใช้พาเลตสีอ่อนกับพื้น และหมึกหรือพลัมเข้มกับข้อความและการกระทำ.",
       "Do ใช้สีสถานะพร้อมคำภาษาไทยและไอคอนที่บอกความหมายเดียวกัน.",
+      "Do ให้ปุ่ม แท็บ และกรอบกล้องตอบสนองสั้นโดยไม่หน่วงงาน; เคารพ prefers-reduced-motion.",
       "Do ใช้เส้นบางและพื้นที่ว่างแยกส่วนข้อมูลก่อนเพิ่มเงา.",
-      "Do ใช้ปุ่มน้ำเงินกับการกระทำหลัก ปุ่มขาวมีขอบกับการกระทำรอง และปุ่มพื้นใสในแถบเครื่องมือ.",
-      "Do ให้กระดาษคงพื้นขาวและสัดส่วนกายภาพ แล้ววางบนพื้นพื้นที่ทำงานที่เข้มขึ้นเล็กน้อย.",
-      "Do คงวงโฟกัสที่เห็นชัด ปุ่มชัตเตอร์ขนาด 68px และพื้นที่จับมุม 48px; เคารพ prefers-reduced-motion."
+      "Do ให้กระดาษคงพื้นขาว หมึกดำ สัดส่วนกายภาพ และพิกัดตามรุ่นที่ล็อกไว้.",
+      "Do คงวงโฟกัสที่เห็นชัด ชัตเตอร์ 68px พื้นที่จับมุม 48px และการเลื่อนภายในรายการยาว."
     ],
     "donts": [
-      "Don't ใช้สีเขียวน้ำทะเลเพื่อทำให้งานที่ยังไม่แน่ใจดูผ่านแล้ว.",
+      "Don't ใช้ข้อความสี pastel อ่อนบนพื้นขาว หรือใช้สีอย่างเดียวบอกสถานะ.",
+      "Don't ใช้มิ้นต์หรือลาเวนเดอร์สื่อว่าผลที่ยังรอตรวจได้รับการยืนยันแล้ว.",
       "Don't เพิ่ม gradient, glassmorphism หรือ animation ที่รบกวนการอ่านและชะลอการทำงาน.",
-      "Don't ย่อเครื่องมือ Designer ทั้งสามส่วนลงในโทรศัพท์; ใช้รูปแบบดูตัวอย่างและทางไปหน้าพิมพ์หรือสแกนที่มีอยู่.",
-      "Don't ยกระดับข้อความประกอบขนาด 8–10px หรือสีเฉพาะหมวดวิชาให้เป็นสเกลหลักของหน้าจอใหม่."
+      "Don't ย่อทั้งหน้าหรือปิด browser zoom เพื่ออัดเครื่องมือ desktop ลงใน phone/iPad.",
+      "Don't เปลี่ยนพิกัด classic/compact หรือกระดาษที่พิมพ์แล้วเพื่อให้เข้ากับหัวกระดาษ school รุ่นใหม่.",
+      "Don't ยกระดับข้อความประกอบขนาด 8–10px หรือสีหมวดวิชาให้เป็นสเกลหลักของหน้าจอใหม่."
     ]
   }
 }

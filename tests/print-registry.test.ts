@@ -51,6 +51,7 @@ beforeAll(async () => {
     "202610090005_print_registry.sql",
     "202610090006_scanning_review.sql",
     "202610090007_compact_print.sql",
+    "202610090009_school_print_header.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   for (const [id, email] of [

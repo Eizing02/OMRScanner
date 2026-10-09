@@ -11,6 +11,7 @@ import {
   BookOpen,
   MoreHorizontal,
   RotateCcw,
+  Trash2,
 } from "lucide-react";
 import { useWorkspace } from "@/components/layout/workspace-provider";
 import {
@@ -18,10 +19,30 @@ import {
   PageHeading,
   EmptyState,
   Modal,
+  Notice,
 } from "@/components/ui/primitives";
 import { stageLabels } from "@/components/dashboard/dashboard-cards";
+type DeletePreview = {
+  id: string;
+  title: string;
+  scans: number;
+  confirmed: number;
+  sheets: number;
+  images: number;
+  deleting: boolean;
+};
 export function ExamLibrary() {
-  const { exams, setExams, mode, notify } = useWorkspace();
+  const {
+    exams,
+    reviews,
+    setExams,
+    removeExam,
+    mode,
+    notify,
+    request,
+    readOnly,
+    isCurrentWorkspace,
+  } = useWorkspace();
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState("");
   const [status, setStatus] = useState("");
@@ -30,6 +51,12 @@ export function ExamLibrary() {
   const [selected, setSelected] = useState<string[]>([]);
   const [confirm, setConfirm] = useState(false);
   const [actions, setActions] = useState<string | null>(null);
+  const [deletion, setDeletion] = useState<DeletePreview | null>(null),
+    [deletionId, setDeletionId] = useState<string | null>(null),
+    [confirmation, setConfirmation] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  const actionExam = exams.find((e) => e.id === actions);
   const rows = exams
     .filter(
       (e) =>
@@ -45,7 +72,7 @@ export function ExamLibrary() {
     );
   const demoOnly = () => {
     if (mode !== "demo") {
-      notify("การคัดลอกและจัดเก็บชุดสอบบนระบบจริงยังอยู่ระหว่างพัฒนา");
+      notify("การคัดลอกชุดสอบบนระบบจริงยังอยู่ระหว่างพัฒนา");
       return false;
     }
     return true;
@@ -70,11 +97,135 @@ export function ExamLibrary() {
     notify("สร้างสำเนาในพื้นที่ทดลองแล้ว");
     setActions(null);
   }
+  async function archiveSelected() {
+    if (readOnly || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      if (mode === "connected") {
+        const response = await request(
+          "/api/exams",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "archive",
+              ids: selected,
+              archived: !archived,
+            }),
+          },
+          true,
+        );
+        const body = await response.json();
+        if (!response.ok)
+          throw new Error(body.error?.messageTh ?? "จัดเก็บไม่สำเร็จ");
+      } else if (mode !== "demo") throw new Error("ยังไม่เชื่อมต่อระบบ");
+      if (!isCurrentWorkspace()) return;
+      setExams(
+        exams.map((e) =>
+          selected.includes(e.id) ? { ...e, archived: !archived } : e,
+        ),
+      );
+      setSelected([]);
+      setConfirm(false);
+      notify(
+        archived ? "นำชุดสอบกลับมาแล้ว" : "จัดเก็บชุดสอบแล้ว คะแนนยังคงอยู่",
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "ทำรายการไม่สำเร็จ");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function previewDelete(id: string) {
+    setActions(null);
+    setDeletionId(id);
+    setDeletion(null);
+    setConfirmation("");
+    setError("");
+    setBusy(true);
+    try {
+      if (mode === "connected") {
+        const response = await request(
+          `/api/exams?deletePreview=${encodeURIComponent(id)}`,
+        );
+        const body = await response.json();
+        if (!response.ok)
+          throw new Error(body.error?.messageTh ?? "โหลดรายละเอียดไม่สำเร็จ");
+        if (isCurrentWorkspace()) setDeletion(body.data);
+      } else if (mode === "demo") {
+        const exam = exams.find((e) => e.id === id)!;
+        const related = reviews.filter((r) => r.examId === id);
+        setDeletion({
+          id,
+          title: exam.title,
+          scans: related.length,
+          confirmed: related.filter((r) => r.status === "verified").length,
+          sheets: exam.students,
+          images: related.length,
+          deleting: false,
+        });
+      } else throw new Error("ยังไม่เชื่อมต่อระบบ");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "โหลดไม่สำเร็จ");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function deleteExam() {
+    if (!deletion || confirmation !== deletion.title || busy || readOnly)
+      return;
+    setBusy(true);
+    setError("");
+    try {
+      if (mode === "connected") {
+        let done = false;
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const response = await request(
+            "/api/exams",
+            {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: deletion.id, confirmation }),
+            },
+            true,
+          );
+          const body = await response.json();
+          if (!response.ok)
+            throw new Error(
+              body.error?.messageTh ?? "ลบไม่สำเร็จ กดลบอีกครั้งเพื่อทำต่อ",
+            );
+          if (body.data?.deleted) {
+            done = true;
+            break;
+          }
+        }
+        if (!done)
+          throw new Error("ยังลบภาพไม่ครบ กดลบอีกครั้งเพื่อดำเนินการต่อ");
+      } else if (mode !== "demo") throw new Error("ยังไม่เชื่อมต่อระบบ");
+      if (!isCurrentWorkspace()) return;
+      removeExam(deletion.id);
+      setSelected((old) => old.filter((id) => id !== deletion.id));
+      setDeletionId(null);
+      setDeletion(null);
+      notify("ลบชุดสอบ คะแนน และภาพที่เกี่ยวข้องแล้ว รายชื่อนักเรียนยังคงอยู่");
+    } catch (e) {
+      if (mode === "connected" && isCurrentWorkspace()) {
+        const response = await request("/api/exams").catch(() => null);
+        if (response?.ok) {
+          const body = await response.json();
+          setExams(body.data);
+        }
+      }
+      setError(e instanceof Error ? e.message : "ลบไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <>
       <PageHeading
         title="คลังชุดสอบ"
-        description="จัดการชุดสอบ เฉลย และกระดาษคำตอบในที่เดียว"
         actions={
           <Link href="/exams/new" className="btn btn-primary">
             <Plus size={18} />
@@ -146,6 +297,11 @@ export function ExamLibrary() {
             <span>เลือก {selected.length} ชุดสอบ</span>
             <button
               className="btn btn-secondary"
+              disabled={
+                readOnly ||
+                busy ||
+                selected.some((id) => exams.find((e) => e.id === id)?.deleting)
+              }
               onClick={() => setConfirm(true)}
             >
               <Archive size={16} />
@@ -225,6 +381,7 @@ export function ExamLibrary() {
                     <small>A4 แนวนอน · 2 ใบ</small>
                   </td>
                   <td>
+                    {exam.deleting && <Badge tone="red">กำลังลบ</Badge>}
                     <Badge
                       tone={
                         exam.stage === 5
@@ -260,24 +417,6 @@ export function ExamLibrary() {
                       >
                         <MoreHorizontal size={20} />
                       </button>
-                      {actions === exam.id && (
-                        <div className="action-popover">
-                          <button onClick={() => duplicate(exam.id)}>
-                            <Copy size={16} />
-                            สร้างสำเนา
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelected([exam.id]);
-                              setConfirm(true);
-                              setActions(null);
-                            }}
-                          >
-                            <Archive size={16} />
-                            {archived ? "นำกลับมา" : "จัดเก็บ"}
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -309,35 +448,152 @@ export function ExamLibrary() {
         </div>
       </section>
       <Modal
+        open={Boolean(actionExam)}
+        onOpenChange={(open) => !open && setActions(null)}
+        title={actionExam?.title ?? "ตัวเลือกชุดสอบ"}
+      >
+        {actionExam && (
+          <div className="exam-action-list">
+            <button
+              className="btn btn-secondary"
+              disabled={
+                readOnly || Boolean(actionExam.deleting) || mode !== "demo"
+              }
+              onClick={() => duplicate(actionExam.id)}
+            >
+              <Copy size={17} />
+              สร้างสำเนา
+            </button>
+            <button
+              className="btn btn-secondary"
+              disabled={readOnly || Boolean(actionExam.deleting)}
+              onClick={() => {
+                setSelected([actionExam.id]);
+                setConfirm(true);
+                setActions(null);
+                setError("");
+              }}
+            >
+              <Archive size={17} />
+              {archived ? "นำกลับมาใช้งาน" : "จัดเก็บชุดสอบ"}
+            </button>
+            <button
+              className="btn btn-danger"
+              disabled={readOnly}
+              onClick={() => void previewDelete(actionExam.id)}
+            >
+              <Trash2 size={17} />
+              {actionExam.deleting ? "ดำเนินการลบต่อ" : "ลบชุดสอบถาวร"}
+            </button>
+          </div>
+        )}
+      </Modal>
+      <Modal
+        open={deletionId !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) {
+            setDeletionId(null);
+            setDeletion(null);
+          }
+        }}
+        title="ลบชุดสอบถาวร"
+        description="ลบข้อสอบ เฉลย คะแนน และภาพสแกน กู้คืนจากระบบไม่ได้ รายชื่อนักเรียนและโลโก้ยังคงอยู่"
+      >
+        {busy && !deletion && <p role="status">กำลังโหลดรายละเอียด…</p>}
+        {deletion && (
+          <>
+            <p className="exam-delete-title">{deletion.title}</p>
+            <dl className="exam-delete-counts">
+              <div>
+                <dt>กระดาษที่พิมพ์</dt>
+                <dd>{deletion.sheets}</dd>
+              </div>
+              <div>
+                <dt>ผลสแกน</dt>
+                <dd>{deletion.scans}</dd>
+              </div>
+              <div>
+                <dt>คะแนนยืนยันแล้ว</dt>
+                <dd>{deletion.confirmed}</dd>
+              </div>
+              <div>
+                <dt>ไฟล์ภาพ</dt>
+                <dd>{deletion.images}</dd>
+              </div>
+            </dl>
+            {deletion.confirmed > 0 && (
+              <p>
+                <Link
+                  className="text-button"
+                  href={`/exams/${deletion.id}/results`}
+                >
+                  ส่งออกคะแนนก่อนลบ
+                </Link>
+              </p>
+            )}
+            {deletion.deleting && (
+              <Notice tone="warning">
+                การลบครั้งก่อนยังไม่เสร็จ ดำเนินการต่อได้โดยไม่เริ่มใหม่
+              </Notice>
+            )}
+            <label>
+              พิมพ์ชื่อชุดสอบเพื่อยืนยัน
+              <input
+                value={confirmation}
+                onChange={(e) => setConfirmation(e.target.value)}
+                autoComplete="off"
+                disabled={busy}
+              />
+            </label>
+          </>
+        )}
+        {error && <Notice tone="error">{error}</Notice>}
+        <div className="dialog-actions">
+          <button
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={() => setDeletionId(null)}
+          >
+            ยกเลิก
+          </button>
+          <button
+            className="btn btn-danger"
+            disabled={
+              !deletion || busy || readOnly || confirmation !== deletion.title
+            }
+            onClick={() => void deleteExam()}
+          >
+            <Trash2 size={17} />
+            {busy && deletion ? "กำลังลบ…" : "ลบถาวร"}
+          </button>
+        </div>
+      </Modal>
+      <Modal
         open={confirm}
-        onOpenChange={setConfirm}
+        onOpenChange={(open) => !busy && setConfirm(open)}
         title={archived ? "นำชุดสอบกลับมาใช้งาน" : "จัดเก็บชุดสอบ"}
         description="ประวัติและผลสอบยังคงอยู่ สามารถนำชุดสอบกลับมาได้"
       >
         <p>ดำเนินการกับ {selected.length} ชุดสอบที่เลือก</p>
+        {error && <Notice tone="error">{error}</Notice>}
         <div className="dialog-actions">
           <button
             className="btn btn-secondary"
+            disabled={busy}
             onClick={() => setConfirm(false)}
           >
             ยกเลิก
           </button>
           <button
             className="btn btn-primary"
-            onClick={() => {
-              if (demoOnly()) {
-                setExams(
-                  exams.map((e) =>
-                    selected.includes(e.id) ? { ...e, archived: !archived } : e,
-                  ),
-                );
-                setSelected([]);
-                notify("อัปเดตรายการในพื้นที่ทดลองแล้ว");
-              }
-              setConfirm(false);
-            }}
+            disabled={busy || readOnly}
+            onClick={() => void archiveSelected()}
           >
-            {archived ? "นำกลับมาใช้งาน" : "ยืนยันการจัดเก็บ"}
+            {busy
+              ? "กำลังบันทึก…"
+              : archived
+                ? "นำกลับมาใช้งาน"
+                : "ยืนยันการจัดเก็บ"}
           </button>
         </div>
       </Modal>

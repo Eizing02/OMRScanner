@@ -109,10 +109,7 @@ export function ExamForm() {
   }
   return (
     <>
-      <PageHeading
-        title="สร้างชุดสอบ"
-        description="เตรียมข้อมูลชุดสอบและเฉลย ก่อนออกแบบกระดาษคำตอบ"
-      />
+      <PageHeading title="สร้างชุดสอบ" />
       <div className="wizard-steps">
         <span className={step === 0 ? "active" : "complete"}>
           {step === 1 ? <Check size={16} /> : "1"}ข้อมูลชุดสอบ
@@ -124,17 +121,11 @@ export function ExamForm() {
       </div>
       <section className="panel form-panel">
         {error && <Notice tone="error">{error}</Notice>}
-        {readOnly && (
-          <Notice tone="warning">
-            กำลังเปิดดูพื้นที่ของผู้ใช้อื่น
-            ไม่สามารถสร้างหรือแก้ไขชุดสอบในพื้นที่นี้ได้
-          </Notice>
-        )}
+        {readOnly && <Notice tone="warning">พื้นที่นี้อ่านอย่างเดียว</Notice>}
         {!loading && !classrooms.length && (
           <Notice tone="warning">
             ยังไม่มีรายชื่อนักเรียน กรุณา{" "}
             <Link href="/students/import">นำเข้ารายชื่อ</Link> ก่อนสร้างชุดสอบ
-            ระบบจะแสดงเฉพาะชั้น / ห้องที่มีข้อมูลจริง
           </Notice>
         )}
         <fieldset
@@ -144,7 +135,6 @@ export function ExamForm() {
           {step === 0 ? (
             <>
               <h2>รายละเอียดชุดสอบ</h2>
-              <p className="muted">ชื่อที่ชัดเจนช่วยให้กลับมาค้นหาได้ง่าย</p>
               <div className="form-grid">
                 <label className="span-two">
                   ชื่อชุดสอบ
@@ -160,7 +150,6 @@ export function ExamForm() {
                   วิชา
                   <select
                     aria-label="วิชา"
-                    aria-describedby="exam-subject-help"
                     value={subjectChoice}
                     onChange={(e) => setSubjectSelection(e.target.value)}
                     required
@@ -175,9 +164,6 @@ export function ExamForm() {
                     ))}
                     <option value="__new">เพิ่มวิชาใหม่…</option>
                   </select>
-                  <small id="exam-subject-help">
-                    จากวิชาที่ตั้งค่าไว้และชุดสอบในพื้นที่นี้
-                  </small>
                 </label>
                 <label>
                   ชั้น / ห้อง
@@ -201,7 +187,7 @@ export function ExamForm() {
                   <small id="exam-classroom-help">
                     {selectedClassroom
                       ? `มีนักเรียน ${selectedClassSize} คนในรายชื่อ`
-                      : "แสดงเฉพาะห้องที่มีรายชื่อนักเรียนจริง"}
+                      : "เลือกจากรายชื่อนักเรียน"}
                   </small>
                 </label>
                 {subjectChoice === "__new" && (
@@ -349,9 +335,6 @@ export function ExamForm() {
                 <h2>เฉลยและคะแนนรายข้อ</h2>
                 <span>{points.reduce((a, b) => a + b, 0)} คะแนนเต็ม</span>
               </div>
-              <p className="muted">
-                เลือกคำตอบที่ถูกต้องหนึ่งตัวเลือกในแต่ละข้อ
-              </p>
               <div className="answer-key-grid">
                 {answers.map((answer, i) => (
                   <div className="key-row" key={i}>

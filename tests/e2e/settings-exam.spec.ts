@@ -7,7 +7,7 @@ test("settings persist and exam uses exact actual classrooms, configured subject
 }) => {
   await page.goto("/dashboard");
   await expect(
-    page.getByRole("heading", { name: "พร้อมสำหรับงานวันนี้" }),
+    page.getByRole("heading", { name: "ภาพรวมงานตรวจสอบ" }),
   ).toBeVisible();
   await page.evaluate(() => {
     const stored = JSON.parse(
@@ -97,7 +97,10 @@ test("settings persist and exam uses exact actual classrooms, configured subject
           .analyze()
       ).violations,
     ).toEqual([]);
-    await page.screenshot({ path: `.impeccable/review/accounts-settings-${viewport.width === 1440 ? "desktop" : "mobile"}.png`, fullPage: true });
+    await page.screenshot({
+      path: `.impeccable/review/accounts-settings-${viewport.width === 1440 ? "desktop" : "mobile"}.png`,
+      fullPage: true,
+    });
   }
   await page.goto("/exams/new");
   const classroom = page.getByRole("combobox", {
@@ -129,7 +132,10 @@ test("settings persist and exam uses exact actual classrooms, configured subject
   await page
     .getByRole("combobox", { name: "จำนวนตัวเลือก", exact: true })
     .selectOption("5");
-  await page.screenshot({ path: ".impeccable/review/accounts-exam-mobile.png", fullPage: true });
+  await page.screenshot({
+    path: ".impeccable/review/accounts-exam-mobile.png",
+    fullPage: true,
+  });
   await page.getByRole("button", { name: "กำหนดเฉลย", exact: true }).click();
   await expect(
     page.getByRole("group", { name: "เฉลยข้อ 60", exact: true }),
@@ -158,7 +164,7 @@ test("empty roster never invents classrooms and blocks exam creation", async ({
 }) => {
   await page.goto("/dashboard");
   await expect(
-    page.getByRole("heading", { name: "พร้อมสำหรับงานวันนี้" }),
+    page.getByRole("heading", { name: "ภาพรวมงานตรวจสอบ" }),
   ).toBeVisible();
   await page.evaluate(() => {
     const stored = JSON.parse(
@@ -191,7 +197,9 @@ test("settings logo picker keeps original PNG bytes and keyboard focus", async (
   const bytes = await readFile("public/omr-assets/school-logo.png");
   await page.goto("/settings");
   const picker = page.getByLabel("อัปโหลดโลโก้โรงเรียน", { exact: true });
-  await page.getByLabel("ชื่อโรงเรียน", { exact: true }).fill("ชื่อโรงเรียนที่ยังไม่บันทึก");
+  await page
+    .getByLabel("ชื่อโรงเรียน", { exact: true })
+    .fill("ชื่อโรงเรียนที่ยังไม่บันทึก");
   await picker.focus();
   await expect(page.locator(".settings-logo-upload")).toHaveCSS(
     "outline-width",
@@ -205,7 +213,9 @@ test("settings logo picker keeps original PNG bytes and keyboard focus", async (
   await expect(
     page.getByRole("img", { name: "โลโก้โรงเรียนปัจจุบัน", exact: true }),
   ).toHaveAttribute("src", `data:image/png;base64,${bytes.toString("base64")}`);
-  await expect(page.getByLabel("ชื่อโรงเรียน", { exact: true })).toHaveValue("ชื่อโรงเรียนที่ยังไม่บันทึก");
+  await expect(page.getByLabel("ชื่อโรงเรียน", { exact: true })).toHaveValue(
+    "ชื่อโรงเรียนที่ยังไม่บันทึก",
+  );
   await page.reload();
   await expect(
     page.getByRole("img", { name: "โลโก้โรงเรียนปัจจุบัน", exact: true }),

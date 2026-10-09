@@ -21,6 +21,13 @@ const messages: Record<string, [string, number]> = {
   ],
   SCAN_REQUEST_CONFLICT: ["ภาพของรายการนี้เปลี่ยนแล้ว กรุณาเริ่มสแกนใหม่", 409],
   SCAN_IMAGES_MISSING: ["บันทึกภาพไม่ครบ กรุณาลองส่งภาพอีกครั้ง", 409],
+  EXAM_DELETING: ["ชุดสอบนี้กำลังลบ ไม่สามารถสแกนหรือแก้ไขเพิ่มได้", 409],
+  EXAM_NOT_FOUND: ["ไม่พบชุดสอบนี้ อาจถูกลบแล้ว กรุณาโหลดรายการใหม่", 404],
+  ORIGINAL_CLEANUP_PENDING: [
+    "ลบภาพต้นฉบับยังไม่สำเร็จ ภาพตรวจและคะแนนยังคงอยู่",
+    503,
+  ],
+  QR_MISMATCH: ["ภาพไม่ตรงกับชุดสอบที่เลือก กรุณาสแกนใหม่", 422],
   UNCONFIRMED_EXPORT: ["ส่งออกได้เฉพาะคะแนนที่ครูยืนยันแล้ว", 422],
 };
 export function scanDatabaseError(message: string) {
@@ -29,7 +36,7 @@ export function scanDatabaseError(message: string) {
   if (message.includes("does not exist") || message.includes("schema cache"))
     return new ApiError(
       "SCAN_SETUP_REQUIRED",
-      "ยังติดตั้งส่วนสแกนไม่ครบ กรุณาให้เจ้าของระบบรัน SQL 006 และ 007",
+      "ยังติดตั้งส่วนสแกนไม่ครบ กรุณาให้เจ้าของระบบตรวจ SQL 006–009",
       503,
     );
   return new ApiError(

@@ -129,7 +129,12 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
       </div>
       {error && <Notice tone="error">{error}</Notice>}
       <section className="panel scorebook">
-        <div className="table-scroll">
+        <div
+          className="table-scroll"
+          tabIndex={0}
+          role="region"
+          aria-label="ตารางผลสอบ"
+        >
           <table className="data-table">
             <thead>
               <tr>

@@ -80,7 +80,7 @@ export async function originalLogoDataUrl(file: File) {
   return { dataUrl, ...dimensions };
 }
 
-/** PDF libraries don't honor JPEG EXIF; the browser does. Lossless PNG at
+/** PDF libraries don't honor image orientation metadata; the browser does. Lossless PNG at
  * the oriented original pixel dimensions keeps preview and PDF consistent.
  * The stored source bytes are never changed or downsampled. */
 export async function printableLogo(source: string) {
@@ -88,14 +88,27 @@ export async function printableLogo(source: string) {
   if (!response.ok) throw new Error("โหลดโลโก้ไม่สำเร็จ กรุณาลองใหม่");
   const bytes = new Uint8Array(await response.arrayBuffer());
   const dimensions = inspectLogo(bytes);
+  // Most PNGs have no orientation metadata. Keep their original lossless
+  // stream (including alpha), and normalize only PNGs carrying an eXIf chunk.
+  let hasExif = false;
   if (dimensions.format === "PNG") {
-    let binary = "";
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    return {
-      dataUrl: `data:image/png;base64,${btoa(binary)}`,
-      width: dimensions.width,
-      height: dimensions.height,
-    };
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    for (let at = 8; at + 12 <= bytes.length;) {
+      const length = view.getUint32(at);
+      if (at + length + 12 > bytes.length) break;
+      if (String.fromCharCode(...bytes.slice(at + 4, at + 8)) === "eXIf")
+        hasExif = true;
+      at += length + 12;
+    }
+    if (!hasExif) {
+      let binary = "";
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      return {
+        dataUrl: `data:image/png;base64,${btoa(binary)}`,
+        width: dimensions.width,
+        height: dimensions.height,
+      };
+    }
   }
   const blob = new Blob([bytes], {
     type: bytes[0] === 137 ? "image/png" : "image/jpeg",
@@ -110,6 +123,9 @@ export async function printableLogo(source: string) {
     canvas.height = image.naturalHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("เปิดภาพโลโก้ไม่ได้");
+    // Decode once using the same orientation as SVG <image>. Never apply an
+    // additional rotation: both PNG eXIf and JPEG EXIF can contain orientation.
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(image, 0, 0);
     return {
       dataUrl: canvas.toDataURL("image/png"),

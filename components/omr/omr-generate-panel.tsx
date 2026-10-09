@@ -223,17 +223,12 @@ function DesignerEditor({ examId }: { examId: string }) {
           }}
         />
       </label>
-      <p className="small muted">
-        PNG / JPG ไม่เกิน 5 MB · เก็บความละเอียดต้นฉบับ
-        ย่อเฉพาะขนาดที่แสดงบนกระดาษ
-      </p>
+      <p className="small muted">รูปภาพขนาดไม่เกิน 5 MB</p>
       {(logoError || brandingError) && (
         <Notice tone="error">{logoError || brandingError}</Notice>
       )}
       {!canUploadLogo && !brandingError && (
-        <Notice>
-          ยังอัปโหลดไม่ได้ กรุณาตรวจสิทธิ์และการติดตั้ง Supabase Storage
-        </Notice>
+        <Notice>ยังอัปโหลดไม่ได้ ติดต่อเจ้าของระบบ</Notice>
       )}
       <button
         className="btn btn-secondary full-width"
@@ -298,11 +293,7 @@ function DesignerEditor({ examId }: { examId: string }) {
         ]}
       />
       {saveError && <Notice tone="error">{saveError}</Notice>}
-      {readOnly && (
-        <Notice>
-          เปิดดูแม่แบบของผู้ใช้อื่นได้ แต่บันทึกหรือเปลี่ยนข้อมูลไม่ได้
-        </Notice>
-      )}
+      {readOnly && <Notice>อ่านอย่างเดียว</Notice>}
       <div className="designer-workspace">
         <aside className="designer-tools">
           <div className="tool-tabs">
@@ -593,18 +584,12 @@ function DesignerEditor({ examId }: { examId: string }) {
                   rows={5}
                   disabled={readOnly || saving}
                 />
-                <small>
-                  {layout.instructions.length}/140 ตัวอักษร · จัดบรรทัดอัตโนมัติ
-                </small>
+                <small>{layout.instructions.length}/140 ตัวอักษร</small>
               </label>
             ) : selection === "fields" ? (
               <>
                 <h3>ข้อมูลนักเรียน</h3>
-                <p>
-                  พิมพ์รายบุคคลจากรายชื่อจริง ชื่อ ชั้น และรหัส 5
-                  หลักจะถูกพิมพ์พร้อมฝนรหัสให้แล้ว
-                  เลือกใบสำรองเปล่าได้ในหน้าพิมพ์
-                </p>
+                <p>พิมพ์ชื่อ ชั้น และรหัสจากรายชื่อ</p>
                 <label>
                   ชั้น / ห้อง
                   <input value={layout.classroom} maxLength={20} readOnly />
@@ -614,16 +599,13 @@ function DesignerEditor({ examId }: { examId: string }) {
               <>
                 <LockKeyhole size={24} className="muted" />
                 <h3>ล็อกตำแหน่งสำหรับสแกน</h3>
-                <p className="muted">
-                  แม่แบบอ้างอิงคงพิกัดเดิมทุกใบ เพื่อให้ PDF
-                  และตำแหน่งตรวจอ่านตรงกัน
-                </p>
+                <p className="muted">ตำแหน่งวงฝนและ QR ถูกล็อก</p>
                 <div className="property-value">
                   {selection === "id"
                     ? "5 หลัก × 10 ตัวเลข"
                     : selection === "answers"
                       ? `${layout.questionCount} ข้อ · ${layout.choiceCount} ตัวเลือก · ${g.columns} คอลัมน์`
-                      : "QR เหมือนกันทั้งชุด/เวอร์ชัน · 4 จุดจัดแนว"}
+                      : "QR ประจำชุด · 4 จุดจัดแนว"}
                 </div>
               </>
             )}

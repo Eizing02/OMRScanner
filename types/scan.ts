@@ -14,7 +14,8 @@ export const scanInputSchema = z
     original: z
       .string()
       .max(2_800_000)
-      .regex(/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/),
+      .regex(/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/)
+      .optional(), // Legacy clients may send it; never persist new originals.
     processed: z
       .string()
       .max(2_800_000)
@@ -84,7 +85,7 @@ export type ScanReceipt = {
 export type StoredReview = ReviewItem & {
   revision: number;
   templateId: string;
-  originalPath: string;
+  originalPath: string | null;
   processedPath: string;
   slot: number;
   paper: "single" | "a4";

@@ -14,6 +14,9 @@ const mock = vi.hoisted(() => ({
   rpc: vi.fn(),
   upload: vi.fn(),
   download: vi.fn(),
+  remove: vi.fn(),
+  signed: vi.fn(),
+  media: null as Record<string, unknown> | null,
 }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/api", async (original) => {
@@ -25,29 +28,36 @@ vi.mock("@/lib/supabase/api", async (original) => {
         throw new actual.ApiError("UNAUTHENTICATED", "กรุณาเข้าสู่ระบบ", 401);
       if (write && mock.readOnly)
         throw new actual.ApiError("READ_ONLY_WORKSPACE", "อ่านอย่างเดียว", 403);
-      const chain = {
-        select: () => chain,
-        eq: () => chain,
+      const chain = (table: string) => ({
+        select: () => chain(table),
+        eq: () => chain(table),
         maybeSingle: async () => ({
-          data: mock.templates[0] ?? null,
+          data:
+            table === "scan_records" ? mock.media : (mock.templates[0] ?? null),
           error: null,
         }),
+        single: async () => ({ data: mock.templates[0] ?? null, error: null }),
         in: async () => ({ data: mock.templates, error: null }),
-      };
+      });
       return {
         schoolId: "20000000-0000-4000-8000-000000000099",
         db: {
-          from: () => chain,
+          from: chain,
           rpc: mock.rpc,
           storage: {
-            from: () => ({ upload: mock.upload, download: mock.download }),
+            from: () => ({
+              upload: mock.upload,
+              download: mock.download,
+              remove: mock.remove,
+              createSignedUrls: mock.signed,
+            }),
           },
         },
       };
     },
   };
 });
-import { GET, POST, PATCH } from "@/app/api/scan-records/route";
+import { GET, POST, PATCH, DELETE } from "@/app/api/scan-records/route";
 const examId = "20000000-0000-4000-8000-000000000022";
 let single: string, double: string, blank: string, template: unknown;
 const post = (overrides: Record<string, unknown> = {}) =>
@@ -119,6 +129,14 @@ beforeEach(() => {
   mock.rpc.mockReset();
   mock.upload.mockReset();
   mock.download.mockReset();
+  mock.remove.mockReset().mockResolvedValue({ data: [], error: null });
+  mock.signed
+    .mockReset()
+    .mockResolvedValue({
+      data: [{ signedUrl: "https://example.test/processed.jpg" }],
+      error: null,
+    });
+  mock.media = null;
   mock.upload.mockResolvedValue({ data: {}, error: null });
   mock.rpc.mockImplementation(async (name) =>
     name === "reserve_scan_upload"
@@ -135,6 +153,55 @@ beforeEach(() => {
   );
 });
 describe("scan HTTP boundary with real compressed QR/OMR pixels", () => {
+  it("signs only processed evidence, never an original URL", async () => {
+    mock.media = {
+      image_url: "legacy/original.jpg",
+      image_public_id: "kept/processed.jpg",
+      template_id: examId,
+    };
+    const response = await GET(
+      new Request(`http://localhost/api/scan-records?media=${examId}`),
+    );
+    expect(response.status).toBe(200);
+    expect(mock.signed).toHaveBeenCalledWith(["kept/processed.jpg"], 300);
+    expect((await response.json()).data).toMatchObject({
+      original: null,
+      processed: "https://example.test/processed.jpg",
+    });
+    expect(mock.remove).not.toHaveBeenCalled();
+  });
+  it("retires only the RPC-selected owned original, after storage success, without letting readers delete", async () => {
+    const original =
+      "20000000-0000-4000-8000-000000000099/request/original.jpg";
+    const request = () =>
+      new Request("http://localhost/api/scan-records", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scanId: examId, path: "forged/processed.jpg" }),
+      });
+    mock.rpc.mockResolvedValue({ data: { path: original }, error: null });
+    expect((await DELETE(request())).status).toBe(200);
+    expect(mock.remove).toHaveBeenCalledWith([original]);
+    expect(mock.rpc.mock.calls[1]).toEqual([
+      "retire_scan_original",
+      {
+        input: {
+          school_id: "20000000-0000-4000-8000-000000000099",
+          scan_id: examId,
+          finish: true,
+        },
+      },
+    ]);
+    mock.rpc.mockClear();
+    mock.remove.mockClear();
+    mock.remove.mockResolvedValue({ error: { message: "offline" } });
+    expect((await DELETE(request())).status).toBe(503);
+    expect(mock.rpc).toHaveBeenCalledTimes(1);
+    mock.readOnly = true;
+    mock.remove.mockClear();
+    expect((await DELETE(request())).status).toBe(403);
+    expect(mock.remove).not.toHaveBeenCalled();
+  });
   it("derives student/answers from pixels, ignores forged client scores, stores private JPEGs", async () => {
     const response = await POST(post({ score: 999, studentCode: "99999" }));
     expect(response.status, JSON.stringify(await response.clone().json())).toBe(
@@ -148,11 +215,26 @@ describe("scan HTTP boundary with real compressed QR/OMR pixels", () => {
       state: "valid",
     });
     expect(call[1].input).not.toHaveProperty("score");
-    expect(mock.upload).toHaveBeenCalledTimes(2);
+    expect(mock.upload).toHaveBeenCalledTimes(1);
+    expect(mock.upload.mock.calls[0][0]).toBe("school/request/processed.jpg");
+    expect(
+      mock.rpc.mock.calls.find((c) => c[0] === "reserve_scan_upload")![1].input
+        .exam_id,
+    ).toBe(examId);
     expect(mock.upload.mock.calls[0][2]).toEqual({
       contentType: "image/jpeg",
       upsert: false,
     });
+  });
+  it("accepts processed-only captures without storing or decoding legacy originals", async () => {
+    expect((await POST(post({ original: undefined }))).status).toBe(201);
+    expect(mock.upload).toHaveBeenCalledTimes(1);
+    mock.upload.mockClear();
+    expect(
+      (await POST(post({ original: "data:image/png;base64,bm90IGFuIGltYWdl" })))
+        .status,
+    ).toBe(201);
+    expect(mock.upload).toHaveBeenCalledTimes(1);
   });
   it("reads both leaves of a two-up A4 without mixing student identities", async () => {
     const response = await POST(

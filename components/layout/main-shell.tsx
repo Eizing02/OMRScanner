@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   BookOpen,
   LayoutDashboard,
@@ -40,15 +40,36 @@ export function MainShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const [mobileNav, setMobileNav] = useState(false);
   const [notifications, setNotifications] = useState(false);
+  const main = useRef<HTMLElement>(null);
   const { mode, error, loading, reviews, exams, branding, notify } =
     useWorkspace();
   const auth = useAuth();
+  useEffect(() => {
+    const element = main.current;
+    if (!element || !element.animate) return;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const transition = element.animate(
+      reduced
+        ? [{ opacity: 0.9 }, { opacity: 1 }]
+        : [
+            { opacity: 0.85, transform: "translateY(3px)" },
+            { opacity: 1, transform: "translateY(0)" },
+          ],
+      { duration: reduced ? 80 : 180, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
+    );
+    return () => transition.cancel();
+  }, [path]);
   const pending = reviews.filter((r) => r.status === "needs_review").length;
-  const title = path.includes("omr-generate")
-    ? "ออกแบบกระดาษคำตอบ"
-    : path.includes("print")
-      ? "ดูตัวอย่างก่อนพิมพ์"
-      : (nav.find((n) => path.startsWith(n.href))?.title ?? "ชุดสอบ");
+  const title =
+    path === "/settings"
+      ? "การตั้งค่า"
+      : path.includes("omr-generate")
+        ? "ออกแบบกระดาษคำตอบ"
+        : path.includes("print")
+          ? "ดูตัวอย่างก่อนพิมพ์"
+          : (nav.find((n) => path.startsWith(n.href))?.title ?? "ชุดสอบ");
   if (path === "/login") return <>{children}</>;
   if (
     mode === "connected" &&
@@ -80,14 +101,14 @@ export function MainShell({ children }: { children: ReactNode }) {
                 : message}
           </h1>
           {auth.loading ? (
-            <p role="status">กำลังตรวจสอบบัญชีและสถานะล่าสุดจากระบบ</p>
+            <p role="status">กำลังตรวจสอบบัญชี…</p>
           ) : (
             <>
               <p>
                 {auth.error ||
                   (auth.access
-                    ? "เจ้าของระบบเป็นผู้อนุมัติการใช้งาน คุณยังสร้างชุดสอบหรือเข้าถึงรายชื่อนักเรียนไม่ได้ในสถานะนี้"
-                    : "ใช้บัญชี Google ของคุณ งานและการตั้งค่าจะไม่ปะปนกับบัญชีอื่น")}
+                    ? "รอเจ้าของระบบอนุมัติก่อนใช้งาน"
+                    : "ใช้บัญชี Google เพื่อเปิดพื้นที่ของคุณ")}
               </p>
               {auth.access && (
                 <p className="small muted">บัญชี: {auth.access.email}</p>
@@ -167,7 +188,9 @@ export function MainShell({ children }: { children: ReactNode }) {
                 ? path === "/exams" ||
                   path.includes("answer-key") ||
                   path === "/exams/new"
-                : path.startsWith(item.href);
+                : item.title === "ออกแบบกระดาษคำตอบ"
+                  ? path.includes("omr-generate") || path.endsWith("/print")
+                  : path.startsWith(item.href);
             return (
               <Link
                 onClick={() => setMobileNav(false)}
@@ -192,7 +215,11 @@ export function MainShell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <Link className="nav-item" href="/settings">
+          <Link
+            className={`nav-item ${path === "/settings" ? "active" : ""}`}
+            aria-current={path === "/settings" ? "page" : undefined}
+            href="/settings"
+          >
             <Settings size={19} />
             การตั้งค่า
           </Link>
@@ -277,7 +304,7 @@ export function MainShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         )}
-        <main id="main" className="main-content">
+        <main id="main" className="main-content" ref={main}>
           {mode === "unconfigured" && (
             <Notice tone="warning">
               ยังไม่ได้เชื่อม Supabase กรุณาตั้งค่าระบบก่อนบันทึกงานจริง{" "}

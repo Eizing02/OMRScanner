@@ -20,7 +20,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db.close();
 });
-it("installs all seven migrations in one guarded transaction with no student seed", async () => {
+it("installs all nine migrations in one guarded transaction with no student seed", async () => {
   expect(sql.match(/^begin;$/gm)).toHaveLength(1);
   expect(sql.match(/^commit;$/gm)).toHaveLength(1);
   expect(
@@ -33,6 +33,8 @@ it("installs all seven migrations in one guarded transaction with no student see
     { version: "202610090005" },
     { version: "202610090006" },
     { version: "202610090007" },
+    { version: "202610090008" },
+    { version: "202610090009" },
   ]);
   const tables = (
     await db.query<{ tablename: string }>(
@@ -56,6 +58,7 @@ it("installs all seven migrations in one guarded transaction with no student see
       "exam_results",
       "answer_evaluations",
       "export_jobs",
+      "exam_cleanup_jobs",
     ]),
   );
   expect(
@@ -107,5 +110,7 @@ it("rejects an accidental second snapshot run without changing installed data", 
     { version: "202610090005" },
     { version: "202610090006" },
     { version: "202610090007" },
+    { version: "202610090008" },
+    { version: "202610090009" },
   ]);
 });

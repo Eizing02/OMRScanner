@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { captureFixture } from "../capture-fixture";
 const userA = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   userB = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const schoolA = "11111111-1111-4111-8111-111111111111",
@@ -89,6 +90,122 @@ async function fixtures(
     }),
   );
 }
+
+test("auto capture locks QR first, stops the camera, supports retake and saves processed pixels only", async ({
+  page,
+}) => {
+  await fixtures(page, () => access());
+  const { image, template } = await captureFixture();
+  let posted: Record<string, unknown> | null = null;
+  await page.route("**/api/scan-records**", (route) => {
+    if (route.request().method() === "POST") {
+      posted = route.request().postDataJSON();
+      return route.fulfill({
+        json: {
+          data: [
+            {
+              id: crypto.randomUUID(),
+              studentCode: "02074",
+              name: "นักเรียนทดสอบ",
+              score: 20,
+              maxScore: 20,
+            },
+          ],
+          error: null,
+        },
+      });
+    }
+    return route.fulfill({
+      json: {
+        data: new URL(route.request().url()).searchParams.has("token")
+          ? template
+          : { reviews: [], versions: [] },
+        error: null,
+      },
+    });
+  });
+  await page.addInitScript(
+    async (png) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1200;
+      canvas.height = 1600;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#273642";
+      ctx.fillRect(0, 0, 1200, 1600);
+      const image = new Image();
+      image.src = png;
+      await image.decode();
+      ctx.drawImage(image, 150, 160, 900, 1273);
+      Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+        value: async () => {
+          const media = canvas.captureStream(10);
+          const frames = setInterval(() => {
+            if (
+              media
+                .getVideoTracks()
+                .every((track) => track.readyState === "ended")
+            )
+              clearInterval(frames);
+            else ctx.drawImage(image, 150, 160, 900, 1273);
+          }, 100);
+          return media;
+        },
+      });
+    },
+    `data:image/png;base64,${image.toString("base64")}`,
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/scan");
+  await page
+    .getByRole("combobox", { name: "รูปแบบกระดาษ" })
+    .selectOption("single");
+  await expect(
+    page.getByRole("button", { name: "อัตโนมัติ", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "เปิดกล้อง", exact: true }).click();
+  await expect(page.getByAltText("ภาพหลังปรับมุม")).toBeVisible({
+    timeout: 45000,
+  });
+  await expect(
+    page.getByRole("button", { name: "ยืนยันมุมกระดาษ" }),
+  ).toHaveCount(0);
+  expect(
+    await page
+      .locator("video")
+      .evaluate((el) =>
+        ((el as HTMLVideoElement).srcObject as MediaStream)
+          .getTracks()
+          .every((t) => t.readyState === "ended"),
+      ),
+  ).toBe(true);
+  await page.getByRole("button", { name: "ถ่ายใหม่", exact: true }).click();
+  await expect(page.getByAltText("ภาพหลังปรับมุม")).toBeVisible({
+    timeout: 30000,
+  });
+  await page.screenshot({
+    path: ".impeccable/review/auto-capture-mobile.png",
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth + 1,
+    ),
+  ).toBe(false);
+  await page
+    .getByRole("button", { name: "อ่านคำตอบและบันทึก", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: "สแกนใบถัดไป" })).toBeVisible();
+  expect(posted).not.toHaveProperty("original");
+  expect(posted).toMatchObject({
+    paper: "single",
+    expectedExamId: template.exam_id,
+  });
+  await page.getByRole("button", { name: "สแกนใบถัดไป" }).click();
+  await expect(page.locator("video")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "อัตโนมัติ", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+});
 test("pending, rejected and suspended accounts cannot mount the workspace", async ({
   page,
 }) => {

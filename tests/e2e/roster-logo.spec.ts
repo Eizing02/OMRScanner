@@ -104,7 +104,7 @@ test("three-column CSV preserves zeros/prefixes, previews errors, imports and fi
   await expect(page.locator(".file-drop")).toHaveCSS("outline-width", "3px");
   await expect(page.locator(".file-drop")).toHaveCSS(
     "outline-color",
-    "rgb(104, 146, 229)",
+    "rgb(102, 83, 164)",
   );
   await file.setInputFiles({
     name: "class.csv",
@@ -236,7 +236,7 @@ test("original PNG logo works on desktop/mobile, reprints old exams with latest 
   await expect(logoInput.locator("..")).toHaveCSS("outline-width", "3px");
   await expect(logoInput.locator("..")).toHaveCSS(
     "outline-color",
-    "rgb(104, 146, 229)",
+    "rgb(102, 83, 164)",
   );
   await logoInput.setInputFiles({
     name: "school.png",
@@ -260,11 +260,12 @@ test("original PNG logo works on desktop/mobile, reprints old exams with latest 
     ["mobile", 390, 844],
   ] as const) {
     await page.setViewportSize({ width, height });
-    if (viewport === "mobile")
+    if (viewport === "mobile") {
       await page
         .getByRole("button", { name: "หัวกระดาษและโลโก้", exact: true })
         .click();
-    await page.getByLabel("ส่วนที่ต้องการแก้ไข").selectOption("logo");
+      await page.getByLabel("ส่วนที่ต้องการแก้ไข").selectOption("logo");
+    }
     await page.evaluate(() => document.fonts.ready);
     await capture(page, `.impeccable/review/school-logo-${viewport}.png`);
     expect(
@@ -294,6 +295,10 @@ test("original PNG logo works on desktop/mobile, reprints old exams with latest 
         .then((href) => href === expected),
     )
     .toBe(true);
+  await page
+    .getByRole("button", { name: "หัวกระดาษและโลโก้", exact: true })
+    .click();
+  await page.getByLabel("ส่วนที่ต้องการแก้ไข").selectOption("heading");
   await expect(page.getByLabel("ชื่อโรงเรียน", { exact: true })).toHaveValue(
     "โรงเรียนเดิมทดสอบ",
   );
@@ -337,8 +342,10 @@ test("mobile JPEG upload keeps original bytes while PDF embeds lossless orientat
     .click();
   const file = await (await download).path();
   const pdf = (await readFile(file!)).toString("latin1");
-  expect(pdf).not.toContain("/DCTDecode");
-  expect(pdf).toContain("/FlateDecode");
-  expect(pdf).toContain("/Width 742");
-  expect(pdf).toContain("/Height 763");
+  // PNG may be embedded as raw RGB or Flate-compressed RGB; both are
+  // lossless. Do not require a compression filter that jsPDF need not use.
+  expect(pdf.includes("/DCTDecode")).toBe(false);
+  expect(pdf.includes("/ColorSpace /DeviceRGB")).toBe(true);
+  expect(pdf.includes("/Width 742")).toBe(true);
+  expect(pdf.includes("/Height 763")).toBe(true);
 });

@@ -1,6 +1,6 @@
 # Smart Answer Sheet
 
-เว็บพื้นที่ทำงานครูไทย Next.js App Router โครงการเดียว รองรับรายชื่อ ข้อสอบ/เฉลย กระดาษ PDF, QR-first scanning, private Supabase scan Storage, การตรวจทาน/ยืนยันคะแนน และ Excel/CSV/PDF reports โค้ดผ่านการทดสอบในเครื่อง แต่ยังต้อง deploy รอบใหม่และปรับเทียบกระดาษ/กล้องจริงก่อนใช้เก็บคะแนน อ่านสถานะล่าสุดใน [สรุปสแกนและพิมพ์](docs/SCANNING_PRINT_IMPLEMENTATION.md)
+เว็บพื้นที่ทำงานครูไทย Next.js App Router โครงการเดียว รองรับรายชื่อ ข้อสอบ/เฉลย กระดาษ PDF, QR-first scanning, private Supabase scan Storage, การตรวจทาน/ยืนยันคะแนน และ Excel/CSV/PDF reports ต้องปรับเทียบกระดาษ/กล้องจริงก่อนใช้เก็บคะแนน อ่านสถานะล่าสุดใน [สรุปรอบลบชุดสอบและโฉมใหม่](docs/EXAM_LIFECYCLE_CAPTURE_IMPLEMENTATION.md)
 
 ## เริ่มในเครื่อง
 
@@ -28,7 +28,7 @@ npm run build
 ## เชื่อม Supabase staging
 
 1. สร้างไฟล์ .env.local จาก .env.example ใส่ URL และ **publishable** key ของโครงการที่ผู้ใช้เป็นเจ้าของ ห้ามใส่ service-role key ใน NEXT_PUBLIC_*.
-2. ฐานข้อมูลใหม่ใช้ `supabase/schema.sql` ทั้งไฟล์ครั้งเดียว (รวม 001–007 และป้องกันรันซ้ำ) หรือใช้ migrations ตามลำดับอย่างใดอย่างหนึ่ง ไม่ใช้ทั้งสองวิธีซ้ำกัน ฐานข้อมูลเดิมใช้เฉพาะ migration ที่ยังไม่ติดตั้ง โปรเจกต์นี้ติดตั้ง 006/007 แล้ว ไม่ต้องรันซ้ำ
+2. ฐานข้อมูลใหม่ใช้ `supabase/schema.sql` ทั้งไฟล์ครั้งเดียว (รวม 001–009 และป้องกันรันซ้ำ) หรือใช้ migrations ตามลำดับอย่างใดอย่างหนึ่ง ไม่ใช้ทั้งสองวิธีซ้ำกัน ฐานข้อมูลเดิมใช้เฉพาะ migration ที่ยังไม่ติดตั้ง โปรเจกต์นี้ติดตั้ง 008/009 เพิ่มแล้ว ไม่ต้องรันซ้ำ ดูหลักฐานใน [สรุปรอบล่าสุด](docs/EXAM_LIFECYCLE_CAPTURE_IMPLEMENTATION.md)
 3. ตั้ง Google OAuth Web application และ provider/redirect URLs ของ Supabase ตาม [คู่มือติดตั้ง](docs/SUPABASE_GOOGLE_SETUP.md) เจ้าของที่กำหนดคือ Google identity ที่ยืนยันแล้วของ `piyawatpiwsiri@gmail.com` ไม่ใช่คนแรกที่สมัคร
 4. เข้าสู่ระบบ `/login` ด้วย Google บัญชีอื่นเริ่ม pending เจ้าของอนุมัติ/ระงับจาก การตั้งค่า มีเหตุผลและ audit เมื่ออนุมัติจึงมีพื้นที่ส่วนตัวของบัญชีนั้น ไม่ต้อง insert สมาชิกด้วยมือแบบรุ่นเก่า
 5. รายชื่อ ข้อสอบ ค่าเริ่มต้น โลโก้และทะเบียนพิมพ์แยกตามบัญชี เจ้าของเปิดดูงานคนอื่นได้อ่านอย่างเดียว ทั้ง API และ RLS ปฏิเสธเขียนข้ามพื้นที่ สลับบัญชี/พื้นที่แล้ว remount cache และยกเลิกคำขอเดิม
@@ -42,8 +42,11 @@ npm run build
 - PDF รายบุคคล A4 แนวนอน 2 คนซ้าย–ขวา หรือ 1 คนเต็ม A4 เมื่อพื้นที่ไม่พอ; ชื่อ/ชั้น/รหัส 5 หลักพร้อม ID ฝนดำจากรายชื่อ คำตอบว่าง; ลงทะเบียน immutable template/print jobs/sheets ก่อนดาวน์โหลด QR ร่วมต่อรุ่น ไม่บรรจุข้อมูลนักเรียน; JSON ใช้ภายใน ไม่ดาวน์โหลดเป็นไฟล์พิมพ์
 - Scanner อ่าน QR → แม่แบบที่ลงทะเบียน → ปรับมุม → อ่านรหัส/คำตอบจาก pixels ฝั่ง server → private Storage → grading RPC → pending review; รองรับทั้ง A4 2-up และใบครึ่งที่ตัดแล้ว; OpenCV optional และ manual fallback ไม่ขึ้นกับโหลด OpenCV สำเร็จ
 - Review ภาพจริง/overlay, ระบุตัวนักเรียน, แก้คำตอบพร้อมเหตุผล/actor/time/audit/revision, ยืนยัน/ปฏิเสธ และคะแนนคำนวณใหม่จากเฉลยเวอร์ชันที่พิมพ์; ไม่เขียนทับ confirmed
+- จัดเก็บ/นำชุดสอบกลับด้วยฐานข้อมูลจริง; ลบถาวรยืนยันชื่อชุดสอบ ลบไฟล์ก่อนคะแนนและทะเบียน ถ้าค้างทำต่อได้ โดยไม่ลบรายชื่อ/โลโก้/ข้อสอบอื่น (SQL 008)
+- ถ่ายอัตโนมัติเปิดเริ่มต้นหลัง QR/ขอบ/ความนิ่ง/รายละเอียดภาพผ่าน มีถ่ายใหม่และใบถัดไป; เก็บ JPEG หลังปรับมุมเพียงไฟล์เดียว อ่านคำตอบจาก bytes เดียวกับที่เก็บ และรายการตรวจทุกข้อใช้พื้นที่หลัก (SQL 008)
 - Excel/CSV + PDF ทั้งห้อง/รายบุคคล ส่งออกคะแนน confirmed เท่านั้น ใช้ server-authoritative rows และบันทึก audit
 - Designer/Print/Scanner/Review/Results แบบ compact task workspace บน phone/iPad; รายการและคุณสมบัติเลื่อนภายใน ปุ่มหลักไม่หลุดใต้เมนูด่วน
+- โฉมใหม่ mint/sky/lavender/lilac กับตัวหนังสือเข้มและ motion สั้นที่รองรับ reduced motion; หัวพิมพ์ `school` รุ่น 4 ใช้โลโก้ใหญ่ขึ้น ช่องข้อมูลมีจุด และช่องคะแนน dots/total (SQL 009) กระดาษเดิมรุ่น 2/3 ยังสแกนได้ตามทะเบียนเดิม
 
 ## รายชื่อ 4 คอลัมน์และโลโก้โรงเรียน
 
@@ -51,7 +54,7 @@ npm run build
 - เก็บคำนำหน้าในช่องชื่อครบ; ระดับชั้น ม.1–ม.6 ทั้งไม่มีห้องและแบบ ม.1/1, ม.1/2; ตัวกรองชั้น/ห้องและตาราง 4 คอลัมน์; ไฟล์เดิมชื่อ-สกุลรวม/เลขที่ยังจับคู่ได้ ไม่มีการเปลี่ยนชื่อคอลัมน์ฐานข้อมูลเป็นภาษาไทย
 - ตรวจไฟล์เทอมปัจจุบันครบ 202 คน และยืนยัน metadata ของ `public.students` บน Supabase จริงแล้ว ช่องเก็บข้อมูลครบ ไม่ต้องรัน SQL เพิ่มสำหรับรูปแบบนี้ ดูรายละเอียดและขอบเขตการตรวจใน `docs/CURRENT_ROSTER_ALIGNMENT.md` (ยังไม่อัปโหลดรายชื่อจริง)
 - โลโก้ที่ผู้ใช้ให้เป็นภาพต้นฉบับ 742 × 763 พิกเซลใน `public/omr-assets/school-logo.png`; ไม่มีการย่อ/ครอป/สร้างตราใหม่ ภาพฝังเฉพาะ metadata ระบุที่มา
-- Designer มีอัปโหลด PNG/JPG บน desktop/mobile: ไม่เกิน 5 MB / 20 ล้านพิกเซล; เก็บ original bytes ของไฟล์ที่อัปโหลด ปรับเฉพาะขนาดแสดง/พิมพ์ในกรอบ 16 × 16 มม. รักษาสัดส่วน JPEG ที่ฝัง PDF ใช้ browser EXIF orientation และแปลง PNG lossless ที่ความละเอียดเดิม ไม่เขียนทับไฟล์เก็บ
+- Designer มีอัปโหลด PNG/JPG บน desktop/mobile: ไม่เกิน 5 MB / 20 ล้านพิกเซล; เก็บ original bytes ของไฟล์ที่อัปโหลด ปรับเฉพาะขนาดแสดง/พิมพ์ในกรอบ 20 × 20 มม. ของหัวใหม่ รักษาสัดส่วน JPG/PNG ที่มี EXIF ใช้แนวเดียวกับ browser และแปลง PNG lossless ที่ความละเอียดเดิม ไม่หมุนซ้ำหรือเขียนทับไฟล์เก็บ
 - โหมดทดลองเก็บในเบราว์เซอร์เท่านั้น (ไฟล์ใหญ่อาจเกิน quota; UI แสดงข้อผิดพลาด); โหมดเชื่อมจริงใช้ **private Supabase Storage `school-logos`** และบัญชี approved เก็บ original bytes ไม่มีการลดความละเอียด ไม่ต้องตั้ง Cloudinary สำหรับโลโก้
 - `/api/settings/logo` ใช้ชื่อไฟล์ใหม่ทุกครั้งและ revision guard หลังสลับโลโก้สำเร็จค่อยลบไฟล์เก่าผ่านคิว หากลบไม่สำเร็จแสดงปุ่มลองใหม่ ไม่ลบไฟล์ปัจจุบัน ส่วน `/api/cloudinary` เป็น compatibility alias สำหรับ client เก่า ไม่ใช่ Cloudinary logo upload แล้ว
 - การพิมพ์ข้อสอบเดิมใหม่ใช้โลโก้ปัจจุบันตามที่ผู้ใช้อนุมัติ PDF ที่ดาวน์โหลดไปแล้วไม่เปลี่ยน Signed URL อายุ 600 วินาทีไม่ถูกเก็บใน layout/hash/QR ฐานข้อมูลแม่แบบและทะเบียนชุดพิมพ์เป็น immutable snapshots แยกรหัสนักเรียนจาก QR
@@ -64,9 +67,9 @@ npm run build
 ## ข้อจำกัดสำคัญ
 
 - ยังไม่รับรองความแม่นยำบนกระดาษ/กล้องจริง ต้อง pilot และเทียบการตรวจมือก่อนใช้คะแนนจริง; ภาพ rasterized PDF และ synthetic fixtures ไม่ใช่ภาพจากโทรศัพท์
-- SQL 006/007 ติดตั้งจริงแล้ว แต่ยังไม่ได้ push/deploy โค้ดรอบนี้และยังไม่ผ่าน live Google → scan → confirm → export E2E
+- SQL 001–007 ติดตั้งจริงจากรอบก่อน; รอบนี้ติดตั้ง 008/009 เพิ่มแล้ว ยังไม่ผ่าน physical Google → camera → confirm → export E2E
 - ไม่เพิ่ม Python service/microservice/worker และไม่มี student publication/A-B versions; confirmed คือคะแนนครูยืนยัน ไม่ใช่เผยแพร่ให้นักเรียน
-- ภาพทั้งสองประเภทใช้ private Supabase Storage ไม่ใช้ Cloudinary; TODO retention สำหรับ incomplete scan uploads และ server pagination เมื่อข้อมูลโตมาก
+- โลโก้และภาพสแกนใช้ private Supabase Storage ไม่ใช้ Cloudinary; ภาพสแกนใหม่เก็บเฉพาะ processed evidence เดียว ภาพเก่าต้นฉบับจะลบเมื่อเจ้าของเปิด Review และตรวจว่า processed ยังอยู่; TODO orphan cleanup สำหรับอัปโหลดเก่าที่ไม่สัมพันธ์กับ exam และ server pagination เมื่อข้อมูลโตมาก
 
 ## กล้องและ troubleshooting
 
@@ -82,3 +85,5 @@ npm run build
 รัน npm run build และ npm run start บน Node host หรือ provider ที่รองรับ Next.js 16 พร้อม env ของ Supabase staging. ตั้ง Auth redirect URL ให้ตรง HTTPS host. Production ไม่มี demo และจะแสดงคำแนะนำการตั้งค่าถ้าไม่มี credentials. ไม่ถือว่าการ build ผ่าน = login/OMR/staging ผ่าน
 
 ดูรายละเอียดที่ docs/BLUEPRINT_REVIEW.md, docs/IMPLEMENTATION_STATUS.md, docs/TEST_RESULTS.md, docs/ARCHITECTURE_DECISIONS.md, docs/THIRD_PARTY_NOTICES.md และ DESIGN.md
+
+รอบลบชุดสอบ/ถ่ายอัตโนมัติ/เก็บภาพเดียว/โฉมใหม่: [สรุปและวิธีติดตั้ง SQL 008/009](docs/EXAM_LIFECYCLE_CAPTURE_IMPLEMENTATION.md)

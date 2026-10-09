@@ -111,9 +111,16 @@ describe("optical reader and QR", () => {
         ...defaultLayout,
         printStyle: "classic",
       }),
-      compact = defaultLayout;
+      compact = { ...defaultLayout, printStyle: "compact" as const };
     expect(compileOmrTemplate(classic).geometryVersion).toBe(2);
     expect(compileOmrTemplate(compact).geometryVersion).toBe(3);
+    expect(compileOmrTemplate(defaultLayout).geometryVersion).toBe(4);
+    expect(compileOmrTemplate(defaultLayout).centersMm).toEqual(
+      compileOmrTemplate(compact).centersMm,
+    );
+    expect((await createSetIdentity(defaultLayout)).token).not.toBe(
+      (await createSetIdentity(compact)).token,
+    );
     expect((await createSetIdentity(classic)).token).not.toBe(
       (await createSetIdentity(compact)).token,
     );

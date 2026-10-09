@@ -116,10 +116,7 @@ export default function Settings() {
               </button>
             </div>
           ) : (
-            <p className="muted">
-              โหมดทดลองไม่มีบัญชีผู้ใช้ ข้อมูลนี้ไม่ได้บันทึกใน Supabase
-              และไม่ใช้ตรวจสิทธิ์จริง
-            </p>
+            <p className="muted">โหมดตัวอย่าง · ข้อมูลอยู่ในเครื่อง</p>
           )}
         </section>
         <WorkspaceSettingsEditor
@@ -271,8 +268,7 @@ function WorkspaceSettingsEditor({ branding }: { branding: SchoolBranding }) {
                 aria-describedby="subjects-settings-help"
               />
               <small id="subjects-settings-help">
-                ไม่เกิน 50 วิชา ใช้เป็นตัวเลือกตอนสร้างชุดสอบ ชั้น /
-                ห้องจะมาจากรายชื่อนักเรียนที่นำเข้าเท่านั้น
+                หนึ่งวิชาต่อบรรทัด · ไม่เกิน 50 วิชา
               </small>
             </label>
           </div>
@@ -301,10 +297,6 @@ function WorkspaceSettingsEditor({ branding }: { branding: SchoolBranding }) {
             )}
           </div>
           <div className="settings-logo-controls">
-            <p>
-              เก็บไฟล์ PNG / JPG ต้นฉบับใน Supabase Storage ไม่บีบอัดหรือย่อไฟล์
-              ปรับเฉพาะขนาดที่แสดงบนกระดาษ
-            </p>
             <label className="settings-logo-upload">
               <Upload size={16} aria-hidden="true" />
               {busy === "upload" || busy === "bundled"
@@ -322,12 +314,7 @@ function WorkspaceSettingsEditor({ branding }: { branding: SchoolBranding }) {
                 }}
               />
             </label>
-            <p className="settings-help">
-              ไม่เกิน 5 MB และ 20 ล้านพิกเซล เมื่อเปลี่ยนภาพ
-              ระบบจะลบภาพเก่าหลังบันทึกภาพใหม่สำเร็จ
-              ข้อสอบชุดเดิมที่พิมพ์ใหม่ใช้โลโก้ล่าสุด แต่ PDF
-              ที่ดาวน์โหลดไว้ไม่เปลี่ยน
-            </p>
+            <p className="settings-help">รูปภาพขนาดไม่เกิน 5 MB</p>
             {access?.role === "owner" && !readOnly && (
               <button
                 className="btn btn-secondary"
@@ -585,7 +572,7 @@ function UserAccessManager() {
       ) : !visibleUsers.length ? (
         <EmptyState
           title="ไม่มีบัญชีในสถานะนี้"
-          description="บัญชีที่เข้าสู่ระบบด้วย Google จะปรากฏที่นี่เพื่อรอการอนุมัติ"
+          description="ยังไม่มีบัญชีรออนุมัติ"
         />
       ) : (
         <div className="table-scroll">

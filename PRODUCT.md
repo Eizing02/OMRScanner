@@ -70,7 +70,7 @@ Document detection in the browser and optical-mark recognition on the server are
 - Every answer sheet includes a **five-digit numeric student-ID OMR area** (five columns, digits 0–9) and a QR token for exam/sheet/template identity. Preserve leading zeros: `04217` is a valid ID and must remain a string.
 - Teachers bring their own student datasets as Excel/CSV. Student-code matches are checked against the roster belonging to the exam/school, never blindly matched globally.
 - Updated with the supplied current-term roster on 9 October 2026: the primary import/list format has four columns (`รหัสประจำตัว`, `ชื่อ`, `นามสกุล`, `ระดับชั้น`); `ชื่อ` includes the name prefix. Previously approved three-column files (`รหัสประจำตัว`, `ชื่อ-สกุล`, `ชั้น`) remain supported. Preserve five-digit string IDs and actual ม.1–ม.6 classes with optional rooms. Exam creation uses only classrooms present in the signed-in teacher's roster; subjects and academic defaults come from that teacher's settings or prior exams.
-- Approved 9 October 2026: store original school-logo PNG/JPG bytes in private Supabase Storage, size only the display/print frame, and retire the previous logo after a successful replacement. Reprinting an old exam uses the latest school logo without changing its key/layout QR identity; already downloaded PDFs stay unchanged. Scanned-image storage remains Cloudinary under repository rules.
+- Approved 9 October 2026: store original school-logo PNG/JPG bytes in private Supabase Storage, size only the display/print frame, and retire the previous logo after a successful replacement. Reprinting an old exam uses the latest school logo without changing its key/layout QR identity; already downloaded PDFs stay unchanged. The user explicitly replaced Cloudinary with private Supabase Storage for scanned images as well.
 - The scanning camera interface must be optimized for portrait-oriented mobile devices even though the printed A4 sheet is landscape.
 - The first release uses a verified fixed geometry for reliable scanning; progressively expose more drag-and-drop freedom only as validation coverage expands.
 
@@ -81,12 +81,12 @@ Document detection in the browser and optical-mark recognition on the server are
 1. **Dashboard** — recent exams, classes, scan-job status, papers needing review, and quick actions.
 2. **Subjects & Classes** — subjects, school year/term, classrooms, class rosters and permitted teacher access.
 3. **Students & Import** — XLSX/CSV upload, column mapping, row validation, duplicates and import history.
-4. **Exam Library** — search, duplicate, organize and archive exams by subject, class, term, unit and exam type.
+4. **Exam Library** — search, duplicate, organize and archive exams by subject, class, term, unit and exam type. Approved 9 October 2026: archive/restore persists without removing results; permanent deletion requires explicit exam-name confirmation and removes that exam's scores and scan images, not the roster, logo or other exams. Interrupted file cleanup is resumable.
 5. **Exam Editor** — quiz/unit/midterm/final/custom exam categories, sets A/B, item count, four or five choices, answer key, points and version history.
 6. **Answer Sheet Designer** — A4 landscape canvas, templates, live print preview, logo upload, editable text/fields, QR/markers, bubble zones, cut guides and undo/redo.
 7. **Print Center** — select roster, generate one shared QR for the exam/key/layout version, preview one answer sheet and actual A4 paper counts, generate PDF at 100% scale and inspect print warnings.
 8. **Scan Center** — camera live view, shaded outside-of-paper overlay, detected corner polygon, alignment status, automatic/manual capture, crop correction and batch image/PDF upload.
-9. **Review Queue** — original and processed images side-by-side, per-question marks, student-ID match, uncertain or multiple marks, corrections and reviewer confirmation.
+9. **Review Queue** — retained rectified evidence with per-question marks, student-ID match, uncertain or multiple marks, corrections and reviewer confirmation. Approved 9 October 2026: prioritize a larger internally scrollable question list on phone/iPad, without duplicate score summaries; the processed-only retention policy supersedes original/processed side-by-side comparison.
 10. **Results & Reports** — scores, answer-by-question view, summary statistics, optional item analysis, download XLSX/CSV/PDF.
 11. **Settings & Access** — school logo/profile, users/roles, printing presets, data-retention rules and privacy notices.
 
@@ -96,6 +96,7 @@ Document detection in the browser and optical-mark recognition on the server are
 - Support **Auto Layout** for nontechnical teachers and a constrained **Custom Layout** mode for advanced users.
 - Provide configurable school logo with aspect-ratio preservation, automatic sensible size, and prevent overlap with required scan-safe regions.
 - Approved 8 October 2026: small school logo upper left, handwritten score box upper right, exam-set QR below it in a separate reserved area. The score box is not automatically recognized or used to overwrite the digital score.
+- Approved 9 October 2026 refresh: enlarge the upright school logo and school heading, organize populated identity/subject/class/room fields with dotted lines, and use a writable rectangular score box showing only dots / maximum score. Keep QR/markers/bubbles clear and preserve previously registered print geometries.
 - Provide fields for `ชื่อ`, `สกุล`, `ชั้น`, `เลขที่`, `วิชา`, exam title/type, unit/topic, date/time, total marks and custom notes/instructions.
 - Support multiple answer columns within a sheet, choice labels ก/ข/ค/ง or ก/ข/ค/ง/จ, and a five-digit student-code grid.
 - QR codes, alignment markers and required scan margins may be repositioned only within validated constraints; show non-dismissible blocking errors for scan-invalid geometry.
@@ -108,8 +109,8 @@ Document detection in the browser and optical-mark recognition on the server are
 - In-browser paper detection from the camera feed: **show an outline on the four document corners and darken the area outside the detected paper**.
 - Clearly distinguish searching (neutral), detected but not ready (amber), and ready to capture (green), supported by text/icons rather than color alone.
 - Offer device-friendly prompts: move closer, improve lighting, hold steady, include all corners, turn off glare.
-- Auto-capture only after the document is stable and meets empirically validated quality checks; manual shutter and manual four-corner adjustment remain available.
-- Deskew and correct perspective before using layout coordinates. Store the original image as well as the rectified result when appropriate.
+- Auto-capture only after the document is stable and meets empirically validated quality checks; manual shutter and manual four-corner adjustment remain available. Approved 9 October 2026: enable auto-capture initially, resolve the registered QR first, require paper alignment/stability and readable QR/markers/answer detail, and provide retake/next-paper actions. Current thresholds are conservative heuristics requiring physical-device calibration, not an accuracy certification.
+- Deskew and correct perspective before using layout coordinates. Approved 9 October 2026: retain only compressed rectified evidence for new scans, read OMR from those exact retained bytes, and keep the local original until successful saving. Legacy originals may be retired only after verifying that stored processed evidence exists. Preserve enough resolution for OMR instead of forcing a file-size target; keep scores, observations and audit history until an explicit exam deletion.
 - Support scanning the **full A4 page containing several sheets** or individual cut sheets; identify and process each independent sheet.
 - Read the QR code to resolve the sheet/exam/template version; read the five student-ID digits separately with OMRChecker; then read answer bubbles using the appropriate template.
 - Never silently guess a missing QR, unclear ID, ambiguous bubble, or duplicate submission. Route uncertain results to teacher review.
@@ -121,12 +122,13 @@ Document detection in the browser and optical-mark recognition on the server are
 - Match student IDs only within the authorized school/exam roster. Preserve `student_code` as a five-character string; use a separate UUID for the database primary key.
 - Approved 8 October 2026: a QR token identifies an **exam/answer-key/layout version** and is identical on all copies of that version; it contains no unprotected student identity. Resolve the QR first, read the five-digit student ID separately, then read answers. Keep submission/sheet-instance identity separate; detect duplicates by exam and student, not shared QR alone. Changing physical geometry, choices, counts or keys requires a new version/identity without mutating previously printed snapshots.
 - Distinguish unmarked, multi-marked, unreadable and valid choices; use explicit scoring rules and configurable marks per question.
-- Keep raw observations, confidence/ambiguity flags, reviewed answers, original image, processed image and audit history.
+- Keep raw observations, confidence/ambiguity flags, reviewed answers, retained processed image and audit history. The approved retention policy above supersedes mandatory original-image storage.
 - Use score workflow states: `scanned`, `needs_review`, `verified`, `published`, `voided`. Corrections are attributed to an authorized person and never overwrite raw reads.
 - Lock/preserve published template and answer-key versions. Corrections create new versions and auditable recalculations.
 - Prevent cross-school data exposure through Supabase Auth, role-based permissions, RLS and private Storage policies; use short-lived access to private files and never expose service credentials in client code.
 - Approved 9 October 2026: Google sign-in identifies the user but does not grant access. New accounts remain pending until approved. Verified Google account `piyawatpiwsiri@gmail.com` is the configured one-time platform owner. Each approved teacher owns one private workspace for settings, roster, exams and print history. The owner can approve, reject or suspend accounts and inspect other workspaces read-only; no teacher-to-teacher sharing or owner editing of another teacher's work is implied. Account/workspace changes clear client caches; API/RLS check current approval independently of client state.
 - Provide reasonable retention/deletion policies, backups for both database and storage files, privacy notices and administrative audit logs for student-related information.
+- Approved 9 October 2026: do not add storage-quota dashboards or per-teacher quota controls; the user asked only about free-tier capacity, not a quota feature.
 
 ### UX and visual direction for Impeccable
 
@@ -134,6 +136,7 @@ Document detection in the browser and optical-mark recognition on the server are
 - Personality: calm, precise, helpful, credible, modern Thai educational tool. The interface must communicate that exam results are serious and traceable.
 - Preferred design direction: modern minimalist workspace, polished but understated, ample whitespace, strong content hierarchy, clear tables, consistent form controls, subtle borders and purposeful icons.
 - Prefer light theme as the initial default; keep colors restrained and semantic. Use high-contrast text and distinct success, warning and error states. The exact palette, typography and token values belong in `DESIGN.md`, not this product context.
+- Approved 9 October 2026 refresh: apply the supplied four-color pastel direction with dark legible text, retain familiar navigation and compact workspaces, and use short gentle feedback on buttons, tabs, page changes and scanning. Respect reduced motion. Shorten routine explanatory copy throughout the UI, retaining essential errors, safety warnings and irreversible-action confirmations. Document the actual tokens and motion rules in `DESIGN.md`.
 - Desktop-first for complex creation and editing; **mobile-first for scanning and result confirmation**. Fully responsive, without trying to squeeze the desktop designer onto narrow phone screens.
 - Thai-first content; avoid decorative English labels when a natural Thai label exists. Do not force teachers to see words like `fieldBlocks`, `JSON`, `processor` or `threshold`.
 - Use action-oriented labels: `สร้างชุดสอบ`, `ออกแบบกระดาษคำตอบ`, `ดูตัวอย่างก่อนพิมพ์`, `เริ่มสแกน`, `ตรวจสอบผล`, `ส่งออกคะแนน`.
@@ -175,7 +178,7 @@ Offer recovery actions that preserve progress. Examples: retake image, adjust co
 
 ### Open decisions to validate
 
-- Final product name, logo and brand colors; formalize in `DESIGN.md` after the visual direction is approved.
+- Validate the approved product name, supplied school logo and pastel direction in `DESIGN.md` against actual teacher use.
 - Final browser document-edge detector (jscanify vs Scanic) following device/accuracy performance comparisons.
 - Minimum physical bubble diameter, QR size, print margins and valid maximum question counts for each split preset.
 - Exact school roster format, import mapping and retention policy once sample data and school policy are available.

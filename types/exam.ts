@@ -62,5 +62,6 @@ export type Exam = ExamInput & {
   students: number;
   reviewCount: number;
   archived: boolean;
+  deleting?: boolean;
   updatedAt: string;
 };

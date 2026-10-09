@@ -23,6 +23,11 @@ import {
 import { readSetQr } from "@/lib/omr/scan-qr";
 import { warpCanvas } from "@/lib/omr/perspective-canvas";
 import { compressScanCanvas } from "@/lib/omr/compress-image";
+import {
+  captureGeometry,
+  assessPaperQuality,
+  advanceCaptureStability,
+} from "@/lib/omr/capture-quality";
 import { Notice, Badge, PageHeading, Modal } from "@/components/ui/primitives";
 import type { LockedScanTemplate, ScanReceipt } from "@/types/scan";
 type Detector = Awaited<ReturnType<typeof createDocumentDetector>>;
@@ -44,7 +49,12 @@ export function Scanner({ examId }: { examId?: string }) {
     [qrBusy, setQrBusy] = useState(false);
   const [quad, setQuad] = useState<Quad>(defaultQuad),
     [single, setSingle] = useState(false),
-    [auto, setAuto] = useState(false);
+    [auto, setAuto] = useState(true);
+  const [captureHint, setCaptureHint] = useState(
+      "ให้เห็นกระดาษครบแล้วถือให้นิ่ง",
+    ),
+    [progress, setProgress] = useState(0),
+    [fromCamera, setFromCamera] = useState(false);
   const [status, setStatus] = useState<"searching" | "unstable" | "ready">(
     "searching",
   );
@@ -66,17 +76,21 @@ export function Scanner({ examId }: { examId?: string }) {
     qrTicket = useRef(0),
     epoch = useRef(0),
     mounted = useRef(true);
+  const fired = useRef(false),
+    nextQualityCheck = useRef(0);
+  const singleRef = useRef(single);
   const scanRequest = useRef<{
     id: string;
-    original: string;
     processed: string;
   } | null>(null);
   useEffect(() => {
     quadRef.current = quad;
     autoRef.current = auto;
     templateRef.current = template;
-  }, [quad, auto, template]);
+    singleRef.current = single;
+  }, [quad, auto, template, single]);
   function stop() {
+    epoch.current++;
     stream.current?.getTracks().forEach((t) => t.stop());
     stream.current = null;
     if (timer.current) clearInterval(timer.current);
@@ -87,6 +101,7 @@ export function Scanner({ examId }: { examId?: string }) {
     mounted.current = true;
     const hide = () => {
       if (document.hidden) {
+        epoch.current++;
         stream.current?.getTracks().forEach((t) => t.stop());
         stream.current = null;
         if (timer.current) clearInterval(timer.current);
@@ -127,7 +142,7 @@ export function Scanner({ examId }: { examId?: string }) {
     setQrBusy(true);
     try {
       const frame = document.createElement("canvas"),
-        scale = Math.min(1, 1200 / Math.max(canvas.width, canvas.height));
+        scale = Math.min(1, 1800 / Math.max(canvas.width, canvas.height));
       frame.width = Math.round(canvas.width * scale);
       frame.height = Math.round(canvas.height * scale);
       const ctx = frame.getContext("2d");
@@ -182,20 +197,28 @@ export function Scanner({ examId }: { examId?: string }) {
       }
     }
   }
-  async function accept(canvas: HTMLCanvasElement) {
+  async function accept(
+    canvas: HTMLCanvasElement,
+    automaticCrop?: HTMLCanvasElement,
+    locked?: LockedScanTemplate,
+  ) {
     stop();
     epoch.current++;
-    setTemplate(null);
-    templateRef.current = null;
-    setCrop(null);
+    setTemplate(locked ?? null);
+    templateRef.current = locked ?? null;
+    setCrop(automaticCrop ?? null);
     setReceipt([]);
     setError("");
     scanRequest.current = null;
     setSource(canvas);
-    setDimensions({ width: canvas.width, height: canvas.height });
+    setDimensions({
+      width: (automaticCrop ?? canvas).width,
+      height: (automaticCrop ?? canvas).height,
+    });
     setQuad(defaultQuad);
     quadRef.current = defaultQuad;
     // QR is read immediately, before any corner-confirmation step.
+    if (automaticCrop && locked) return;
     await resolveQr(canvas, true);
     const current = epoch.current;
     // Loading the optional edge detector never disables manual controls.
@@ -211,13 +234,56 @@ export function Scanner({ examId }: { examId?: string }) {
       })
       .catch(() => undefined);
   }
-  function capture() {
+  function capture(automatic = false) {
     const v = video.current;
-    if (!v?.videoWidth) return;
+    if (!v?.videoWidth || fired.current) return;
     const canvas = document.createElement("canvas");
     canvas.width = v.videoWidth;
     canvas.height = v.videoHeight;
     canvas.getContext("2d")?.drawImage(v, 0, 0);
+    if (automatic) {
+      const locked = templateRef.current;
+      if (!detector.current || !locked || Date.now() < nextQualityCheck.current)
+        return;
+      try {
+        const geometry = captureGeometry(
+          quadRef.current,
+          canvas.width,
+          canvas.height,
+          singleRef.current,
+        );
+        if (geometry) throw new Error(geometry);
+        const processed = detector.current.warp(
+          canvas,
+          quadRef.current,
+          singleRef.current,
+        );
+        const ctx = processed.getContext("2d");
+        if (!ctx) throw new Error("อ่านภาพไม่ได้ ใช้ปุ่มถ่ายภาพได้");
+        const quality = assessPaperQuality(
+          ctx.getImageData(0, 0, processed.width, processed.height),
+          locked,
+          singleRef.current,
+        );
+        if (quality) throw new Error(quality);
+        fired.current = true;
+        setFromCamera(true);
+        void accept(canvas, processed, locked);
+      } catch (e) {
+        stable.current = 0;
+        setProgress(0);
+        setStatus("unstable");
+        nextQualityCheck.current = Date.now() + 750;
+        setCaptureHint(
+          e instanceof Error
+            ? e.message
+            : "ภาพยังไม่ชัด ใช้ปุ่มถ่ายหรือถ่ายใหม่ได้",
+        );
+      }
+      return;
+    }
+    fired.current = true;
+    setFromCamera(true);
     void accept(canvas);
   }
   async function start() {
@@ -225,12 +291,29 @@ export function Scanner({ examId }: { examId?: string }) {
     setError("");
     stop();
     epoch.current++;
+    const cameraEpoch = epoch.current;
+    try {
+      const preference = localStorage.getItem("sas-camera-auto");
+      if (preference !== null) {
+        setAuto(preference !== "false");
+        autoRef.current = preference !== "false";
+      }
+    } catch {
+      /* Private browsing may disable storage. */
+    }
     setTemplate(null);
     templateRef.current = null;
     setSource(null);
     setCrop(null);
     setReceipt([]);
     scanRequest.current = null;
+    fired.current = false;
+    nextQualityCheck.current = 0;
+    setProgress(0);
+    setStatus("searching");
+    setFromCamera(true);
+    setDuplicate(false);
+    setReason("");
     try {
       if (!navigator.mediaDevices?.getUserMedia)
         throw new Error(
@@ -244,7 +327,11 @@ export function Scanner({ examId }: { examId?: string }) {
         },
         audio: false,
       });
-      if (!mounted.current) {
+      if (
+        !mounted.current ||
+        cameraEpoch !== epoch.current ||
+        document.hidden
+      ) {
         media.getTracks().forEach((t) => t.stop());
         return;
       }
@@ -253,6 +340,10 @@ export function Scanner({ examId }: { examId?: string }) {
       if (video.current) {
         video.current.srcObject = media;
         await video.current.play();
+      }
+      if (cameraEpoch !== epoch.current || stream.current !== media) {
+        media.getTracks().forEach((t) => t.stop());
+        return;
       }
       void createDocumentDetector()
         .then((d) => {
@@ -263,32 +354,68 @@ export function Scanner({ examId }: { examId?: string }) {
       let tick = 0;
       timer.current = setInterval(() => {
         const v = video.current;
-        if (!v?.videoWidth) return;
+        if (!v?.videoWidth || fired.current) return;
         const frame = document.createElement("canvas");
         frame.width = 960;
         frame.height = Math.round((960 * v.videoHeight) / v.videoWidth);
         frame.getContext("2d")?.drawImage(v, 0, 0, frame.width, frame.height);
         setDimensions({ width: v.videoWidth, height: v.videoHeight });
-        if (tick++ % 3 === 0) void resolveQr(frame);
-        if (!detector.current) return;
+        if (tick++ % 3 === 0) {
+          const qrFrame = document.createElement("canvas");
+          const scale = Math.min(
+            1,
+            1800 / Math.max(v.videoWidth, v.videoHeight),
+          );
+          qrFrame.width = Math.round(v.videoWidth * scale);
+          qrFrame.height = Math.round(v.videoHeight * scale);
+          qrFrame
+            .getContext("2d")
+            ?.drawImage(v, 0, 0, qrFrame.width, qrFrame.height);
+          void resolveQr(qrFrame);
+        }
+        if (!detector.current) {
+          setCaptureHint("กำลังเตรียมจับขอบ ใช้ปุ่มถ่ายภาพได้");
+          return;
+        }
         try {
           const found = detector.current.detect(frame);
           if (!found.quad) {
             stable.current = 0;
             setStatus("searching");
+            setProgress(0);
+            setCaptureHint("ให้เห็นขอบกระดาษครบทั้ง 4 มุม");
             return;
           }
           const movement = motionDistance(quadRef.current, found.quad);
           quadRef.current = found.quad;
           setQuad(found.quad);
-          stable.current =
-            movement < 0.012 && found.coverage > 0.3 ? stable.current + 1 : 0;
-          const ready = stable.current >= 6;
+          const geometry = captureGeometry(
+            found.quad,
+            v.videoWidth,
+            v.videoHeight,
+            singleRef.current,
+          );
+          stable.current = advanceCaptureStability(
+            stable.current,
+            movement,
+            !geometry &&
+              Boolean(templateRef.current) &&
+              Date.now() >= nextQualityCheck.current,
+          );
+          setProgress(stable.current);
+          const ready = stable.current >= 5;
+          if (geometry) setCaptureHint(geometry);
+          else if (stable.current > 0)
+            setCaptureHint(
+              autoRef.current
+                ? "ถือให้นิ่ง กำลังเตรียมถ่าย…"
+                : "กรอบนิ่ง · พร้อมถ่าย",
+            );
+          else if (Date.now() >= nextQualityCheck.current)
+            setCaptureHint("ถือกล้องให้นิ่ง");
           setStatus(ready ? "ready" : "unstable");
           if (ready && autoRef.current && templateRef.current) {
-            autoRef.current = false;
-            setAuto(false);
-            capture();
+            capture(true);
           }
         } catch {
           setStatus("searching");
@@ -309,6 +436,7 @@ export function Scanner({ examId }: { examId?: string }) {
   }
   async function upload(file: File | undefined) {
     if (!file) return;
+    setFromCamera(false);
     if (
       !["image/jpeg", "image/png"].includes(file.type) ||
       file.size > 10 * 1024 * 1024
@@ -367,7 +495,6 @@ export function Scanner({ examId }: { examId?: string }) {
     try {
       scanRequest.current ??= {
         id: crypto.randomUUID(),
-        original: compressScanCanvas(source),
         processed: compressScanCanvas(crop, 1800),
       };
       const response = await request(
@@ -377,7 +504,6 @@ export function Scanner({ examId }: { examId?: string }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             requestId: scanRequest.current.id,
-            original: scanRequest.current.original,
             processed: scanRequest.current.processed,
             paper: single ? "single" : "a4",
             expectedExamId: template.exam_id,
@@ -397,6 +523,10 @@ export function Scanner({ examId }: { examId?: string }) {
       }
       if (!isCurrentWorkspace()) return;
       setReceipt(body.data);
+      // Retain the rectified preview only after the server stored evidence
+      // and scores. Failed submissions keep the original locally for recovery.
+      setSource(crop);
+      scanRequest.current = null;
       setDuplicate(false);
       notify("บันทึกผลสแกนแล้ว รอตรวจและยืนยันคะแนน");
       await refreshReviews().catch(() =>
@@ -424,6 +554,10 @@ export function Scanner({ examId }: { examId?: string }) {
     setQuad(defaultQuad);
     setDimensions({ width: 640, height: 900 });
     scanRequest.current = null;
+    fired.current = false;
+    setDuplicate(false);
+    setReason("");
+    setProgress(0);
   }
   function move(i: number, x: number, y: number) {
     setQuad(
@@ -436,7 +570,7 @@ export function Scanner({ examId }: { examId?: string }) {
     );
   }
   const color = source
-    ? "#4da3ff"
+    ? "#cadefc"
     : status === "ready"
       ? "#35d59b"
       : status === "unstable"
@@ -515,7 +649,7 @@ export function Scanner({ examId }: { examId?: string }) {
             <X size={20} />
           </button>
         </div>
-        <div className="camera-viewport" ref={viewport}>
+        <div className="camera-viewport" data-qr-locked={Boolean(template)} ref={viewport}>
           <div
             className="camera-image-plane"
             style={{ width: plane.width, height: plane.height }}
@@ -617,11 +751,14 @@ export function Scanner({ examId }: { examId?: string }) {
           </div>
           {live && (
             <div className={`camera-status camera-${status}`} role="status">
-              {template
-                ? status === "ready"
-                  ? "กรอบนิ่ง · พร้อมถ่าย"
-                  : "เห็นกระดาษครบแล้วถือให้นิ่ง"
-                : "หันกล้องให้เห็น QR ชัด"}
+              {template ? captureHint : "หันกล้องให้เห็น QR ชัด"}
+              {auto && template && progress > 0 && (
+                <progress
+                  aria-label="ความนิ่งก่อนถ่ายอัตโนมัติ"
+                  value={progress}
+                  max={5}
+                />
+              )}
             </div>
           )}
         </div>
@@ -633,7 +770,10 @@ export function Scanner({ examId }: { examId?: string }) {
         <div className="camera-controls">
           {receipt.length ? (
             <>
-              <button className="btn btn-camera-secondary" onClick={reset}>
+              <button
+                className="btn btn-camera-secondary"
+                onClick={fromCamera ? () => void start() : reset}
+              >
                 <Camera size={17} />
                 สแกนใบถัดไป
               </button>
@@ -643,6 +783,16 @@ export function Scanner({ examId }: { examId?: string }) {
             </>
           ) : source ? (
             <>
+              {fromCamera && (
+                <button
+                  className="btn btn-camera-secondary"
+                  disabled={busy}
+                  onClick={() => void start()}
+                >
+                  <Camera size={17} />
+                  ถ่ายใหม่
+                </button>
+              )}
               <button
                 className="btn btn-camera-secondary"
                 disabled={busy}
@@ -701,7 +851,7 @@ export function Scanner({ examId }: { examId?: string }) {
               <button
                 className="shutter"
                 disabled={busy || readOnly}
-                onClick={live ? capture : start}
+                onClick={live ? () => capture() : start}
                 aria-label={live ? "ถ่ายภาพกระดาษ" : "เปิดกล้อง"}
               >
                 {busy ? <span className="spinner" /> : <Camera size={28} />}
@@ -710,7 +860,18 @@ export function Scanner({ examId }: { examId?: string }) {
                 className="camera-toggle"
                 aria-pressed={auto}
                 disabled={!live}
-                onClick={() => setAuto(!auto)}
+                onClick={() => {
+                  const enabled = !auto;
+                  setAuto(enabled);
+                  autoRef.current = enabled;
+                  stable.current = 0;
+                  setProgress(0);
+                  try {
+                    localStorage.setItem("sas-camera-auto", String(enabled));
+                  } catch {
+                    /* Optional preference. */
+                  }
+                }}
               >
                 <ScanLine size={23} />
                 <span>{auto ? "อัตโนมัติ" : "ถ่ายด้วยมือ"}</span>

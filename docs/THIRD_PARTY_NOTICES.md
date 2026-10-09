@@ -1,5 +1,13 @@
 # Third-party notices — 8 October 2026
 
+## Recheck for auto-capture — 9 October 2026
+
+- Installed [jscanify 1.4.3 / puffinsoft](https://github.com/puffinsoft/jscanify) supports paper corners and perspective correction; the [ColonelParrot repository](https://github.com/ColonelParrot/jscanify) now points to that upstream. This application uses its corner-ordering helper with its own OpenCV contour/warp implementation. The README camera example is a frame loop, not an automatic-shutter or image-quality guarantee.
+- [OpenCV.js / TechStark](https://github.com/TechStark/opencv-js) provides the actual contour and perspective-transform primitives in the installed browser runtime. [jsQR](https://github.com/cozmo/jsQR) decodes RGBA image pixels; it does not manage cameras or grade answers.
+- Stability, geometry, QR/marker/sharpness gates, retake, processed-only retention, workspace authorization and resumable deletion are project code added in this delivery. No third-party package upgrade or copied scanner UI is needed. Tests use synthetic pixels and local browser camera streams, not physical-device accuracy measurements.
+- [OMRChecker](https://github.com/Udayraj123/OMRChecker) remains reviewed only, not integrated. Current bubble reads run through the project's TypeScript template-coordinate reader. No claim is made that Python OMRChecker grades these papers.
+- Existing MIT / Apache notices and the unmodified local OpenCV runtime are preserved; source compatibility checks are not a comprehensive security/license audit.
+
 ตรวจจากแพ็กเกจที่ติดตั้งจริงและ package-lock.json. เป็นบันทึกที่มา/notice สำหรับ delivery นี้ **ไม่ใช่ comprehensive transitive license หรือ legal audit**; เก็บ licenses/notices ของทุก dependency ที่ถูกแจกจ่ายเมื่อทำ release
 
 ## Direct runtime packages

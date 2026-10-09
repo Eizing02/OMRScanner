@@ -1,6 +1,5 @@
 "use client";
-/* eslint-disable @next/next/no-img-element -- Signed private scan images are fetched on demand. */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -10,6 +9,8 @@ import {
   Pencil,
   ScanLine,
   RefreshCw,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { useWorkspace } from "@/components/layout/workspace-provider";
 import { SheetPreview } from "@/components/omr/omr-sheet-preview";
@@ -26,7 +27,7 @@ import { gradeExam, canVerify } from "@/lib/grading/grade-exam";
 import { effectiveAnswers } from "@/lib/grading/recalculate";
 import type { StoredReview, LockedScanTemplate } from "@/types/scan";
 type Media = {
-  original: string;
+  original: string | null;
   processed: string;
   template: Pick<LockedScanTemplate, "layout_json" | "omr_json">;
 };
@@ -51,8 +52,8 @@ export function ReviewCenter({
     [filter, setFilter] = useState("needs_review"),
     [query, setQuery] = useState("");
   const [pane, setPane] = useState("answers"),
-    [view, setView] = useState("processed"),
-    [showAll, setShowAll] = useState(false),
+    [showAll, setShowAll] = useState(true),
+    [focusAnswers, setFocusAnswers] = useState(false),
     [highlight, setHighlight] = useState<number | undefined>();
   const [dialog, setDialog] = useState<
       "correct" | "identify" | "reject" | "confirm" | null
@@ -68,6 +69,7 @@ export function ReviewCenter({
     [mediaId, setMediaId] = useState(""),
     [mediaError, setMediaError] = useState("");
   const [refreshImage, setRefreshImage] = useState(0);
+  const retired = useRef(new Set<string>());
   const items = reviews.filter(
     (r) =>
       (!examId || r.examId === examId) &&
@@ -89,7 +91,35 @@ export function ReviewCenter({
     if (!item || mode !== "connected") return;
     let active = true;
     const controller = new AbortController();
-    request(`/api/scan-records?media=${item.id}`, { signal: controller.signal })
+    const load = async () => {
+      // Explicit DELETE command retires only legacy originals. Owners viewing
+      // another teacher's work never run this write. Processed proof survives.
+      if (!readOnly && stored?.originalPath && !retired.current.has(item.id)) {
+        retired.current.add(item.id);
+        try {
+          const cleanup = await request(
+            "/api/scan-records",
+            {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ scanId: item.id }),
+              signal: controller.signal,
+            },
+            true,
+          );
+          if (!cleanup.ok && active)
+            notify(
+              "ภาพตรวจและคะแนนยังอยู่ แต่ลบภาพต้นฉบับยังไม่สำเร็จ ลองเปิดรายการนี้ใหม่",
+            );
+        } catch {
+          /* Reading retained evidence must still work when cleanup fails. */
+        }
+      }
+      return request(`/api/scan-records?media=${item.id}`, {
+        signal: controller.signal,
+      });
+    };
+    load()
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok)
@@ -108,7 +138,15 @@ export function ReviewCenter({
       active = false;
       controller.abort();
     };
-  }, [item, mode, request, refreshImage]);
+  }, [
+    item,
+    mode,
+    request,
+    refreshImage,
+    readOnly,
+    stored?.originalPath,
+    notify,
+  ]);
   async function mutate() {
     if (!item || !exam || !dialog || readOnly) return;
     setBusy(true);
@@ -190,7 +228,7 @@ export function ReviewCenter({
       canVerify(answers, exam.questionCount, exam.choiceCount) &&
       !readOnly,
     );
-  const image = (original = false) => {
+  const image = () => {
     if (!item || !exam) return null;
     if (mode === "demo")
       return (
@@ -198,7 +236,7 @@ export function ReviewCenter({
           layout={getLayout(exam)}
           single
           marked={item.rawAnswers}
-          highlight={!original ? highlight : undefined}
+          highlight={highlight}
         />
       );
     if (mediaError)
@@ -230,54 +268,48 @@ export function ReviewCenter({
     );
     return (
       <div className="scan-proof">
-        {original ? (
-          <img
-            src={media.original}
-            alt="ภาพสแกนต้นฉบับ"
+        <svg
+          viewBox={`0 0 ${width} 210`}
+          role="img"
+          aria-label={
+            highlight
+              ? `ภาพสแกนและตำแหน่งคำตอบข้อ ${highlight}`
+              : "ภาพที่ใช้ตรวจคำตอบ"
+          }
+        >
+          <image
+            href={media.processed}
+            x={0}
+            y={0}
+            width={width}
+            height={210}
+            preserveAspectRatio="none"
             onError={() =>
               setMediaError("ภาพหมดอายุหรือโหลดไม่สำเร็จ กดโหลดภาพใหม่")
             }
           />
-        ) : (
-          <svg
-            viewBox={`0 0 ${width} 210`}
-            role="img"
-            aria-label={
-              highlight
-                ? `ภาพสแกนและตำแหน่งคำตอบข้อ ${highlight}`
-                : "ภาพที่ใช้ตรวจคำตอบ"
-            }
-          >
-            <image
-              href={media.processed}
-              x={0}
-              y={0}
-              width={width}
-              height={210}
-              preserveAspectRatio="none"
-              onError={() =>
-                setMediaError("ภาพหมดอายุหรือโหลดไม่สำเร็จ กดโหลดภาพใหม่")
-              }
-            />
-            {highlight &&
-              bubbles.map((b) => (
-                <circle
-                  key={b.option}
-                  cx={b.x + offset}
-                  cy={b.y}
-                  r={2.8}
-                  fill="none"
-                  stroke="#e89508"
-                  strokeWidth={0.6}
-                />
-              ))}
-          </svg>
-        )}
+          {highlight &&
+            bubbles.map((b) => (
+              <circle
+                key={b.option}
+                cx={b.x + offset}
+                cy={b.y}
+                r={2.8}
+                fill="none"
+                stroke="#e89508"
+                strokeWidth={0.6}
+              />
+            ))}
+        </svg>
       </div>
     );
   };
   return (
-    <div className="task-workspace review-task" data-pane={pane}>
+    <div
+      className="task-workspace review-task"
+      data-pane={pane}
+      data-focus={focusAnswers ? "answers" : undefined}
+    >
       <PageHeading
         title="ศูนย์ตรวจสอบ"
         actions={
@@ -328,7 +360,10 @@ export function ReviewCenter({
       </div>
       <WorkspaceTabs
         value={pane}
-        onChange={setPane}
+        onChange={(value) => {
+          setPane(value);
+          if (value !== "answers") setFocusAnswers(false);
+        }}
         items={[
           { id: "queue", label: "รายการ" },
           { id: "image", label: "ภาพสแกน" },
@@ -386,38 +421,20 @@ export function ReviewCenter({
             <>
               <section className="review-image-panel" data-work-pane="image">
                 <div className="image-toolbar">
-                  <div className="segmented-control">
-                    {[
-                      { id: "original", label: "ต้นฉบับ" },
-                      { id: "processed", label: "หลังปรับภาพ" },
-                      { id: "compare", label: "เทียบภาพ" },
-                    ].map((v) => (
-                      <button
-                        key={v.id}
-                        className={view === v.id ? "active" : ""}
-                        onClick={() => setView(v.id)}
-                      >
-                        {v.label}
-                      </button>
-                    ))}
-                  </div>
+                  <span>ภาพที่ใช้ตรวจคำตอบ</span>
                   <button
                     className="icon-button"
                     aria-label="โหลดภาพใหม่"
                     onClick={() => {
                       setMediaError("");
+                      if (item) retired.current.delete(item.id);
                       setRefreshImage((v) => v + 1);
                     }}
                   >
                     <RefreshCw size={16} />
                   </button>
                 </div>
-                <div
-                  className={`review-paper-view ${view === "compare" ? "compare" : ""}`}
-                >
-                  {view === "compare" && image(true)}
-                  {image(view === "original")}
-                </div>
+                <div className="review-paper-view">{image()}</div>
                 {mode === "demo" && (
                   <small className="image-footer">ภาพสังเคราะห์</small>
                 )}
@@ -434,6 +451,13 @@ export function ReviewCenter({
                   <Badge tone={confirmed ? "green" : "amber"}>
                     {confirmed ? "ยืนยันแล้ว" : "รอยืนยัน"}
                   </Badge>
+                  <button
+                    className="icon-button"
+                    aria-label={`ประวัติการแก้ไข (${item.audit.length})`}
+                    onClick={() => setHistory(true)}
+                  >
+                    <History size={18} />
+                  </button>
                 </div>
                 {!item.studentCode && (
                   <button
@@ -448,33 +472,36 @@ export function ReviewCenter({
                     ระบุนักเรียน
                   </button>
                 )}
-                <div className="review-score">
-                  <div>
-                    <span>
-                      {confirmed ? "คะแนนที่ยืนยันแล้ว" : "คะแนนเบื้องต้น"}
-                    </span>
-                    <strong>
-                      {grade?.score}
-                      <small> / {grade?.maxScore}</small>
-                    </strong>
-                  </div>
-                  <div>
-                    <span>ต้องตรวจ</span>
-                    <strong className="amber-text">
-                      {unresolved.length}
-                      <small> ข้อ</small>
-                    </strong>
-                  </div>
-                </div>
                 <div className="answer-filter">
-                  <h2>คำตอบ</h2>
-                  <button
-                    className="btn btn-ghost"
-                    aria-pressed={showAll}
-                    onClick={() => setShowAll(!showAll)}
-                  >
-                    {showAll ? "เฉพาะที่ควรตรวจ" : "แสดงทุกข้อ"}
-                  </button>
+                  <h2>
+                    คำตอบ <span className="muted">{visible.length} ข้อ</span>
+                  </h2>
+                  <div>
+                    <button
+                      className="btn btn-ghost"
+                      aria-pressed={showAll}
+                      onClick={() => setShowAll(!showAll)}
+                    >
+                      {showAll ? "เฉพาะที่ควรตรวจ" : "แสดงทุกข้อ"}
+                    </button>
+                    <button
+                      className="icon-button expand-answers"
+                      aria-label={
+                        focusAnswers ? "ย่อรายการคำตอบ" : "ขยายรายการคำตอบ"
+                      }
+                      aria-pressed={focusAnswers}
+                      onClick={() => {
+                        setFocusAnswers(!focusAnswers);
+                        setPane("answers");
+                      }}
+                    >
+                      {focusAnswers ? (
+                        <Minimize2 size={18} />
+                      ) : (
+                        <Maximize2 size={18} />
+                      )}
+                    </button>
+                  </div>
                 </div>
                 <div className="answer-review-scroll">
                   <table className="data-table answer-review-table">
@@ -504,6 +531,7 @@ export function ReviewCenter({
                               className="question-link"
                               onClick={() => {
                                 setHighlight(a.question);
+                                setFocusAnswers(false);
                                 setPane("image");
                               }}
                               aria-label={`ดูภาพข้อ ${a.question}`}
@@ -577,13 +605,6 @@ export function ReviewCenter({
                     </div>
                   )}
                 </div>
-                <button
-                  className="text-button review-history"
-                  onClick={() => setHistory(true)}
-                >
-                  <History size={15} />
-                  ประวัติการแก้ไข ({item.audit.length})
-                </button>
               </section>
             </>
           ) : (

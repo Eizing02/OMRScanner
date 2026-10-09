@@ -158,7 +158,7 @@ export function Dashboard() {
           ) : (
             <EmptyState
               title="เริ่มต้นด้วยชุดสอบแรก"
-              description="สร้างชุดสอบและเฉลย แล้วออกแบบกระดาษคำตอบในขั้นตอนถัดไป"
+              description="สร้างชุดสอบแรกของคุณ"
             >
               <Link className="btn btn-primary" href="/exams/new">
                 สร้างชุดสอบ

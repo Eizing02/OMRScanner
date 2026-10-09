@@ -42,6 +42,7 @@ type Workspace = {
   setLayout: (layout: SheetLayout) => void;
   setReviews: (items: ReviewItem[]) => void;
   setExams: (items: Exam[]) => void;
+  removeExam: (id: string) => void;
   setStudents: (items: Student[]) => void;
   createExam: (input: ExamInput) => Promise<Exam>;
   updateExam: (exam: Exam, input: ExamInput) => Promise<Exam>;
@@ -575,7 +576,7 @@ function WorkspaceData({ children }: { children: ReactNode }) {
                     logo: branding.image_url,
                   }),
               logo: branding.image_url,
-              printStyle: "compact",
+              printStyle: "school",
             },
             exam,
           );
@@ -587,6 +588,19 @@ function WorkspaceData({ children }: { children: ReactNode }) {
           ),
         setReviews,
         setExams,
+        removeExam: (id) => {
+          setExams((old) => old.filter((e) => e.id !== id));
+          setExamHistory((old) => old.filter((e) => e.id !== id));
+          setReviews((old) => old.filter((r) => r.examId !== id));
+          setSheetLayouts((old) =>
+            Object.fromEntries(
+              Object.entries(old).filter(
+                ([key]) => key !== id && !key.startsWith(`${id}:`),
+              ),
+            ),
+          );
+          setLayout((old) => (old.examId === id ? defaultLayout : old));
+        },
         setStudents,
         createExam,
         updateExam,

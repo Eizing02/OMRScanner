@@ -49,7 +49,7 @@ export async function GET(request: Request) {
         .maybeSingle();
       if (error) throw scanDatabaseError(error.message);
       if (!data) throw new ApiError("SCAN_NOT_FOUND", "ไม่พบภาพสแกน", 404);
-      const paths = [data.image_url, data.image_public_id];
+      const paths = [data.image_public_id];
       const signed = await db.storage
         .from("scan-images")
         .createSignedUrls(paths, 300);
@@ -68,8 +68,8 @@ export async function GET(request: Request) {
       if (locked.error)
         throw new ApiError("TEMPLATE_MISSING", "โหลดแม่แบบไม่สำเร็จ", 500);
       return json({
-        original: signed.data[0].signedUrl,
-        processed: signed.data[1].signedUrl,
+        original: null,
+        processed: signed.data[0].signedUrl,
         template: locked.data,
       });
     }
@@ -129,10 +129,7 @@ export async function POST(request: Request) {
         422,
       );
     const input = parsed.data;
-    const [original, processed] = await Promise.all([
-      decodeScanImage(input.original),
-      decodeScanImage(input.processed),
-    ]);
+    const processed = await decodeScanImage(input.processed);
     const wholeToken = readSetQr(processed.raster);
     // Resolve the immutable registered template before touching any bubble.
     const regions =
@@ -225,15 +222,16 @@ export async function POST(request: Request) {
     if (!records.length)
       throw new ApiError("INVALID_SCAN", "ไม่พบกระดาษคำตอบในภาพ", 422);
     const hash = createHash("sha256")
-      .update(original.bytes)
       .update(processed.bytes)
       .update(input.paper)
+      .update(template.exam_id)
       .digest("hex");
     const reserved = await db.rpc("reserve_scan_upload", {
       input: {
         school_id: schoolId,
         request_id: input.requestId,
         payload_hash: hash,
+        exam_id: template.exam_id,
       },
     });
     if (reserved.error) throw scanDatabaseError(reserved.error.message);
@@ -241,7 +239,6 @@ export async function POST(request: Request) {
     if (upload.status !== "complete") {
       // Immutable upload paths make retries safe. Never upsert a saved image.
       for (const [path, bytes] of [
-        [upload.original_path, original.bytes],
         [upload.processed_path, processed.bytes],
       ] as [string, Uint8Array][]) {
         const result = await db.storage
@@ -293,6 +290,45 @@ export async function POST(request: Request) {
       throw scanDatabaseError(result.error.message);
     }
     return json(result.data, 201);
+  } catch (error) {
+    return failure(error);
+  }
+}
+// Retire legacy originals on review, not in a GET request or a migration.
+// No result/processed evidence is deleted here. Safe to repeat after a timeout.
+export async function DELETE(request: Request) {
+  try {
+    const { db, schoolId } = await context(true);
+    const parsed = z
+      .object({ scanId: z.uuid() })
+      .safeParse(await requestBody(request));
+    if (!parsed.success)
+      throw new ApiError("INVALID_SCAN", "รหัสภาพไม่ถูกต้อง", 422);
+    const input = { school_id: schoolId, scan_id: parsed.data.scanId };
+    const plan = await db.rpc("retire_scan_original", { input });
+    if (plan.error) throw scanDatabaseError(plan.error.message);
+    if (plan.data.path) {
+      if (!plan.data.path.startsWith(`${schoolId}/`))
+        throw new ApiError(
+          "INVALID_IMAGE_PATH",
+          "ตรวจสอบเส้นทางภาพไม่สำเร็จ",
+          409,
+        );
+      const removed = await db.storage
+        .from("scan-images")
+        .remove([plan.data.path]);
+      if (removed.error)
+        throw new ApiError(
+          "ORIGINAL_CLEANUP_PENDING",
+          "ลบภาพต้นฉบับยังไม่สำเร็จ ภาพตรวจและคะแนนยังคงอยู่",
+          503,
+        );
+      const done = await db.rpc("retire_scan_original", {
+        input: { ...input, finish: true },
+      });
+      if (done.error) throw scanDatabaseError(done.error.message);
+    }
+    return json({ originalRetired: true });
   } catch (error) {
     return failure(error);
   }

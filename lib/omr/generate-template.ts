@@ -4,7 +4,7 @@ import type { PrintStudent } from "@/types/print";
 
 export const layoutSchema = z.object({
   schemaVersion: z.literal(1),
-  printStyle: z.enum(["classic", "compact"]).default("classic"),
+  printStyle: z.enum(["classic", "compact", "school"]).default("classic"),
   school: z.string().trim().min(1).max(60),
   title: z.string().trim().min(1).max(120),
   subject: z.string().trim().min(1).max(80),
@@ -41,7 +41,7 @@ export const layoutSchema = z.object({
 export type SheetLayout = z.infer<typeof layoutSchema>;
 export const defaultLayout: SheetLayout = layoutSchema.parse({
   schemaVersion: 1,
-  printStyle: "compact",
+  printStyle: "school",
   school: "โรงเรียนตัวอย่างวิทยา",
   title: "สมการและอสมการเชิงเส้น",
   subject: "คณิตศาสตร์",
@@ -125,7 +125,7 @@ function geometryFor(width: number, layout: SheetLayout) {
   const columns = Math.max(1, Math.ceil(layout.questionCount / maxRows));
   const rows = Math.ceil(layout.questionCount / columns);
   const answerStepY =
-    layout.printStyle === "compact" && rows > 1
+    layout.printStyle !== "classic" && rows > 1
       ? Math.min(
           8.5,
           (answerBottom -
@@ -148,12 +148,27 @@ function geometryFor(width: number, layout: SheetLayout) {
     maxRows,
     fits: columns <= maxColumns,
     qr: { x: width - 35.5, y: 29, width: 23 },
-    score: { x: width - 38.5, y: 13, width: 29, height: 11 },
+    score: {
+      x: width - 38.5,
+      y: 13,
+      width: 29,
+      height: layout.printStyle === "school" ? 14 : 11,
+    },
     logo: {
       x: 12,
       y: 13,
-      width: layout.printStyle === "compact" ? 16 : 12,
-      height: layout.printStyle === "compact" ? 16 : 12,
+      width:
+        layout.printStyle === "school"
+          ? 20
+          : layout.printStyle === "compact"
+            ? 16
+            : 12,
+      height:
+        layout.printStyle === "school"
+          ? 20
+          : layout.printStyle === "compact"
+            ? 16
+            : 12,
     },
     markers: [
       { x: 6, y: 6 },
@@ -169,8 +184,19 @@ function geometryFor(width: number, layout: SheetLayout) {
     answerStepY,
     answerColumnWidth: columnWidth,
     heading: {
-      x: layout.printStyle === "compact" ? 33 : 30,
-      width: width - (layout.printStyle === "compact" ? 75.5 : 72.5),
+      x:
+        layout.printStyle === "school"
+          ? 37
+          : layout.printStyle === "compact"
+            ? 33
+            : 30,
+      width:
+        width -
+        (layout.printStyle === "school"
+          ? 79.5
+          : layout.printStyle === "compact"
+            ? 75.5
+            : 72.5),
     },
   };
 }
@@ -178,16 +204,16 @@ export type SheetGeometry = ReturnType<typeof geometryFor>;
 function textFits(layout: SheetLayout, g: SheetGeometry) {
   return (
     wrapPrintText(
-      layout.school,
+      printSchool(layout),
       g.heading.width,
-      layout.printStyle === "compact" ? 3.8 : 3.3,
+      layout.printStyle === "school"
+        ? 4.1
+        : layout.printStyle === "compact"
+          ? 3.8
+          : 3.3,
     ).length <= 2 &&
     wrapPrintText(layout.title, g.heading.width, 3.3).length <= 2 &&
-    wrapPrintText(
-      `วิชา ${layout.subject} · ${layout.examType} · ชั้น ${layout.classroom}`,
-      g.sheetWidth - 57,
-      2.8,
-    ).length <= 2 &&
+    wrapPrintText(printSubject(layout), g.sheetWidth - 57, 2.8).length <= 2 &&
     wrapPrintText(layout.instructions, g.sheetWidth - 24, 2.6).length <= 2
   );
 }
@@ -238,6 +264,30 @@ export type PrintText = {
   size: number;
   align?: "left" | "center";
 };
+function printSubject(layout: SheetLayout) {
+  return layout.printStyle === "school"
+    ? `วิชา …${layout.subject}… · …${layout.examType}…`
+    : `วิชา ${layout.subject} · ${layout.examType} · ชั้น ${layout.classroom}`;
+}
+function printSchool(layout: SheetLayout) {
+  const prefix = "โรงเรียน";
+  const name = layout.school.slice(prefix.length).trim();
+  return layout.printStyle === "school" &&
+    layout.school.startsWith(prefix) &&
+    name
+    ? `${prefix}\n${name}`
+    : layout.school;
+}
+function printClassroom(layout: SheetLayout, student?: PrintStudent) {
+  if (layout.printStyle !== "school")
+    return student
+      ? `ชั้น / ห้อง …${student.classroom_name}…${student.number === null ? "" : `  เลขที่ …${student.number}…`}`
+      : "ชั้น / ห้อง ....................... เลขที่ .......................";
+  const [grade, room] = (student?.classroom_name ?? layout.classroom).split(
+    "/",
+  );
+  return `ระดับชั้น …${grade || "........"}…  ห้อง …${room || "—"}…${student && student.number === null ? "" : `  เลขที่ …${student?.number ?? "........"}…`}`;
+}
 export function printTexts(
   layout: SheetLayout,
   g = resolveGeometry(layout),
@@ -259,36 +309,36 @@ export function printTexts(
     }));
   return [
     ...lines(
-      layout.school,
+      printSchool(layout),
       g.heading.x,
-      17 + layout.headerOffsetMm,
+      (layout.printStyle === "school" ? 18 : 17) + layout.headerOffsetMm,
       g.heading.width,
-      layout.printStyle === "compact" ? 3.8 : 3.3,
-      4,
+      layout.printStyle === "school"
+        ? 4.1
+        : layout.printStyle === "compact"
+          ? 3.8
+          : 3.3,
+      layout.printStyle === "school" ? 4.5 : 4,
     ),
     ...lines(
       layout.title,
       g.heading.x,
-      28 + layout.headerOffsetMm,
+      (layout.printStyle === "school" ? 30 : 28) + layout.headerOffsetMm,
       g.heading.width,
       3.3,
       4,
     ),
     {
-      value: `คะแนน …… / ${layout.totalScore}`,
+      value:
+        layout.printStyle === "school"
+          ? `........... / ${layout.totalScore}`
+          : `คะแนน …… / ${layout.totalScore}`,
       x: g.score.x + g.score.width / 2,
-      y: 20,
+      y: layout.printStyle === "school" ? 24 : 20,
       size: 2.8,
       align: "center",
     },
-    ...lines(
-      `วิชา ${layout.subject} · ${layout.examType} · ชั้น ${layout.classroom}`,
-      12,
-      42,
-      g.sheetWidth - 57,
-      2.8,
-      4,
-    ),
+    ...lines(printSubject(layout), 12, 42, g.sheetWidth - 57, 2.8, 4),
     {
       value: `ภาคเรียนที่ ${layout.term} ปีการศึกษา ${layout.year}`,
       x: 12,
@@ -306,15 +356,15 @@ export function printTexts(
       3.5,
     ),
     {
-      value: student
-        ? `ชั้น / ห้อง …${student.classroom_name}…${student.number === null ? "" : `  เลขที่ …${student.number}…`}`
-        : "ชั้น / ห้อง ....................... เลขที่ .......................",
+      value: printClassroom(layout, student),
       x: 12,
       y: 65,
       size: 2.8,
     },
     {
-      value: student ? `รหัส ${student.student_code}` : "รหัสนักเรียน 5 หลัก",
+      value: student
+        ? `รหัส ${layout.printStyle === "school" ? `…${student.student_code}…` : student.student_code}`
+        : "รหัสนักเรียน 5 หลัก",
       x: 26,
       y: 72,
       size: 2.6,
@@ -453,7 +503,12 @@ export function compileOmrTemplate(layout: SheetLayout) {
   );
   return {
     schemaVersion: 1,
-    geometryVersion: layout.printStyle === "compact" ? 3 : 2,
+    geometryVersion:
+      layout.printStyle === "school"
+        ? 4
+        : layout.printStyle === "compact"
+          ? 3
+          : 2,
     pageDimensions: [900, Math.round(g.sheetHeight * factor)],
     bubbleDimensions: [
       g.bubbleRadius * 2 * factor,

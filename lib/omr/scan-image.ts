@@ -19,15 +19,19 @@ export async function decodeScanImage(
       (metadata.pages ?? 1) !== 1
     )
       throw new Error("invalid image");
-    const bytes = await image
-      .resize({
-        width: 1800,
-        height: 1800,
-        fit: "inside",
-        withoutEnlargement: true,
-      })
-      .jpeg({ quality: 75 })
-      .toBuffer();
+    const normalized = image.resize({
+      width: 1800,
+      height: 1800,
+      fit: "inside",
+      withoutEnlargement: true,
+    });
+    // Do not reduce geometry/resolution to force a size target. Optical reads
+    // below are made from these exact retained JPEG bytes, never the source.
+    let bytes = await normalized.clone().jpeg({ quality: 75 }).toBuffer();
+    for (const quality of [70, 65, 60]) {
+      if (bytes.length <= 300_000) break;
+      bytes = await normalized.clone().jpeg({ quality }).toBuffer();
+    }
     const { data, info } = await sharp(bytes)
       .ensureAlpha()
       .raw()

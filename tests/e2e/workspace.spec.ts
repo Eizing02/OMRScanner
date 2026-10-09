@@ -10,12 +10,21 @@ test("Thai workspace: real rendered evidence, responsive layouts, accessibility"
     ["print", "/exams/demo-math/print"],
     ["scanner", "/scan"],
     ["review", "/review"],
+    ["settings", "/settings"],
+    ["results", "/export"],
+    ["login", "/login"],
   ];
   const findings: unknown[] = [];
   for (const [name, path] of pages) {
     for (const [viewport, width, height] of [
       ["desktop", 1440, 1000],
       ["mobile", 390, 844],
+      ...(["designer", "print", "scanner", "review"].includes(name)
+        ? ([
+            ["ipad-portrait", 768, 1024],
+            ["ipad-landscape", 1024, 768],
+          ] as const)
+        : []),
     ] as const) {
       await page.setViewportSize({ width, height });
       await page.goto(path);
