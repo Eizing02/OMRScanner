@@ -8,12 +8,12 @@ web
 
 ## Stack
 
-Planned, not yet implemented:
-- Frontend: Next.js, React, TypeScript, Tailwind CSS, shadcn/ui.
-- Visual answer-sheet editor: React Konva (subject to prototype evaluation).
-- Backend and image-processing API: Python, FastAPI, OpenCV, and a pinned MIT-licensed revision of Udayraj123/OMRChecker, adapted behind an internal OMR adapter.
-- Browser document detection: jscanify as the initial candidate; evaluate Scanic against it on representative devices before production selection.
-- Cloud: Supabase Auth, PostgreSQL, Storage, Queues, and Realtime; container-hosted Python workers for heavy OMR processing (for example, Cloud Run).
+Current approved architecture (10 October 2026):
+
+- Frontend: Next.js App Router, React, TypeScript, Tailwind CSS, reusable project components and Radix dialogs. The constrained answer-sheet editor is not a free-form React Konva editor.
+- Backend: authenticated Next.js route handlers, Sharp decoding, TypeScript template-coordinate OMR and transactional PostgreSQL grading/review RPCs. OMRChecker remains a reference/benchmark candidate, not a running service.
+- Browser document detection: pinned Scanic 1.6.0 classical engine, reusable instance and optional worker; lazy OpenCV/jscanify fallback and manual corners retained until physical-device acceptance.
+- Cloud: Supabase Auth, PostgreSQL, RLS and private Storage. No Python microservice, new queue or Cloudinary in the current delivery.
 - Exports: print-accurate PDF, XLSX, and CSV.
 - All application workflows are online and browser-based; teachers are not required to install desktop software. Resilient uploads are desirable, but fully offline grading is out of scope.
 
@@ -38,6 +38,7 @@ Smart Answer Sheet is a Thai-first, cloud-based platform to **design, print, sca
 The essential promise: **Teachers can customize a paper answer sheet without compromising the ability to scan it accurately.** The sheet design, printable PDF, machine-readable regions, QR identity and grading configuration must remain linked and versioned.
 
 A successful teacher can:
+
 1. Import or select a class roster and create a subject/exam.
 2. Define answer keys and marks per question.
 3. Choose or customize a print-safe answer-sheet template and preview the actual A4 output.
@@ -114,10 +115,11 @@ Document detection in the browser and optical-mark recognition on the server are
 - Auto-capture only after the document is stable and meets empirically validated quality checks; manual shutter and manual four-corner adjustment remain available. Approved 9 October 2026: enable auto-capture initially, resolve the registered QR first, require paper alignment/stability and readable QR/markers/answer detail, and provide retake/next-paper actions. Current thresholds are conservative heuristics requiring physical-device calibration, not an accuracy certification.
 - Deskew and correct perspective before using layout coordinates. Approved 9 October 2026: retain only compressed rectified evidence for new scans, read OMR from those exact retained bytes, and keep the local original until successful saving. Legacy originals may be retired only after verifying that stored processed evidence exists. Preserve enough resolution for OMR instead of forcing a file-size target; keep scores, observations and audit history until an explicit exam deletion.
 - Support scanning the **full A4 page containing several sheets** or individual cut sheets; identify and process each independent sheet.
-- Read the QR code to resolve the sheet/exam/template version; read the five student-ID digits separately with OMRChecker; then read answer bubbles using the appropriate template.
+- Read the QR code to resolve the sheet/exam/template version; read the five student-ID digits separately with the server optical reader; then read answer bubbles using the locked template.
 - Never silently guess a missing QR, unclear ID, ambiguous bubble, or duplicate submission. Route uncertain results to teacher review.
-- Upload and queue processing online, display job progress and clear retry/failure states, and prevent duplicated scores on job retry.
-- Use OMRChecker for mark detection behind a stable service boundary; camera capture/cropping and server-side OMR are separate modules.
+- Upload and process online, display progress and clear retry/failure states, and prevent duplicated scores on request retry. Introduce queues only if measured workload justifies them.
+- Keep camera capture/cropping and server OMR as separate modules within the monolith. Experimental adaptive thresholds must not replace the production reader before a ground-truth physical dataset passes.
+- Approved 10 October 2026: bounded adaptive frame processing; optional high-resolution still with fresh edge detection; smooth display corners without smoothing the capture evidence; binary uploads with authenticated size/type validation; one retained evidence image with a versioned processing policy. Verify rectified QR direction/position before reading OMR, never silently grade an upside-down or mismatched paper.
 
 ### Scoring and records
 
@@ -158,7 +160,7 @@ Offer recovery actions that preserve progress. Examples: retake image, adjust co
 
 ### Delivery stages
 
-- **MVP (first validated vertical slice):** teacher login, subjects/classes, roster XLSX/CSV import, exam/answer key, locked A4-landscape two-up template, QR and five-digit ID, print PDF, live camera overlay and manual/auto crop, Python OMR scan, review, Supabase persistence and XLSX/CSV export.
+- **MVP (first validated vertical slice):** teacher login, subjects/classes, roster XLSX/CSV import, exam/answer key, locked A4-landscape two-up template, QR and five-digit ID, print PDF, live camera overlay and manual/auto crop, server optical read, review, Supabase persistence and XLSX/CSV export.
 - **Next:** full constrained drag-and-drop, one/three/four-up presets validated on physical printers, reusable template library, batch processing improvements, item analysis, richer reporting and PDF exports.
 - **Later:** multi-school administration at scale, integrations with school information systems, collaborative workflows and extensive performance optimization.
 
@@ -175,15 +177,15 @@ Offer recovery actions that preserve progress. Examples: retake image, adjust co
 - The actual print, camera, crop, template and scoring pipeline must be tested end-to-end using real printers and phones—not only mocked previews.
 - Record bubble-level accuracy, full-sheet accuracy, student match precision, unknown/ambiguous review rate, QR detection rate, throughput, failure/retry frequency and cross-school access tests.
 - A proposed goal is **at least 99.5% item-reading accuracy on images meeting defined quality criteria**, but this is a validation target, not an achieved claim. Avoid silent erroneous student matches and incorrect published grades.
-- Keep a golden image dataset and run regression tests when updating OMRChecker, crop libraries or template geometry.
+- Keep a golden image dataset and run regression tests when updating the optical reader, crop libraries or template geometry.
 - Use deterministic, idempotent scoring and preserve records needed to investigate disputed grades.
 
 ### Open decisions to validate
 
 - Validate the approved product name, supplied school logo and pastel direction in `DESIGN.md` against actual teacher use.
-- Final browser document-edge detector (jscanify vs Scanic) following device/accuracy performance comparisons.
+- Physical acceptance of Scanic on actual Android/iPhone/iPad devices; keep the tested legacy rollback until the comparison passes.
 - Minimum physical bubble diameter, QR size, print margins and valid maximum question counts for each split preset.
 - Exact school roster format, import mapping and retention policy once sample data and school policy are available.
 - Cloud hosting region, hosting provider, operating cost assumptions and expected peak scanning volumes.
 
-**Current status (9 October 2026):** executable Next.js UI, roster/exam APIs, account-approval/RLS/Storage migrations and experimental printable OMR geometry are implemented or being verified in this repository. See `docs/ACCOUNT_PRINT_IMPLEMENTATION.md` for the current tested and live-installation evidence. A compiled UI, registered print template or successful login does not certify physical OMR accuracy. Real QR/bubble reading, persisted grading/review and actual score reports remain separate unfinished work until tested end-to-end.
+**Current status (10 October 2026):** roster/exams/locked PDF/QR, private scan Storage, server ID/bubble reading, persisted provisional grading/review/confirmation and score reports exist. This upgrade adds Scanic/camera/binary-image optimization without changing historical QR/geometry or production schema. Local synthetic tests are not a physical accuracy certificate or live Google/Supabase end-to-end acceptance. See `docs/SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md` and `docs/SCANNER_PERFORMANCE_BENCHMARK.md` for measured results and remaining work.

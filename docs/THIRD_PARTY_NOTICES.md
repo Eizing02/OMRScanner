@@ -1,6 +1,6 @@
 # Third-party notices — 8 October 2026
 
-## Recheck for auto-capture — 9 October 2026
+## Historical recheck for auto-capture — 9 October 2026
 
 - Installed [jscanify 1.4.3 / puffinsoft](https://github.com/puffinsoft/jscanify) supports paper corners and perspective correction; the [ColonelParrot repository](https://github.com/ColonelParrot/jscanify) now points to that upstream. This application uses its corner-ordering helper with its own OpenCV contour/warp implementation. The README camera example is a frame loop, not an automatic-shutter or image-quality guarantee.
 - [OpenCV.js / TechStark](https://github.com/TechStark/opencv-js) provides the actual contour and perspective-transform primitives in the installed browser runtime. [jsQR](https://github.com/cozmo/jsQR) decodes RGBA image pixels; it does not manage cameras or grade answers.
@@ -22,9 +22,10 @@
 | lucide-react               | 1.53.0            | ISC + Feather-derived MIT icons | icons; preserve both notices                                      |
 | @fontsource/noto-sans-thai | 5.3.0             | OFL-1.1                         | locally hosted UI font                                            |
 | jscanify                   | 1.4.3             | MIT                             | browser client/corner ordering helper                             |
+| scanic                     | 1.6.0             | MIT                             | default classical document detection / extraction                 |
 | @techstark/opencv-js       | 5.0.0-release.1   | Apache-2.0                      | local document edge detection/warp                                |
 | jspdf                      | 4.2.1             | MIT                             | vector print PDF                                                  |
-| qrcode                     | 1.5.4             | MIT                             | per-sheet opaque QR generation                                    |
+| qrcode                     | 1.5.4             | MIT                             | shared exam/template opaque QR generation                         |
 | jsqr                       | 1.4.0             | Apache-2.0                      | decode opaque set QR from image pixels                            |
 | sharp                      | 0.35.5            | Apache-2.0                      | bounded server image decoding, orientation and JPEG normalization |
 | xlsx / SheetJS CE          | 0.20.3            | Apache-2.0                      | roster parser / demo XLSX/CSV                                     |
@@ -59,7 +60,13 @@ An earlier Thai-only TTF failed the rendered digit check and was replaced. PDF t
 
 No clone/source incorporation/Python adapter/health/pytest/real-image run in this delivery. Once the worker architecture is authorized, preserve full upstream MIT attribution/notice in the vendored source, install pinned Python dependencies, validate candidate template through upstream parser and record actual checked-out SHA. A reference to this SHA is not proof of integration
 
-Scanic/alternative document scanners are proposals only, not installed/bundled/benchmarked. No third-party performance claims have been adopted as our measurements
+## Scanic — default classical document engine, 10 October 2026
+
+The separate Scanic license below supplements the earlier runtime-license collection. The 9 October recheck above is historical; this upgrade adds Scanic while preserving legacy notices.
+
+Pinned npm `scanic@1.6.0` ([official repository](https://github.com/marquaye/scanic), [documentation](https://marquaye.github.io/scanic/)), MIT ©2025 marquaye; full notice retained in `docs/licenses/SCANIC-LICENSE.txt`. API verified from the installed `src/scanic.d.ts` and README. Reusable `Scanner.initialize/scan` detects edges; `extractDocument` rectifies; the project's accessible manual editor remains in use instead of createCornerEditor. Classical JS/embedded WASM only: optional ML/ONNX/CDN models are not activated. Default worker needs OffscreenCanvas; extraction uses the main thread because the shipped extraction implementation requires DOM canvas.
+
+The adapter and coordinate transformations are project code. OpenCV/jscanify and their notices/assets remain as lazy fallback/explicit rollback, not concurrently running detector engines. Local synthetic benchmarks compare all three modes; they do not prove Scanic detects edges faster or more accurately on phones. No upstream marketing performance claim is used as a project measurement. No Pica/jSquash/ZXing/OMRChecker source was copied or newly installed in this upgrade.
 
 ## User-supplied ScanSob app artwork
 

@@ -6,6 +6,8 @@
 
 ## เริ่มในเครื่อง
 
+อัปเกรดกล้องล่าสุด: Scanic 1.6.0 + worker เมื่อรองรับ, ตรวจทีละเฟรม, ภาพนิ่งความละเอียดสูงพร้อมตรวจมุมใหม่, binary JPEG และ QR orientation guard. [รายละเอียดงาน](docs/SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md), [ผลวัดจริงในเครื่อง](docs/SCANNER_PERFORMANCE_BENCHMARK.md), [วิธีย้อนกลับ](docs/SCANNER_MIGRATION_AND_ROLLBACK.md). รอบนี้ไม่ต้องรัน SQL เพิ่มและไม่ได้เปลี่ยนข้อมูลบน Supabase จริง.
+
 ต้องมี Node.js 24 และ npm 11 หรือรุ่นที่เข้ากันได้ ใช้ package-lock.json ที่แนบ
 
 ```powershell
@@ -22,6 +24,7 @@ npm test
 npx playwright install chromium
 npm run test:e2e
 npm run test:accounts
+npm run test:scanner-benchmark
 npm run build
 ```
 
@@ -42,7 +45,7 @@ npm run build
 - Google Login/approval/API/RLS สำหรับพื้นที่ส่วนตัว และหน้าตั้งค่าโรงเรียน/รายวิชา/ปี/ภาคเรียน (ต้องติดตั้ง SQL และเปิด provider ก่อน)
 - Designer: พรีวิวใบเดียวเรียลไทม์ จัดคอลัมน์อัตโนมัติ โลโก้รักษาสัดส่วน ช่องเขียนคะแนน และ Undo/Redo/Zoom; จำนวนข้อที่ต่างจากเฉลยต้องบันทึกเวอร์ชันใหม่ก่อนพิมพ์
 - PDF รายบุคคล A4 แนวนอน 2 คนซ้าย–ขวา หรือ 1 คนเต็ม A4 เมื่อพื้นที่ไม่พอ; ชื่อ/ชั้น/รหัส 5 หลักพร้อม ID ฝนดำจากรายชื่อ คำตอบว่าง; ลงทะเบียน immutable template/print jobs/sheets ก่อนดาวน์โหลด QR ร่วมต่อรุ่น ไม่บรรจุข้อมูลนักเรียน; JSON ใช้ภายใน ไม่ดาวน์โหลดเป็นไฟล์พิมพ์
-- Scanner อ่าน QR → แม่แบบที่ลงทะเบียน → ปรับมุม → อ่านรหัส/คำตอบจาก pixels ฝั่ง server → private Storage → grading RPC → pending review; รองรับทั้ง A4 2-up และใบครึ่งที่ตัดแล้ว; OpenCV optional และ manual fallback ไม่ขึ้นกับโหลด OpenCV สำเร็จ
+- Scanner อ่าน QR → แม่แบบที่ลงทะเบียน → ปรับมุม → ตรวจทิศ/ตำแหน่ง QR → อ่านรหัส/คำตอบจาก pixels ฝั่ง server → private Storage → grading RPC → pending review; รองรับทั้ง A4 2-up และใบครึ่งที่ตัดแล้ว; Scanic เป็นค่าเริ่มต้น, OpenCV/jscanify เป็น lazy fallback และปรับมุมด้วยมือได้เสมอ
 - Review ภาพจริง/overlay, ระบุตัวนักเรียน, แก้คำตอบพร้อมเหตุผล/actor/time/audit/revision, ยืนยัน/ปฏิเสธ และคะแนนคำนวณใหม่จากเฉลยเวอร์ชันที่พิมพ์; ไม่เขียนทับ confirmed
 - จัดเก็บ/นำชุดสอบกลับด้วยฐานข้อมูลจริง; ลบถาวรยืนยันชื่อชุดสอบ ลบไฟล์ก่อนคะแนนและทะเบียน ถ้าค้างทำต่อได้ โดยไม่ลบรายชื่อ/โลโก้/ข้อสอบอื่น (SQL 008)
 - ถ่ายอัตโนมัติเปิดเริ่มต้นหลัง QR/ขอบ/ความนิ่ง/รายละเอียดภาพผ่าน มีถ่ายใหม่และใบถัดไป; เก็บ JPEG หลังปรับมุมเพียงไฟล์เดียว อ่านคำตอบจาก bytes เดียวกับที่เก็บ และรายการตรวจทุกข้อใช้พื้นที่หลัก (SQL 008)

@@ -334,13 +334,17 @@ Notice มุม 8px, padding 12px 14px, gap 9px, type 12px และ line-heigh
 
 เส้นทางชุดสอบเป็นจุด 27px เชื่อมด้วยเส้น 2px; phone 25px. ขั้นที่เสร็จมีเครื่องหมายถูก/teal ขั้นปัจจุบันเป็นอำพันพร้อมชื่อ ขั้นอนาคตสีเทา. ใช้กับลำดับงานจริง.
 
-หน้าใหม่เข้าด้วย opacity 0.85 → 1 และ translateY(3px → 0) ใน 180ms; การเคลื่อนไหวหลักใช้ cubic-bezier(0.16, 1, 0.3, 1). Drawer เดิม 200ms และ loading spinner 800ms linear คงอยู่. เมื่อ prefers-reduced-motion: reduce, CSS ลด animation/transition เป็น 0.01ms และ scroll เป็น auto ปิดการย่อปุ่มและ animation ไอคอน/dialog; page transition เหลือ opacity 0.9 → 1 ใน 80ms. ไม่เพิ่ม choreography ที่หน่วงการทำงาน; กระดาษพิมพ์ไม่มี animation แยก.
+หน้าใหม่เข้าด้วย opacity 0.85 → 1 และ translateY(3px → 0) ใน 180ms; การเคลื่อนไหวหลักใช้ cubic-bezier(0.16, 1, 0.3, 1). Drawer เดิม 200ms และ loading spinner 800ms linear คงอยู่. เมื่อ prefers-reduced-motion: reduce ปิด spatial/entrance animation และ scroll เป็น auto; คงการเปลี่ยนสี/พื้น/ขอบ/opacity สั้น 80ms และ spinner ช้า 1.4s เพื่อสื่อว่างานยังทำอยู่ ไม่ใช้ global 0.01ms kill. ไม่เพิ่ม choreography ที่หน่วงงาน; กระดาษพิมพ์ไม่มี animation.
 
 ### Camera controls
 
 พื้นที่กล้องพื้น #101d2d กับข้อความสว่างและชัตเตอร์ขาว 68px ขอบ 4px วงนอก 2px. Corner handle 48px ครอบจุด 14px และวงโฟกัส #8ac8ff. กรอบ polygon เปลี่ยนสี 220ms; เมื่อ QR ล็อกแล้ว แถบสถานะยืนยันผ่านการเปลี่ยนพื้นใน 250ms. สถานะค้นหา/ยังไม่พร้อม/พร้อมจับภาพมีข้อความ ไอคอน และกรอบที่ต่างกัน; progress ความนิ่งไม่เป็นหลักฐานว่าคะแนนถูกต้อง.
 
 Auto-capture เปิดเริ่มต้นและจำตัวเลือกใน browser. มีถ่ายใหม่/ใบถัดไป แยกการจับภาพจากการบันทึกและการยืนยันคะแนน; ไม่ยืนยันคะแนนเอง. ค่า heuristic ยังต้องทดสอบกล้องจริง.
+
+รอบ 10 ตุลาคม: กรอบแสดงผล smooth แต่การจับภาพใช้มุมดิบ; เขียวเฉพาะหลังตรวจคุณภาพภาพจริงผ่าน ไม่ใช้ progress ความนิ่งแทนความชัด. Overlay ภายในอ้างแม่แบบที่ล็อกไว้ แสดงกรอบ QR/ID/คำตอบ/markers แบบเส้นประบาง ไม่แสดงตัวเลขทางเทคนิค. สีกรอบใช้ camera-adjust/searching/aligning/ready tokens; mint เส้น region และ dark shade แยกพื้นที่นอกกระดาษ. Idle ใช้พื้นที่ viewport เต็ม ไม่บีบข้อความตามสัดส่วนภาพที่ยังไม่มี.
+
+Phone landscape จอสูง ≤500px ใช้หัว/บริบทในแถวเดียวและปุ่มกล้องอยู่ข้างภาพ. เมื่อจอไม่พอให้เลื่อนพื้นที่งานเพียงส่วนเดียวแทนซ่อนปุ่มหรือบีบรายการตรวจเป็นศูนย์; Review/Designer/Print มี minimum usable pane. Phone portrait/iPad/desktop คง compact one-viewport และเลื่อนรายการภายในตามเดิม. ไม่ปิด zoom หรือบังคับหมุนเครื่อง.
 
 ### School paper header and print identity
 

@@ -1,6 +1,10 @@
 # Implementation status — 9 ตุลาคม 2569
 
-## สถานะล่าสุด: สแกน–ตรวจทาน–รายงาน และกระดาษพิมพ์
+## Current override — 10 October 2026 scanner upgrade
+
+สถานะปัจจุบันอยู่ใน [SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md](SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md): Scanic/camera scheduler/still/binary JPEG/QR orientation และ benchmark เพิ่มในรอบนี้; Supabase schema เดิม ไม่รัน SQL เพิ่ม ไม่แตะข้อมูลจริง. ข้อความวันที่ 8–9 ตุลาคมด้านล่างเป็นประวัติแต่ละรอบ ไม่ใช่รายการงานที่ยังขาดทั้งหมดหรือสถานะ deployment ปัจจุบัน. ตาราง/RPC สแกนและรายงานมีแล้ว; Python/Cloudinary ไม่ใช่สถาปัตยกรรมที่อนุมัติล่าสุด. Physical calibration ยังไม่ผ่าน.
+
+## ประวัติ 9 October: สแกน–ตรวจทาน–รายงาน และกระดาษพิมพ์
 
 รายละเอียดรอบนี้อยู่ใน [SCANNING_PRINT_IMPLEMENTATION.md](SCANNING_PRINT_IMPLEMENTATION.md). เพิ่ม QR-first, อ่าน ID/วงฝนจากภาพ, private Supabase scan Storage, คะแนน pending/review/confirm พร้อมเหตุผลและ audit, รายงาน Excel/CSV/PDF และ workspace แบบ compact แล้ว ไม่ใช้ Cloudinary ทั้งโลโก้และภาพสแกน
 

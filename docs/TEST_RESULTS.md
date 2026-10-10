@@ -1,6 +1,30 @@
 # Test results — 9 October 2026
 
-## ล่าสุด: scanner / review / reports / compact responsive
+## Current scanner upgrade — 10 October 2026
+
+หลักฐานล่าสุดและข้อจำกัดอยู่ใน [SCANNER_PERFORMANCE_BENCHMARK.md](SCANNER_PERFORMANCE_BENCHMARK.md), [SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md](SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md) และ [SCANNER_UI_AUDIT.md](SCANNER_UI_AUDIT.md). บันทึกด้านล่างเป็นประวัติ ไม่ใช่ผลทดสอบ current deployment. ไม่มีการทดสอบกับข้อมูลนักเรียน/คะแนนจริงหรือรัน SQL ในรอบนี้.
+
+| Command                                     | Final observed result                                    | Boundary                                                                                                             |
+| ------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `npm ci`                                    | PASS — 553 packages installed from lockfile              | Existing dev-only audit findings; three pending install-script approvals were not enabled                            |
+| `npm run typecheck`                         | PASS                                                     | Application, worker, API and test/config TypeScript                                                                  |
+| `npm run lint`                              | PASS — 0 errors / 0 warnings                             | Full repository lint scope                                                                                           |
+| `npm test -- --maxWorkers=2 --reporter=dot` | PASS — 152 tests / 27 files, 1 optional skip, 15.57s     | Synthetic domain/API/image tests and local PGlite, not live Supabase                                                 |
+| `npm run test:e2e`                          | PASS — 25 tests, 1.9 min                                 | Chromium demo, PDF downloads, 30 route/viewport axe/overflow checks and scanner gestures                             |
+| `npm run test:accounts`                     | PASS — 5 tests, 20.5s                                    | Mock access APIs; compiled Scanic worker, different-FOV still, retake, binary upload/timer and workspace remount     |
+| `npm run test:scanner-benchmark`            | PASS — 1 test, 12.1s                                     | Classical main/worker vs legacy; 480/640/800; twelve JPEG optical validations; native QR unavailable in this browser |
+| `npm run build`                             | PASS — Next.js 16.4 production build, 28 generated pages | Compilation/static generation, not cloud deployment                                                                  |
+| `npm audit --omit=dev --json`               | PASS — 0 runtime findings                                | Audit database at this run, not a security guarantee                                                                 |
+| Full `npm audit --json`                     | 5 high dev-only package entries                          | Existing braces → micromatch/fast-glob → Next ESLint chain; no force upgrade applied                                 |
+| `git diff --check`                          | PASS                                                     | LF/CRLF conversion notices only                                                                                      |
+
+New coverage verifies original-pixel/normalized coordinates; display-only smoothing; locked physical dimensions; bounded scheduler/no overlap/hidden cleanup; lazy legacy fallback only on an actual error; ImageCapture missing/rejection/video fallback; synthetic different-FOV still re-detection; exact stored JPEG bytes and processing metadata; auth/origin/streamed multipart bounds/forged image rejection; rotation rejection before writes; and geometry 2/3/4 with 20×4 half/two-up, 60×5 full and leading-zero IDs. Existing duplicate, teacher correction/audit, confirmation, RLS and reference-safe exam deletion tests continue to pass.
+
+The one skipped test is the existing optional `PRINT_QA_ARTIFACTS=true` check requiring `tmp/pdfs/personalized-20.png`. It was not silently counted as passed. Browser suites still generated/downloaded actual PDFs, but no new physical print/photo dataset was supplied. An intermediate regression exposed late automatic corners replacing a manual edit; the fix and mouse/keyboard/synthesized-touch rerun passed, followed by the complete 25-test suite. Earlier CPU-contention timeouts were rerun without heavy parallel benchmarks, not bypassed by skips or looser assertions.
+
+Impeccable: 0 primary / 188 advisory detector findings; contextual audit 15/20, two scoped P2 follow-ups. Fixed short-landscape clipping, zero-height review space, reduced-motion feedback and above-fold preview loading. This is not WCAG certification. No production SQL/data mutation, Google consent change, push or deploy in this upgrade. Physical Android/iPhone/iPad, thermal/RAM, actual upload/query latency and weak/erased-pencil accuracy remain untested.
+
+## ประวัติ 9 October: scanner / review / reports / compact responsive
 
 | Command/check                                  | Result                                                              | Boundary                                                                                                 |
 | ---------------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |

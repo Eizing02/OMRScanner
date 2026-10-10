@@ -2,6 +2,10 @@
 
 Permanent instructions for all future Codex tasks in this repository.
 
+## Approved current implementation — 10 October 2026
+
+These rules supersede the original blueprint where noted. One Next.js modular monolith, private Supabase Storage, Google approval/private workspaces, shared SAS2 exam/template QR, five-digit student OMR, and immutable geometry versions 2/3/4 are the current system. Scanic 1.6.0 is the default classical document detector; OpenCV/jscanify are lazy legacy fallback. Browser edge detection is not answer grading. The server reads the exact retained JPEG and the grading/review RPC remains authoritative. No production schema/data changes without approval. No Python/queue/microservice in this upgrade. See docs/SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md and the migration/rollback document.
+
 ## Project Overview
 
 This project is **Smart OMR & Exam Management System**, a Smart OMR MVP for Thai school teachers.
@@ -34,15 +38,15 @@ Use:
 - Supabase PostgreSQL
 - Supabase Auth
 - Supabase Row Level Security
-- Cloudinary for scanned OMR images
-- OpenCV.js for bubble detection
+- Private Supabase Storage for school logos and rectified OMR evidence
+- Scanic for browser document edges/perspective; OpenCV.js + jscanify as legacy fallback
+- TypeScript template-coordinate optical reader on the server (adaptive candidate stays experimental)
 - jsQR for QR reading
 - qrcode for QR generation
 - jsPDF for PDF generation
 - xlsx for Excel export
 - Zod
-- React Hook Form
-- TanStack Table
+- Radix dialog primitives and reusable project UI; shadcn/ui, React Hook Form and TanStack Table are future candidates, not installed runtime dependencies
 
 ## Architecture Rules
 
@@ -54,8 +58,9 @@ Use:
 - Do not add a separate mobile app.
 - Keep one Next.js project.
 - Keep one Supabase PostgreSQL database.
-- Use Cloudinary for scanned OMR images.
-- Store only `image_url` and `image_public_id` in Supabase.
+- Use private Supabase Storage (`school-logos`, `scan-images`), not Cloudinary.
+- Store image paths/references, observations and audit metadata in PostgreSQL, never Base64. `image_url`/`image_public_id` retain their legacy names for compatibility.
+- Keep one retained rectified image for new scans, preserving the local original until a successful save. Retire old originals only after verifying processed evidence exists. Exam deletion must use resumable, reference-safe cleanup.
 
 ## Folder Structure Rules
 
@@ -67,7 +72,9 @@ Use:
 - Only edit files related to the current task.
 - If a feature is not fully implemented yet, keep a TODO placeholder that compiles.
 
-Expected folder structure:
+The following is the historical blueprint map, not an instruction to scaffold missing files. Keep the existing repository paths. Current scanner modules are in `lib/omr/`, Storage helpers in `lib/supabase/`, and teacher/workspace providers in `components/layout/`. Old Cloudinary compatibility names do not authorize restoring Cloudinary. Consult the current implementation document before adding modules.
+
+Historical folder structure:
 
 ```text
 smart-omr/
@@ -257,7 +264,7 @@ Examples:
 
 OMR sheet generation:
 
-- A4 portrait
+- A4 landscape, two sheets left/right by default; a single full sheet when validation requires it
 - Thai school format
 - show school name
 - show exam title
@@ -268,18 +275,12 @@ OMR sheet generation:
 - show student `full_name`
 - show `student_code`
 - show QR code
-- show `sheet_code`
+- retain sheet instance/print-job identity separately in the print registry
 - show answer bubbles
-- support 10, 20, 30, 40, 50 questions
+- support 1–60 questions with locked geometry and fit validation
 - support 4 or 5 choices
 
-QR payload must include:
-
-- `exam_id`
-- `student_id`
-- `student_code`
-- `sheet_code`
-- `template_id`
+QR payload is `SAS2:<64-character SHA-256>`, shared by copies of the same exam/key/layout version. Resolve it against the workspace's immutable template registry before reading IDs/answers. It contains no student PII. Read the student ID separately from five OMR columns; printed roster IDs may be prefilled. Do not change the QR protocol or historical geometry without an explicit version migration and compatibility tests.
 
 Use template lock for bubble coordinates.
 
@@ -295,14 +296,17 @@ Scanner must support:
 - image compression before upload
 - QR reading with jsQR
 - duplicate scan detection
-- Cloudinary upload
+- authenticated binary upload to private Supabase Storage (legacy JSON clients remain supported)
 - `scan_records` creation
 
-Image compression target:
+Image processing policy:
 
-- max width 1280-1600px
-- quality 0.6-0.75
-- target 150-300KB if possible
+- Live detection at adaptive 480/640/800px long edge, one task at a time; reusable canvases, worker when supported, manual fallback always available.
+- Capture high-resolution still if supported, re-detect on the still; otherwise capture video. Never assume still and preview share FOV/crop.
+- Existing rectified dimensions: 900×1273 (cut half) or 1800×1273 (whole A4). New JPEGs encode once at 0.85; do not lower quality to force a byte target.
+- Validate on the server, retain safe bounded JPEG bytes unchanged; normalize only when needed and store the image-policy version in Storage object metadata. OMR reads those exact stored bytes.
+- No unconditional double encoding; legacy JSON normalization is preserved for replay compatibility.
+- Clear caches/resources on workspace/account change, hidden page and unmount. Do not relax physical quality gates based only on synthetic benchmarks.
 
 Duplicate detection:
 
@@ -312,7 +316,7 @@ Duplicate detection:
 
 ## Bubble Detection Rules
 
-Use OpenCV.js or Canvas-based logic.
+Use the existing server TypeScript template-coordinate reader. Scanic/OpenCV camera edges are not student-answer detection. New adaptive/local-background logic remains experimental until physical ground-truth regression passes.
 
 Detection rules:
 
@@ -325,13 +329,13 @@ Detection rules:
 - more than one marked option means multiple
 - close scores between top options means `low_confidence`
 
-Detected answer status can be:
+Detected answer status in current code can be:
 
-- `detected`
+- `valid`
 - `blank`
 - `multiple`
-- `low_confidence`
-- `error`
+- `ambiguous` (low confidence)
+- `unreadable`
 
 ## Grading Rules
 
@@ -341,7 +345,7 @@ Grading rules:
 - wrong = 0
 - blank = 0
 - multiple = 0
-- `low_confidence` can calculate score but result must stay `pending_review`
+- `ambiguous` can calculate provisional score but result must stay `pending_review`
 - all new grading results should start as `pending_review`
 - teacher must confirm result before final use
 
@@ -468,7 +472,7 @@ Use shadcn/ui where possible.
 - API routes must return valid JSON.
 - Do not silently overwrite confirmed scores.
 - Manual score changes must create audit log.
-- Cloudinary secrets must only be used server-side.
+- Supabase secrets must only be used server-side. Do not use exposed/old service-role credentials; normal scan routes use the authenticated user's session and RLS.
 
 ## Development Order
 
@@ -476,7 +480,7 @@ Follow this order unless explicitly told otherwise:
 
 1. Project structure
 2. Database schema and TypeScript types
-3. Supabase and Cloudinary setup
+3. Supabase Auth/RLS/private Storage setup
 4. Student management and import
 5. Exam and answer key
 6. OMR generator
