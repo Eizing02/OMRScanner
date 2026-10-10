@@ -23,6 +23,7 @@ test("Thai workspace: real rendered evidence, responsive layouts, accessibility"
         ? ([
             ["ipad-portrait", 768, 1024],
             ["ipad-landscape", 1024, 768],
+            ["phone-landscape", 844, 390],
           ] as const)
         : []),
     ] as const) {
@@ -38,6 +39,32 @@ test("Thai workspace: real rendered evidence, responsive layouts, accessibility"
         () => document.documentElement.scrollWidth > innerWidth + 1,
       );
       if (overflow) findings.push({ name, viewport, overflow });
+      if (name === "scanner" && viewport === "phone-landscape") {
+        const controls = await page.locator(".camera-controls").boundingBox();
+        const navigation = await page
+          .locator(".mobile-bottom-nav")
+          .boundingBox();
+        expect(controls).not.toBeNull();
+        expect(controls!.y + controls!.height).toBeLessThanOrEqual(
+          navigation?.y ?? height,
+        );
+        expect(
+          (await page
+            .getByRole("button", { name: "เปิดกล้อง", exact: true })
+            .boundingBox())!.height,
+        ).toBeGreaterThanOrEqual(44);
+      }
+      if (name === "review" && viewport === "phone-landscape") {
+        expect(
+          (await page.locator(".answer-review-scroll").boundingBox())!.height,
+        ).toBeGreaterThanOrEqual(100);
+        await page.locator(".main-content").evaluate((el) => {
+          el.scrollTop = el.scrollHeight;
+        });
+        await expect(
+          page.getByRole("button", { name: "ยืนยันคะแนน", exact: true }),
+        ).toBeInViewport();
+      }
       const a11y = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
         .analyze();

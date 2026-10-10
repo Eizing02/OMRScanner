@@ -58,6 +58,7 @@ vi.mock("@/lib/supabase/api", async (original) => {
   };
 });
 import { GET, POST, PATCH, DELETE } from "@/app/api/scan-records/route";
+import { decodeScanImage } from "@/lib/omr/scan-image";
 const examId = "20000000-0000-4000-8000-000000000022";
 let single: string, double: string, blank: string, template: unknown;
 const post = (overrides: Record<string, unknown> = {}) =>
@@ -130,12 +131,10 @@ beforeEach(() => {
   mock.upload.mockReset();
   mock.download.mockReset();
   mock.remove.mockReset().mockResolvedValue({ data: [], error: null });
-  mock.signed
-    .mockReset()
-    .mockResolvedValue({
-      data: [{ signedUrl: "https://example.test/processed.jpg" }],
-      error: null,
-    });
+  mock.signed.mockReset().mockResolvedValue({
+    data: [{ signedUrl: "https://example.test/processed.jpg" }],
+    error: null,
+  });
   mock.media = null;
   mock.upload.mockResolvedValue({ data: {}, error: null });
   mock.rpc.mockImplementation(async (name) =>
@@ -153,6 +152,96 @@ beforeEach(() => {
   );
 });
 describe("scan HTTP boundary with real compressed QR/OMR pixels", () => {
+  const binaryPost = (
+    bytes: Uint8Array,
+    metadata: Record<string, unknown> = {},
+    origin?: string,
+  ) => {
+    const form = new FormData();
+    form.set(
+      "metadata",
+      JSON.stringify({
+        requestId: crypto.randomUUID(),
+        paper: "single",
+        expectedExamId: examId,
+        ...metadata,
+      }),
+    );
+    form.set(
+      "processed",
+      new Blob([new Uint8Array(bytes)], { type: "image/jpeg" }),
+      "scan.jpg",
+    );
+    return new Request("http://localhost/api/scan-records", {
+      method: "POST",
+      body: form,
+      headers: origin ? { Origin: origin } : undefined,
+    });
+  };
+  it("accepts authenticated binary scans, retaining exact safe JPEG bytes and zeroes", async () => {
+    const raw = await sharp(Buffer.from(single.split(",")[1], "base64"))
+      .jpeg({ quality: 85 })
+      .toBuffer();
+    const response = await POST(binaryPost(raw));
+    expect(response.status).toBe(201);
+    expect(response.headers.get("X-Scan-Processing")).toBe(
+      "binary-v2-retained",
+    );
+    expect(response.headers.get("Server-Timing")).toContain("omr;dur=");
+    expect(Buffer.from(mock.upload.mock.calls[0][1])).toEqual(raw);
+    expect(mock.upload.mock.calls[0][2].metadata).toEqual({
+      scan_processing_version: "binary-v2-retained",
+    });
+    const batch = mock.rpc.mock.calls.find(
+      ([name]) => name === "save_scan_batch",
+    )![1];
+    expect(batch.input.records[0].student_code).toBe("02074");
+    const decoded = await decodeScanImage(raw);
+    expect(Buffer.from(decoded.bytes)).toEqual(raw);
+  });
+  it("preserves multipart auth/origin/validation boundaries and rejects forged files", async () => {
+    const raw = Buffer.from(single.split(",")[1], "base64");
+    expect((await POST(binaryPost(raw, {}, "https://evil.test"))).status).toBe(
+      403,
+    );
+    expect(
+      (await POST(binaryPost(raw, { replacePending: true, reason: "" })))
+        .status,
+    ).toBe(422);
+    expect((await POST(binaryPost(new Uint8Array([1, 2, 3])))).status).toBe(
+      422,
+    );
+    expect(
+      (
+        await POST(
+          new Request("http://localhost/api/scan-records", {
+            method: "POST",
+            headers: {
+              "Content-Type": "multipart/form-data; boundary=bounded-test",
+            },
+            body: new Uint8Array(2_060_000),
+          }),
+        )
+      ).status,
+    ).toBe(413);
+    mock.authenticated = false;
+    expect((await POST(binaryPost(raw))).status).toBe(401);
+    mock.authenticated = true;
+    mock.readOnly = true;
+    expect((await POST(binaryPost(raw))).status).toBe(403);
+    expect(mock.upload).not.toHaveBeenCalled();
+  });
+  it("rejects an upside-down sheet BEFORE reading student IDs or saving scores", async () => {
+    const raw = await sharp(Buffer.from(single.split(",")[1], "base64"))
+      .rotate(180)
+      .jpeg()
+      .toBuffer();
+    const response = await POST(binaryPost(raw));
+    expect(response.status).toBe(422);
+    expect((await response.json()).error.messageTh).toContain("หมุนกระดาษ");
+    expect(mock.upload).not.toHaveBeenCalled();
+    expect(mock.rpc).not.toHaveBeenCalled();
+  });
   it("signs only processed evidence, never an original URL", async () => {
     mock.media = {
       image_url: "legacy/original.jpg",
@@ -224,6 +313,7 @@ describe("scan HTTP boundary with real compressed QR/OMR pixels", () => {
     expect(mock.upload.mock.calls[0][2]).toEqual({
       contentType: "image/jpeg",
       upsert: false,
+      metadata: { scan_processing_version: "legacy-v1" },
     });
   });
   it("accepts processed-only captures without storing or decoding legacy originals", async () => {

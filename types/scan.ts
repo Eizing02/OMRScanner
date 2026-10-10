@@ -8,9 +8,25 @@ import type {
 export const setTokenSchema = z
   .string()
   .regex(/^SAS2:[a-f0-9]{64}$/, "QR ไม่ใช่ชุดกระดาษคำตอบของระบบ");
+const scanMetadata = {
+  requestId: z.uuid(),
+  paper: z.enum(["single", "a4"]),
+  expectedExamId: z.uuid().optional(),
+  replacePending: z.boolean().default(false),
+  reason: z.string().trim().max(500).default(""),
+};
+export const scanMetadataSchema = z
+  .object(scanMetadata)
+  .superRefine((v, ctx) => {
+    if (v.replacePending && v.reason.length < 3)
+      ctx.addIssue({
+        code: "custom",
+        message: "ระบุเหตุผลก่อนแทนที่ผลที่ยังไม่ยืนยัน",
+      });
+  });
 export const scanInputSchema = z
   .object({
-    requestId: z.uuid(),
+    ...scanMetadata,
     original: z
       .string()
       .max(2_800_000)
@@ -20,10 +36,6 @@ export const scanInputSchema = z
       .string()
       .max(2_800_000)
       .regex(/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/=]+$/),
-    paper: z.enum(["single", "a4"]),
-    expectedExamId: z.uuid().optional(),
-    replacePending: z.boolean().default(false),
-    reason: z.string().trim().max(500).default(""),
   })
   .superRefine((v, ctx) => {
     if (v.replacePending && v.reason.length < 3)

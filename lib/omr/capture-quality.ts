@@ -1,6 +1,11 @@
 import { polygonArea, validQuad, type Quad } from "./camera-geometry";
 import { fillPercentage } from "./detect-bubbles";
-import { rasterRegion, readSetQr, type Raster } from "./scan-qr";
+import {
+  rasterRegion,
+  readLockedQr,
+  qrAlignmentError,
+  type Raster,
+} from "./scan-qr";
 import type { LockedScanTemplate } from "@/types/scan";
 
 /** Conservative capture gates, not an accuracy certification. Recalibrate
@@ -110,8 +115,11 @@ export function assessPaperQuality(
     if (leaves.length === 2 && quality.ink < 0.005) continue;
     printed++;
     if (quality.brightness < 145) return "เพิ่มแสงและหลีกเลี่ยงเงาบนกระดาษ";
-    if (readSetQr(leaf) !== template.set_token)
+    const qr = readLockedQr(leaf, template);
+    if (qr?.token !== template.set_token)
       return "ให้ QR ชัด และหลีกเลี่ยงแสงสะท้อน";
+    const alignment = qrAlignmentError(leaf, template, qr);
+    if (alignment) return alignment;
     const mmWidth = template.layout_json.paperMode === "full" ? 297 : 148.5;
     const sx = leaf.width / mmWidth,
       sy = leaf.height / 210;

@@ -95,11 +95,27 @@ test("auto capture locks QR first, stops the camera, supports retake and saves p
   page,
 }) => {
   await fixtures(page, () => access());
+  const legacyDownloads: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/omr-assets/opencv.js"))
+      legacyDownloads.push(request.url());
+  });
   const { image, template } = await captureFixture();
   let posted: Record<string, unknown> | null = null;
-  await page.route("**/api/scan-records**", (route) => {
+  await page.route("**/api/scan-records**", async (route) => {
     if (route.request().method() === "POST") {
-      posted = route.request().postDataJSON();
+      const form = await new Response(
+        new Uint8Array(route.request().postDataBuffer()!),
+        {
+          headers: {
+            "Content-Type": route.request().headers()["content-type"],
+          },
+        },
+      ).formData();
+      posted = JSON.parse(String(form.get("metadata")));
+      expect(form.get("processed")).toBeInstanceOf(Blob);
+      expect((form.get("processed") as Blob).size).toBeGreaterThan(1000);
+      await new Promise((resolve) => setTimeout(resolve, 1100));
       return route.fulfill({
         json: {
           data: [
@@ -136,6 +152,28 @@ test("auto capture locks QR first, stops the camera, supports retake and saves p
       image.src = png;
       await image.decode();
       ctx.drawImage(image, 150, 160, 900, 1273);
+      // Deliberately different still FOV/size: reusing video corners would fail.
+      Object.defineProperty(window, "ImageCapture", {
+        configurable: true,
+        value: class {
+          async takePhoto() {
+            const still = document.createElement("canvas");
+            still.width = 1600;
+            still.height = 1800;
+            const photo = still.getContext("2d")!;
+            photo.fillStyle = "#273642";
+            photo.fillRect(0, 0, 1600, 1800);
+            photo.drawImage(image, 270, 70, 1125, 1591);
+            return new Promise<Blob>((resolve, reject) =>
+              still.toBlob(
+                (blob) =>
+                  blob ? resolve(blob) : reject(new Error("PHOTO_FAILED")),
+                "image/png",
+              ),
+            );
+          }
+        },
+      });
       Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
         value: async () => {
           const media = canvas.captureStream(10);
@@ -166,6 +204,11 @@ test("auto capture locks QR first, stops the camera, supports retake and saves p
   await expect(page.getByAltText("ภาพหลังปรับมุม")).toBeVisible({
     timeout: 45000,
   });
+  await expect(page.locator(".scanner-task")).toHaveAttribute(
+    "data-scanner-engine",
+    "scanic-worker",
+  );
+  expect(legacyDownloads).toEqual([]);
   await expect(
     page.getByRole("button", { name: "ยืนยันมุมกระดาษ" }),
   ).toHaveCount(0);
@@ -194,7 +237,17 @@ test("auto capture locks QR first, stops the camera, supports retake and saves p
   await page
     .getByRole("button", { name: "อ่านคำตอบและบันทึก", exact: true })
     .click();
+  await expect(page.getByRole("timer", { name: "เวลาประมวลผล" })).toBeVisible();
+  await expect(page.locator(".scanner-task")).toHaveAttribute(
+    "data-scanner-phase",
+    "uploading",
+  );
   await expect(page.getByRole("button", { name: "สแกนใบถัดไป" })).toBeVisible();
+  await expect(page.getByRole("timer")).toHaveCount(0);
+  await expect(page.locator(".scanner-task")).toHaveAttribute(
+    "data-scanner-phase",
+    "needs_review",
+  );
   expect(posted).not.toHaveProperty("original");
   expect(posted).toMatchObject({
     paper: "single",

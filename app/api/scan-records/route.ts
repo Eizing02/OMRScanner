@@ -8,13 +8,18 @@ import {
   ApiError,
 } from "@/lib/supabase/api";
 import {
-  scanInputSchema,
   reviewInputSchema,
   setTokenSchema,
   type LockedScanTemplate,
 } from "@/types/scan";
 import { decodeScanImage } from "@/lib/omr/scan-image";
-import { rasterRegion, readSetQr, type Raster } from "@/lib/omr/scan-qr";
+import { scanRequestBody } from "@/lib/omr/scan-request";
+import {
+  rasterRegion,
+  readSetQrDetails,
+  qrAlignmentError,
+  type Raster,
+} from "@/lib/omr/scan-qr";
 import { readOpticalMarks } from "@/lib/omr/detect-bubbles";
 import { scanDatabaseError } from "@/lib/omr/scan-errors";
 export const runtime = "nodejs";
@@ -117,20 +122,20 @@ function hasPrintedContent(image: Raster) {
   return dark / count > 0.005;
 }
 export async function POST(request: Request) {
+  const timings: string[] = [];
+  let clock = performance.now();
+  const mark = (name: string) => {
+    const now = performance.now();
+    timings.push(`${name};dur=${(now - clock).toFixed(1)}`);
+    clock = now;
+  };
   try {
     const { db, schoolId } = await context(true);
-    const parsed = scanInputSchema.safeParse(
-      await requestBody(request, 6_000_000),
-    );
-    if (!parsed.success)
-      throw new ApiError(
-        "INVALID_SCAN",
-        "ข้อมูลภาพไม่ถูกต้อง กรุณาถ่ายหรือเลือกภาพใหม่",
-        422,
-      );
-    const input = parsed.data;
+    mark("auth");
+    const input = await scanRequestBody(request);
+    mark("parse");
     const processed = await decodeScanImage(input.processed);
-    const wholeToken = readSetQr(processed.raster);
+    mark("image");
     // Resolve the immutable registered template before touching any bubble.
     const regions =
       input.paper === "a4"
@@ -148,8 +153,10 @@ export async function POST(request: Request) {
             ),
           ]
         : [processed.raster];
-    const tokens = regions.map(readSetQr);
-    const first = wholeToken ?? tokens.find(Boolean);
+    const reads = regions.map(readSetQrDetails);
+    const tokens = reads.map((read) => read?.token ?? null);
+    const first = tokens.find(Boolean);
+    mark("qr");
     if (!first)
       throw new ApiError(
         "QR_NOT_FOUND",
@@ -167,6 +174,7 @@ export async function POST(request: Request) {
     const template = (found.data ?? []).find((t) => t.set_token === first) as
       LockedScanTemplate | undefined;
     if (!template) throw scanDatabaseError("QR_NOT_REGISTERED");
+    mark("template");
     const full = template.layout_json.paperMode === "full";
     if (full && input.paper !== "a4")
       throw new ApiError(
@@ -177,7 +185,8 @@ export async function POST(request: Request) {
     const sheets =
       !full && input.paper === "a4" ? regions.slice(1) : [processed.raster];
     const records = sheets.flatMap((image, slot) => {
-      const token = readSetQr(image);
+      const qr = reads[regions.indexOf(image)];
+      const token = qr?.token;
       if (!token) {
         if (sheets.length === 2 && !hasPrintedContent(image)) return [];
         throw new ApiError(
@@ -201,6 +210,8 @@ export async function POST(request: Request) {
           422,
         );
       try {
+        const alignment = qrAlignmentError(image, locked, qr!);
+        if (alignment) throw new Error(alignment);
         const read = readOpticalMarks(image, locked);
         return [
           {
@@ -221,6 +232,7 @@ export async function POST(request: Request) {
     });
     if (!records.length)
       throw new ApiError("INVALID_SCAN", "ไม่พบกระดาษคำตอบในภาพ", 422);
+    mark("omr");
     const hash = createHash("sha256")
       .update(processed.bytes)
       .update(input.paper)
@@ -235,6 +247,7 @@ export async function POST(request: Request) {
       },
     });
     if (reserved.error) throw scanDatabaseError(reserved.error.message);
+    mark("reserve");
     const upload = reserved.data;
     if (upload.status !== "complete") {
       // Immutable upload paths make retries safe. Never upsert a saved image.
@@ -243,7 +256,11 @@ export async function POST(request: Request) {
       ] as [string, Uint8Array][]) {
         const result = await db.storage
           .from("scan-images")
-          .upload(path, bytes, { contentType: "image/jpeg", upsert: false });
+          .upload(path, bytes, {
+            contentType: "image/jpeg",
+            upsert: false,
+            metadata: { scan_processing_version: processed.processingVersion },
+          });
         if (result.error) {
           const existing = await db.storage.from("scan-images").download(path);
           if (
@@ -262,6 +279,7 @@ export async function POST(request: Request) {
         }
       }
     }
+    mark("storage");
     const result = await db.rpc("save_scan_batch", {
       input: {
         school_id: schoolId,
@@ -289,7 +307,11 @@ export async function POST(request: Request) {
       }
       throw scanDatabaseError(result.error.message);
     }
-    return json(result.data, 201);
+    mark("transaction");
+    const response = json(result.data, 201);
+    response.headers.set("Server-Timing", timings.join(", "));
+    response.headers.set("X-Scan-Processing", processed.processingVersion);
+    return response;
   } catch (error) {
     return failure(error);
   }

@@ -289,6 +289,7 @@ function WorkspaceSettingsEditor({ branding }: { branding: SchoolBranding }) {
                 src={branding.image_url}
                 width={104}
                 height={104}
+                loading="eager"
                 unoptimized
                 alt="โลโก้โรงเรียนปัจจุบัน"
               />

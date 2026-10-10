@@ -1,5 +1,12 @@
 export type Point = { x: number; y: number };
 export type Quad = [Point, Point, Point, Point];
+/** Display smoothing only. Capture/stability always use the unsmoothed corners. */
+export function smoothQuad(previous: Quad, current: Quad, weight = 0.55): Quad {
+  return current.map((p, i) => ({
+    x: previous[i].x + (p.x - previous[i].x) * weight,
+    y: previous[i].y + (p.y - previous[i].y) * weight,
+  })) as Quad;
+}
 export function polygonArea(quad: Quad) {
   return (
     Math.abs(
@@ -42,3 +49,22 @@ export const defaultQuad: Quad = [
   { x: 0.88, y: 0.86 },
   { x: 0.12, y: 0.86 },
 ];
+/** Forward homography from rectified paper (0..1) into the displayed camera quad. */
+export function paperPoint(quad: Quad, u: number, v: number): Point {
+  const [a, b, c, d] = quad;
+  const dx1 = b.x - c.x,
+    dx2 = d.x - c.x,
+    dx3 = a.x - b.x + c.x - d.x;
+  const dy1 = b.y - c.y,
+    dy2 = d.y - c.y,
+    dy3 = a.y - b.y + c.y - d.y;
+  const determinant = dx1 * dy2 - dx2 * dy1;
+  if (Math.abs(determinant) < 1e-8) throw new Error("INVALID_QUAD");
+  const g = (dx3 * dy2 - dx2 * dy3) / determinant,
+    h = (dx1 * dy3 - dx3 * dy1) / determinant;
+  const w = g * u + h * v + 1;
+  return {
+    x: ((b.x - a.x + g * b.x) * u + (d.x - a.x + h * d.x) * v + a.x) / w,
+    y: ((b.y - a.y + g * b.y) * u + (d.y - a.y + h * d.y) * v + a.y) / w,
+  };
+}

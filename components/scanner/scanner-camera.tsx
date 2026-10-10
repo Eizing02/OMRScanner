@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- Locally captured images. */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Camera,
@@ -18,11 +18,16 @@ import {
   defaultQuad,
   validQuad,
   motionDistance,
+  smoothQuad,
   type Quad,
 } from "@/lib/omr/camera-geometry";
 import { readSetQr } from "@/lib/omr/scan-qr";
 import { warpCanvas } from "@/lib/omr/perspective-canvas";
-import { compressScanCanvas } from "@/lib/omr/compress-image";
+import { compressScanBlob } from "@/lib/omr/compress-image";
+import { startCameraLoop } from "@/lib/omr/camera-loop";
+import { captureCameraFrame } from "@/lib/omr/camera-capture";
+import { scannerPhase } from "@/lib/omr/scanner-state";
+import { templateOverlay } from "@/lib/omr/template-overlay";
 import {
   captureGeometry,
   assessPaperQuality,
@@ -31,6 +36,48 @@ import {
 import { Notice, Badge, PageHeading, Modal } from "@/components/ui/primitives";
 import type { LockedScanTemplate, ScanReceipt } from "@/types/scan";
 type Detector = Awaited<ReturnType<typeof createDocumentDetector>>;
+function useCanvasUrl(canvas: HTMLCanvasElement | null) {
+  const [preview, setPreview] = useState<{
+    canvas: HTMLCanvasElement;
+    url: string;
+  }>();
+  useEffect(() => {
+    let active = true,
+      owned: string | undefined;
+    if (canvas)
+      canvas.toBlob(
+        (blob) => {
+          if (!active || !blob) return;
+          owned = URL.createObjectURL(blob);
+          setPreview({ canvas, url: owned });
+        },
+        "image/jpeg",
+        0.85,
+      );
+    return () => {
+      active = false;
+      if (owned) URL.revokeObjectURL(owned);
+    };
+  }, [canvas]);
+  return preview?.canvas === canvas ? preview.url : undefined;
+}
+function ProcessingTime() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const started = performance.now();
+    const timer = setInterval(
+      () => setSeconds((performance.now() - started) / 1000),
+      500,
+    );
+    return () => clearInterval(timer);
+  }, []);
+  // Isolated from the camera render loop; timer's implicit live region is off.
+  return (
+    <span role="timer" aria-label="เวลาประมวลผล">
+      {seconds.toFixed(1)} วิ
+    </span>
+  );
+}
 export function Scanner({ examId }: { examId?: string }) {
   const {
     mode,
@@ -67,7 +114,8 @@ export function Scanner({ examId }: { examId?: string }) {
     viewport = useRef<HTMLDivElement>(null),
     stream = useRef<MediaStream | null>(null);
   const detector = useRef<Detector | null>(null),
-    timer = useRef<ReturnType<typeof setInterval> | null>(null),
+    loadingDetector = useRef<Promise<Detector> | null>(null),
+    cancelLoop = useRef<(() => void) | null>(null),
     stable = useRef(0);
   const quadRef = useRef(quad),
     autoRef = useRef(auto),
@@ -78,23 +126,32 @@ export function Scanner({ examId }: { examId?: string }) {
     mounted = useRef(true);
   const fired = useRef(false),
     nextQualityCheck = useRef(0);
+  const [capturing, setCapturing] = useState(false);
+  const [engineName, setEngineName] = useState<Detector["engine"] | "loading">(
+    "loading",
+  );
+  const manualCorners = useRef(false);
+  const submitController = useRef<AbortController | null>(null);
+  const displayQuad = useRef<Quad>(defaultQuad);
+  const qrFrame = useRef<HTMLCanvasElement | null>(null);
+  const qrSample = useRef<HTMLCanvasElement | null>(null);
   const singleRef = useRef(single);
   const scanRequest = useRef<{
     id: string;
-    processed: string;
+    processed: Blob;
   } | null>(null);
   useEffect(() => {
-    quadRef.current = quad;
+    if (!live) quadRef.current = quad;
     autoRef.current = auto;
     templateRef.current = template;
     singleRef.current = single;
-  }, [quad, auto, template, single]);
+  }, [quad, auto, template, single, live]);
   function stop() {
     epoch.current++;
     stream.current?.getTracks().forEach((t) => t.stop());
     stream.current = null;
-    if (timer.current) clearInterval(timer.current);
-    timer.current = null;
+    cancelLoop.current?.();
+    cancelLoop.current = null;
     setLive(false);
   }
   useEffect(() => {
@@ -104,8 +161,8 @@ export function Scanner({ examId }: { examId?: string }) {
         epoch.current++;
         stream.current?.getTracks().forEach((t) => t.stop());
         stream.current = null;
-        if (timer.current) clearInterval(timer.current);
-        timer.current = null;
+        cancelLoop.current?.();
+        cancelLoop.current = null;
         setLive(false);
       }
     };
@@ -114,7 +171,15 @@ export function Scanner({ examId }: { examId?: string }) {
       mounted.current = false;
       document.removeEventListener("visibilitychange", hide);
       stream.current?.getTracks().forEach((t) => t.stop());
-      if (timer.current) clearInterval(timer.current);
+      // Session token is intentionally read at cleanup; it is not a DOM ref.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      epoch.current++;
+      cancelLoop.current?.();
+      detector.current?.dispose();
+      submitController.current?.abort();
+      if (qrFrame.current) qrFrame.current.width = qrFrame.current.height = 0;
+      if (qrSample.current)
+        qrSample.current.width = qrSample.current.height = 0;
     };
   }, []);
   useEffect(() => {
@@ -134,6 +199,22 @@ export function Scanner({ examId }: { examId?: string }) {
     observer.observe(element);
     return () => observer.disconnect();
   }, [dimensions]);
+  function ensureDetector() {
+    return (loadingDetector.current ??= createDocumentDetector()
+      .then((d) => {
+        if (!mounted.current) {
+          d.dispose();
+          throw new Error("SCANNER_CLOSED");
+        }
+        detector.current = d;
+        setEngineName(d.engine);
+        return d;
+      })
+      .catch((error) => {
+        loadingDetector.current = null;
+        throw error;
+      }));
+  }
   async function resolveQr(canvas: HTMLCanvasElement, force = false) {
     if (reading.current !== null && !force) return;
     const ticket = ++qrTicket.current;
@@ -141,7 +222,7 @@ export function Scanner({ examId }: { examId?: string }) {
     const current = epoch.current;
     setQrBusy(true);
     try {
-      const frame = document.createElement("canvas"),
+      const frame = (qrFrame.current ??= document.createElement("canvas")),
         scale = Math.min(1, 1800 / Math.max(canvas.width, canvas.height));
       frame.width = Math.round(canvas.width * scale);
       frame.height = Math.round(canvas.height * scale);
@@ -182,7 +263,11 @@ export function Scanner({ examId }: { examId?: string }) {
       setTemplate(body.data);
       templateRef.current = body.data;
       setError("");
-      if (body.data.layout_json.paperMode === "full") setSingle(false);
+      if (body.data.layout_json.paperMode === "full") {
+        setSingle(false);
+        singleRef.current = false;
+        stable.current = 0;
+      }
     } catch (e) {
       if (
         current === epoch.current &&
@@ -217,45 +302,67 @@ export function Scanner({ examId }: { examId?: string }) {
     });
     setQuad(defaultQuad);
     quadRef.current = defaultQuad;
+    manualCorners.current = false;
     // QR is read immediately, before any corner-confirmation step.
     if (automaticCrop && locked) return;
     await resolveQr(canvas, true);
     const current = epoch.current;
     // Loading the optional edge detector never disables manual controls.
-    void createDocumentDetector()
-      .then((d) => {
+    void ensureDetector()
+      .then(async (d) => {
         if (!mounted.current || current !== epoch.current) return;
-        detector.current = d;
-        const found = d.detect(canvas);
-        if (found.quad) {
+        const found = await d.detect(canvas);
+        if (!mounted.current || current !== epoch.current) return;
+        setEngineName(d.engine);
+        // An optional engine can finish after the teacher starts adjusting.
+        // Never replace a manual correction with a late automatic result.
+        if (found.quad && !manualCorners.current) {
           setQuad(found.quad);
           quadRef.current = found.quad;
         }
       })
       .catch(() => undefined);
   }
-  function capture(automatic = false) {
+  async function capture(automatic = false) {
     const v = video.current;
     if (!v?.videoWidth || fired.current) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = v.videoWidth;
-    canvas.height = v.videoHeight;
-    canvas.getContext("2d")?.drawImage(v, 0, 0);
-    if (automatic) {
-      const locked = templateRef.current;
-      if (!detector.current || !locked || Date.now() < nextQualityCheck.current)
-        return;
-      try {
+    if (
+      automatic &&
+      (!detector.current ||
+        !templateRef.current ||
+        Date.now() < nextQualityCheck.current)
+    )
+      return;
+    const current = epoch.current;
+    fired.current = true;
+    setCapturing(true);
+    let canvas: HTMLCanvasElement;
+    let photo: boolean;
+    try {
+      ({ canvas, photo } = await captureCameraFrame(
+        v,
+        stream.current?.getVideoTracks()[0],
+      ));
+      if (!mounted.current || current !== epoch.current) return;
+      if (automatic) {
+        const locked = templateRef.current!;
+        let corners = quadRef.current;
+        if (photo) {
+          const detected = await detector.current!.detect(canvas);
+          if (!detected.quad)
+            throw new Error("ภาพนิ่งจับขอบไม่ได้ ใช้ปุ่มถ่ายภาพหรือถ่ายใหม่");
+          corners = detected.quad; // Photo FOV/crop can differ from preview; never scale preview blindly.
+        }
         const geometry = captureGeometry(
-          quadRef.current,
+          corners,
           canvas.width,
           canvas.height,
           singleRef.current,
         );
         if (geometry) throw new Error(geometry);
-        const processed = detector.current.warp(
+        const processed = await detector.current!.warp(
           canvas,
-          quadRef.current,
+          corners,
           singleRef.current,
         );
         const ctx = processed.getContext("2d");
@@ -266,25 +373,32 @@ export function Scanner({ examId }: { examId?: string }) {
           singleRef.current,
         );
         if (quality) throw new Error(quality);
-        fired.current = true;
+        if (!mounted.current || current !== epoch.current) return;
+        setEngineName(detector.current!.engine);
+        setStatus("ready");
         setFromCamera(true);
-        void accept(canvas, processed, locked);
-      } catch (e) {
-        stable.current = 0;
-        setProgress(0);
-        setStatus("unstable");
-        nextQualityCheck.current = Date.now() + 750;
-        setCaptureHint(
-          e instanceof Error
-            ? e.message
-            : "ภาพยังไม่ชัด ใช้ปุ่มถ่ายหรือถ่ายใหม่ได้",
-        );
+        await accept(canvas, processed, locked);
+      } else {
+        setFromCamera(true);
+        await accept(canvas);
       }
-      return;
+    } catch (e) {
+      if (!mounted.current || current !== epoch.current) return;
+      fired.current = false;
+      stable.current = 0;
+      setProgress(0);
+      setStatus("unstable");
+      nextQualityCheck.current = Date.now() + 750;
+      setCaptureHint(
+        e instanceof Error
+          ? e.message
+          : "ภาพยังไม่ชัด ใช้ปุ่มถ่ายหรือถ่ายใหม่ได้",
+      );
+      if (!automatic)
+        setError(e instanceof Error ? e.message : "ถ่ายภาพไม่ได้ กรุณาลองใหม่");
+    } finally {
+      if (mounted.current) setCapturing(false);
     }
-    fired.current = true;
-    setFromCamera(true);
-    void accept(canvas);
   }
   async function start() {
     setBusy(true);
@@ -345,82 +459,95 @@ export function Scanner({ examId }: { examId?: string }) {
         media.getTracks().forEach((t) => t.stop());
         return;
       }
-      void createDocumentDetector()
-        .then((d) => {
-          if (mounted.current) detector.current = d;
-        })
-        .catch(() => undefined);
+      void ensureDetector().catch(() => undefined);
       stable.current = 0;
-      let tick = 0;
-      timer.current = setInterval(() => {
-        const v = video.current;
-        if (!v?.videoWidth || fired.current) return;
-        const frame = document.createElement("canvas");
-        frame.width = 960;
-        frame.height = Math.round((960 * v.videoHeight) / v.videoWidth);
-        frame.getContext("2d")?.drawImage(v, 0, 0, frame.width, frame.height);
-        setDimensions({ width: v.videoWidth, height: v.videoHeight });
-        if (tick++ % 3 === 0) {
-          const qrFrame = document.createElement("canvas");
-          const scale = Math.min(
-            1,
-            1800 / Math.max(v.videoWidth, v.videoHeight),
+      let nextQr = 0;
+      cancelLoop.current = startCameraLoop(
+        video.current!,
+        async (frame, now) => {
+          const v = video.current;
+          if (!v?.videoWidth || fired.current || cameraEpoch !== epoch.current)
+            return;
+          setDimensions((old) =>
+            old.width === v.videoWidth && old.height === v.videoHeight
+              ? old
+              : { width: v.videoWidth, height: v.videoHeight },
           );
-          qrFrame.width = Math.round(v.videoWidth * scale);
-          qrFrame.height = Math.round(v.videoHeight * scale);
-          qrFrame
-            .getContext("2d")
-            ?.drawImage(v, 0, 0, qrFrame.width, qrFrame.height);
-          void resolveQr(qrFrame);
-        }
-        if (!detector.current) {
-          setCaptureHint("กำลังเตรียมจับขอบ ใช้ปุ่มถ่ายภาพได้");
-          return;
-        }
-        try {
-          const found = detector.current.detect(frame);
-          if (!found.quad) {
-            stable.current = 0;
-            setStatus("searching");
-            setProgress(0);
-            setCaptureHint("ให้เห็นขอบกระดาษครบทั้ง 4 มุม");
+          // Stop live QR work once locked. Capture and server independently revalidate it.
+          if (
+            now >= nextQr &&
+            !templateRef.current &&
+            reading.current === null
+          ) {
+            nextQr = now + 900;
+            const qr = (qrSample.current ??= document.createElement("canvas"));
+            const scale = Math.min(
+              1,
+              1800 / Math.max(v.videoWidth, v.videoHeight),
+            );
+            qr.width = Math.round(v.videoWidth * scale);
+            qr.height = Math.round(v.videoHeight * scale);
+            qr.getContext("2d")?.drawImage(v, 0, 0, qr.width, qr.height);
+            void resolveQr(qr);
+          }
+          if (!detector.current) {
+            setCaptureHint("กำลังเตรียมจับขอบ ใช้ปุ่มถ่ายภาพได้");
             return;
           }
-          const movement = motionDistance(quadRef.current, found.quad);
-          quadRef.current = found.quad;
-          setQuad(found.quad);
-          const geometry = captureGeometry(
-            found.quad,
-            v.videoWidth,
-            v.videoHeight,
-            singleRef.current,
-          );
-          stable.current = advanceCaptureStability(
-            stable.current,
-            movement,
-            !geometry &&
-              Boolean(templateRef.current) &&
-              Date.now() >= nextQualityCheck.current,
-          );
-          setProgress(stable.current);
-          const ready = stable.current >= 5;
-          if (geometry) setCaptureHint(geometry);
-          else if (stable.current > 0)
-            setCaptureHint(
-              autoRef.current
-                ? "ถือให้นิ่ง กำลังเตรียมถ่าย…"
-                : "กรอบนิ่ง · พร้อมถ่าย",
+          try {
+            const found = await detector.current.detect(frame);
+            if (
+              !mounted.current ||
+              cameraEpoch !== epoch.current ||
+              fired.current
+            )
+              return;
+            setEngineName(detector.current.engine);
+            if (!found.quad) {
+              stable.current = 0;
+              setStatus("searching");
+              setProgress(0);
+              setCaptureHint("ให้เห็นขอบกระดาษครบทั้ง 4 มุม");
+              return;
+            }
+            const movement = motionDistance(quadRef.current, found.quad);
+            quadRef.current = found.quad;
+            displayQuad.current = smoothQuad(displayQuad.current, found.quad);
+            setQuad(displayQuad.current);
+            const geometry = captureGeometry(
+              found.quad,
+              v.videoWidth,
+              v.videoHeight,
+              singleRef.current,
             );
-          else if (Date.now() >= nextQualityCheck.current)
-            setCaptureHint("ถือกล้องให้นิ่ง");
-          setStatus(ready ? "ready" : "unstable");
-          if (ready && autoRef.current && templateRef.current) {
-            capture(true);
+            stable.current = advanceCaptureStability(
+              stable.current,
+              movement,
+              !geometry &&
+                Boolean(templateRef.current) &&
+                Date.now() >= nextQualityCheck.current,
+            );
+            setProgress(stable.current);
+            const ready = stable.current >= 5;
+            if (geometry) setCaptureHint(geometry);
+            else if (stable.current > 0)
+              setCaptureHint(
+                autoRef.current
+                  ? "ถือให้นิ่ง กำลังเตรียมถ่าย…"
+                  : "กรอบนิ่ง · พร้อมถ่าย",
+              );
+            else if (Date.now() >= nextQualityCheck.current)
+              setCaptureHint("ถือกล้องให้นิ่ง");
+            // Green means the full-resolution quality gates passed, not merely steady corners.
+            setStatus("unstable");
+            if (ready && autoRef.current && templateRef.current) {
+              void capture(true);
+            }
+          } catch {
+            setStatus("searching");
           }
-        } catch {
-          setStatus("searching");
-        }
-      }, 250);
+        },
+      );
     } catch (e) {
       stop();
       setError(
@@ -472,48 +599,73 @@ export function Scanner({ examId }: { examId?: string }) {
     }
     setBusy(true);
     setError("");
+    const current = epoch.current;
     try {
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => resolve()),
       );
       const canvas = detector.current
-        ? detector.current.warp(source, quad, single)
+        ? await detector.current.warp(source, quad, single)
         : warpCanvas(source, quad, single);
+      if (!mounted.current || current !== epoch.current) return;
+      if (detector.current) setEngineName(detector.current.engine);
       setCrop(canvas);
       scanRequest.current = null;
       setDimensions({ width: canvas.width, height: canvas.height });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ปรับภาพไม่ได้");
+      if (mounted.current && current === epoch.current)
+        setError(e instanceof Error ? e.message : "ปรับภาพไม่ได้");
     } finally {
-      setBusy(false);
+      if (mounted.current && current === epoch.current) setBusy(false);
     }
   }
   async function submit(replacePending = false) {
     if (!source || !crop || !template || readOnly) return;
     setBusy(true);
     setError("");
+    const current = epoch.current;
+    const controller = new AbortController();
+    submitController.current = controller;
     try {
       scanRequest.current ??= {
         id: crypto.randomUUID(),
-        processed: compressScanCanvas(crop, 1800),
+        processed: await compressScanBlob(crop, 1800),
       };
+      if (
+        !mounted.current ||
+        current !== epoch.current ||
+        controller.signal.aborted ||
+        !isCurrentWorkspace()
+      )
+        return;
+      const form = new FormData();
+      form.set(
+        "metadata",
+        JSON.stringify({
+          requestId: scanRequest.current.id,
+          paper: single ? "single" : "a4",
+          expectedExamId: template.exam_id,
+          replacePending,
+          reason,
+        }),
+      );
+      form.set("processed", scanRequest.current.processed, "scan.jpg");
       const response = await request(
         "/api/scan-records",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            requestId: scanRequest.current.id,
-            processed: scanRequest.current.processed,
-            paper: single ? "single" : "a4",
-            expectedExamId: template.exam_id,
-            replacePending,
-            reason,
-          }),
+          body: form,
+          signal: controller.signal,
         },
         true,
       );
       const body = await response.json();
+      if (
+        !mounted.current ||
+        current !== epoch.current ||
+        !isCurrentWorkspace()
+      )
+        return;
       if (!response.ok) {
         if (body.error?.code === "DUPLICATE_SCAN") {
           setDuplicate(true);
@@ -521,7 +673,6 @@ export function Scanner({ examId }: { examId?: string }) {
         }
         throw new Error(body.error?.messageTh ?? "ตรวจคำตอบไม่สำเร็จ");
       }
-      if (!isCurrentWorkspace()) return;
       setReceipt(body.data);
       // Retain the rectified preview only after the server stored evidence
       // and scores. Failed submissions keep the original locally for recovery.
@@ -529,17 +680,21 @@ export function Scanner({ examId }: { examId?: string }) {
       scanRequest.current = null;
       setDuplicate(false);
       notify("บันทึกผลสแกนแล้ว รอตรวจและยืนยันคะแนน");
-      await refreshReviews().catch(() =>
-        setError(
-          "บันทึกผลแล้ว แต่โหลดคิวไม่ได้ เปิดศูนย์ตรวจสอบและลองโหลดอีกครั้ง",
-        ),
-      );
+      await refreshReviews().catch(() => {
+        if (mounted.current && current === epoch.current)
+          setError(
+            "บันทึกผลแล้ว แต่โหลดคิวไม่ได้ เปิดศูนย์ตรวจสอบและลองโหลดอีกครั้ง",
+          );
+      });
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "ส่งตรวจไม่สำเร็จ กรุณาลองใหม่",
-      );
+      if (mounted.current && current === epoch.current)
+        setError(
+          e instanceof Error ? e.message : "ส่งตรวจไม่สำเร็จ กรุณาลองใหม่",
+        );
     } finally {
-      if (mounted.current) setBusy(false);
+      if (submitController.current === controller)
+        submitController.current = null;
+      if (mounted.current && current === epoch.current) setBusy(false);
     }
   }
   function reset() {
@@ -560,6 +715,7 @@ export function Scanner({ examId }: { examId?: string }) {
     setProgress(0);
   }
   function move(i: number, x: number, y: number) {
+    manualCorners.current = true;
     setQuad(
       (old) =>
         old.map((p, k) =>
@@ -570,22 +726,34 @@ export function Scanner({ examId }: { examId?: string }) {
     );
   }
   const color = source
-    ? "#cadefc"
+    ? "var(--camera-adjust)"
     : status === "ready"
-      ? "#35d59b"
+      ? "var(--camera-ready)"
       : status === "unstable"
-        ? "#ffbd54"
-        : "#c6d0dc";
+        ? "var(--camera-aligning)"
+        : "var(--camera-searching)";
   const polygon = quad
     .map((p) => `${p.x * dimensions.width},${p.y * dimensions.height}`)
     .join(" ");
-  const sourceUrl = useMemo(
-      () => source?.toDataURL("image/jpeg", 0.8),
-      [source],
-    ),
-    cropUrl = useMemo(() => crop?.toDataURL("image/jpeg", 0.8), [crop]);
+  const sourceUrl = useCanvasUrl(source),
+    cropUrl = useCanvasUrl(crop);
+  const phase = scannerPhase({
+    busy,
+    live,
+    source: Boolean(source),
+    crop: Boolean(crop),
+    saved: receipt.length > 0,
+    error: Boolean(error),
+    progress,
+    detected: status !== "searching",
+    capturing,
+  });
   return (
-    <div className="task-workspace scanner-task">
+    <div
+      className="task-workspace scanner-task"
+      data-scanner-phase={phase}
+      data-scanner-engine={engineName}
+    >
       <PageHeading
         title="สแกนกระดาษคำตอบ"
         actions={
@@ -618,7 +786,14 @@ export function Scanner({ examId }: { examId?: string }) {
               Boolean(crop) ||
               template?.layout_json.paperMode === "full"
             }
-            onChange={(e) => setSingle(e.target.value === "single")}
+            onChange={(e) => {
+              const value = e.target.value === "single";
+              setSingle(value);
+              singleRef.current = value;
+              stable.current = 0;
+              setProgress(0);
+              setStatus("searching");
+            }}
           >
             <option value="a4">A4 ทั้งแผ่น</option>
             <option value="single">ครึ่ง A4 ที่ตัดแล้ว</option>
@@ -640,6 +815,7 @@ export function Scanner({ examId }: { examId?: string }) {
                     : "อ่าน QR จากภาพ"
                   : "QR → รหัสนักเรียน → คำตอบ"}
           </span>
+          {busy && source && <ProcessingTime />}
           <button
             className="icon-button"
             aria-label="ปิดกล้อง"
@@ -649,7 +825,11 @@ export function Scanner({ examId }: { examId?: string }) {
             <X size={20} />
           </button>
         </div>
-        <div className="camera-viewport" data-qr-locked={Boolean(template)} ref={viewport}>
+        <div
+          className="camera-viewport"
+          data-qr-locked={Boolean(template)}
+          ref={viewport}
+        >
           <div
             className="camera-image-plane"
             style={{ width: plane.width, height: plane.height }}
@@ -660,9 +840,9 @@ export function Scanner({ examId }: { examId?: string }) {
               playsInline
               className={live ? "" : "hidden"}
             />
-            {source && (
+            {source && (crop ? cropUrl : sourceUrl) && (
               <img
-                src={cropUrl || sourceUrl}
+                src={crop ? cropUrl : sourceUrl}
                 alt={crop ? "ภาพหลังปรับมุม" : "ภาพต้นฉบับ"}
               />
             )}
@@ -680,7 +860,7 @@ export function Scanner({ examId }: { examId?: string }) {
               >
                 <path
                   d={`M0 0H${dimensions.width}V${dimensions.height}H0Z M${quad.map((p) => `${p.x * dimensions.width} ${p.y * dimensions.height}`).join("L")}Z`}
-                  fill="rgba(5,12,22,.58)"
+                  fill="var(--camera-shade)"
                   fillRule="evenodd"
                 />
                 <polygon
@@ -689,6 +869,23 @@ export function Scanner({ examId }: { examId?: string }) {
                   stroke={color}
                   strokeWidth={4}
                 />
+                {template &&
+                  templateOverlay(template, quad, single).map((region) => (
+                    <polygon
+                      key={region.name}
+                      data-region={region.name}
+                      points={region.points
+                        .map(
+                          (p) =>
+                            `${p.x * dimensions.width},${p.y * dimensions.height}`,
+                        )
+                        .join(" ")}
+                      fill="none"
+                      stroke="var(--camera-region)"
+                      strokeWidth={1.5}
+                      strokeDasharray="5 5"
+                    />
+                  ))}
               </svg>
             )}
             {source &&
@@ -706,6 +903,7 @@ export function Scanner({ examId }: { examId?: string }) {
                   data-y={point.y}
                   aria-describedby="corner-help"
                   onPointerDown={(e) => {
+                    manualCorners.current = true;
                     e.currentTarget.focus();
                     e.currentTarget.setPointerCapture(e.pointerId);
                   }}
@@ -751,7 +949,11 @@ export function Scanner({ examId }: { examId?: string }) {
           </div>
           {live && (
             <div className={`camera-status camera-${status}`} role="status">
-              {template ? captureHint : "หันกล้องให้เห็น QR ชัด"}
+              {capturing
+                ? "กำลังถ่ายภาพ…"
+                : template
+                  ? captureHint
+                  : "หันกล้องให้เห็น QR ชัด"}
               {auto && template && progress > 0 && (
                 <progress
                   aria-label="ความนิ่งก่อนถ่ายอัตโนมัติ"
@@ -850,8 +1052,8 @@ export function Scanner({ examId }: { examId?: string }) {
               </label>
               <button
                 className="shutter"
-                disabled={busy || readOnly}
-                onClick={live ? () => capture() : start}
+                disabled={busy || capturing || readOnly}
+                onClick={live ? () => void capture() : start}
                 aria-label={live ? "ถ่ายภาพกระดาษ" : "เปิดกล้อง"}
               >
                 {busy ? <span className="spinner" /> : <Camera size={28} />}
