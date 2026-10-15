@@ -16,6 +16,9 @@ export const integrationConnectionSchema = z.object({
 export const publicationSummarySchema = z.object({
   recoveryRequired: z.boolean().default(false),
   termClosed: z.boolean().default(false),
+  canWithdraw: z.boolean().default(false),
+  canRetryWithdrawal: z.boolean().default(false),
+  withdrawalBlocked: z.boolean().default(false),
   state: z.enum(["draft", "active", "withdraw_pending", "withdrawn", "error"]),
   revision: z.number().int().min(0),
   confirmed: z.number().int().min(0),

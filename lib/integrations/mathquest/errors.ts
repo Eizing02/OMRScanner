@@ -1,6 +1,15 @@
 import "server-only";
 import { ApiError } from "@/lib/supabase/api";
 const messages: Record<string, [string, number]> = {
+  WITHDRAWAL_PROOF_REQUIRED: [
+    "MathQuest ยังยืนยันการถอนคะแนนไม่ได้ กรุณาติดต่อผู้ดูแลปลายทาง",
+    409,
+  ],
+  NO_WITHDRAWAL_TO_RETRY: ["ไม่มีคำขอถอนที่ส่งซ้ำได้ กรุณาโหลดสถานะใหม่", 409],
+  NO_PUBLICATION_TO_WITHDRAW: [
+    "ไม่มีคะแนนที่พร้อมถอน หรือมีคำขอถอนกำลังดำเนินการ",
+    409,
+  ],
   TERM_CLOSED: [
     "MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว ชุดสอบภาคเรียนอื่นยังส่งได้",
     409,

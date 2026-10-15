@@ -20,7 +20,7 @@
 
 ## Operational limits and rollback
 
-The current receiver can resurface old retained scores immediately on reapproval. Source withdrawal cannot prevent that pre-token visibility gap: fix receiver visibility before enabling real re-pairing. Missing requests and active requests past the delivery window still require destination-admin recovery. Closed-term reset/purge does not automatically prove source withdrawals. These are explicit cross-project TODOs, not successful local fallback paths.
+The receiver 02 reviewed for this release could resurface old retained scores on reapproval and could not safely close missing/expired requests. The later local receiver 03/profile 1.1 addresses those gaps; its deployment still requires verification. ScanSob's subsequent SQL 012 permits consented purge-backed closed-term withdrawal without publication or automatic reopening. See [the 012 update](MATHQUEST_CLOSED_TERM_WITHDRAWAL.md). Receiver reset/purge alone still does not prove a source withdrawal: the exact committed ACK remains required.
 
 Rollback by disabling receiver verification, then the integration flag, and stopping the runner. Roll back application code if needed; keep 011 tables, encrypted challenges, historical rows, revisions and audit logs. Never drop them or mark publications withdrawn manually to bypass deletion. Revoked credentials cannot be restored by a code rollback. Receiver data stays governed by its own audited lifecycle; use a reviewed forward migration if reconciliation is needed.
 

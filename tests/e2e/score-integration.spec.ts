@@ -56,7 +56,20 @@ async function fixtures(page: Page) {
     receiverReady: true,
     readOnly,
     connection,
-    publication,
+    publication: {
+      ...publication,
+      canWithdraw:
+        connection?.status === "active" &&
+        !connection.revocationPending &&
+        publication.revision > 0 &&
+        !["withdraw_pending", "withdrawn"].includes(publication.state),
+      canRetryWithdrawal:
+        connection?.status === "active" &&
+        !connection.revocationPending &&
+        publication.state === "withdraw_pending" &&
+        publication.lastError === "RECEIVER_UNAVAILABLE",
+      withdrawalBlocked: publication.lastError === "WITHDRAWAL_PROOF_REQUIRED",
+    },
   });
   await page.route("https://accounts-test.supabase.co/**", (route) =>
     route.fulfill({ status: 401, json: { error: "fixture_no_session" } }),
@@ -89,7 +102,13 @@ async function fixtures(page: Page) {
           state: "withdraw_pending",
           revision: publication.revision + 1,
           pending: 1,
+          lastError: null,
         };
+      else if (
+        input.action === "retry" &&
+        publication.state === "withdraw_pending"
+      )
+        publication = { ...publication, lastError: null, pending: 1 };
       else
         publication = {
           ...publication,
@@ -243,6 +262,22 @@ async function fixtures(page: Page) {
         recoveryRequired: false,
         termClosed: true,
         lastError: "TERM_CLOSED",
+      };
+    },
+    retryableWithdrawal() {
+      publication = {
+        ...publication,
+        state: "withdraw_pending",
+        pending: 1,
+        lastError: "RECEIVER_UNAVAILABLE",
+      };
+    },
+    withdrawalProofMissing() {
+      publication = {
+        ...publication,
+        state: "error",
+        pending: 1,
+        lastError: "WITHDRAWAL_PROOF_REQUIRED",
       };
     },
     deliverPartial() {
@@ -405,13 +440,15 @@ test("recovers with explicit consent and honest retained-score states across sup
   ).toBeEnabled();
   state.closeTerm();
   await publication.getByRole("button", { name: "ตรวจสถานะ" }).click();
-  await expect(publication).toContainText("ชุดสอบภาคเรียนอื่นยังส่งได้");
+  await expect(publication).toContainText(
+    "ภาคเรียนนี้ปิดรับคะแนน แต่ขอถอนคะแนนเดิมได้",
+  );
   await expect(
     publication.getByRole("button", { name: "ลองส่งใหม่" }),
   ).toBeDisabled();
   await expect(
     publication.getByRole("button", { name: "ถอนเผยแพร่", exact: true }),
-  ).toBeDisabled();
+  ).toBeEnabled();
   for (const [name, width, height] of [
     ["desktop", 1440, 1000],
     ["phone", 390, 844],
@@ -421,6 +458,69 @@ test("recovers with explicit consent and honest retained-score states across sup
     await accessibleAndContained(page);
     await publication.screenshot({
       path: `.impeccable/review/integration-term-closed-${name}.png`,
+    });
+  }
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "MathQuest", exact: true }),
+  ).toBeFocused();
+});
+
+test("closed-term withdrawal confirms explicitly, retries transport only and explains missing proof", async ({
+  page,
+}) => {
+  const state = await fixtures(page);
+  state.pauseConnection();
+  state.publicationRecovery();
+  state.closeTerm();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/export");
+  await page.getByRole("button", { name: "MathQuest", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "เผยแพร่คะแนนไป MathQuest" });
+  await expect(
+    dialog.getByRole("button", { name: "เผยแพร่คะแนน", exact: true }),
+  ).toBeDisabled();
+  await dialog.getByRole("button", { name: "ถอนเผยแพร่", exact: true }).click();
+  await expect(dialog).toContainText("ถอนสำเร็จเมื่อ MathQuest ยืนยันแล้ว");
+  await accessibleAndContained(page);
+  await dialog.screenshot({
+    path: ".impeccable/review/integration-purge-confirm-phone.png",
+  });
+  await dialog
+    .getByRole("button", { name: "ยืนยันถอนเผยแพร่", exact: true })
+    .click();
+  await expect(dialog).toContainText("รอถอน");
+  await expect(
+    dialog.getByRole("button", { name: "ถอนเผยแพร่", exact: true }),
+  ).toBeDisabled();
+  state.retryableWithdrawal();
+  await dialog.getByRole("button", { name: "ตรวจสถานะ" }).click();
+  await expect(
+    dialog.getByRole("button", { name: "ลองถอนอีกครั้ง", exact: true }),
+  ).toBeEnabled();
+  await dialog
+    .getByRole("button", { name: "ลองถอนอีกครั้ง", exact: true })
+    .click();
+  await expect(dialog).toContainText("รอถอน");
+  state.withdrawalProofMissing();
+  await dialog.getByRole("button", { name: "ตรวจสถานะ" }).click();
+  await expect(dialog).toContainText("กรุณาติดต่อผู้ดูแลปลายทาง");
+  await expect(dialog).not.toContainText("มีงานรอส่ง");
+  await expect(
+    dialog.getByRole("button", { name: "ลองส่งใหม่", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    dialog.getByRole("button", { name: "ขอถอนอีกครั้ง", exact: true }),
+  ).toBeEnabled();
+  for (const [name, width, height] of [
+    ["desktop", 1440, 1000],
+    ["phone", 390, 844],
+    ["ipad", 768, 1024],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await accessibleAndContained(page);
+    await dialog.screenshot({
+      path: `.impeccable/review/integration-purge-proof-${name}.png`,
     });
   }
   await page.keyboard.press("Escape");

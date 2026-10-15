@@ -12,7 +12,10 @@ const envelope = {
   tag: "synthetic",
   ciphertext: "not-a-real-secret",
 };
-export async function integrationFixture(upgrade = true) {
+export async function integrationFixture(
+  upgrade = true,
+  closedTermWithdrawals = true,
+) {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
     create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb default '{}');
@@ -32,6 +35,13 @@ export async function integrationFixture(upgrade = true) {
     await db.exec(
       await readFile(
         "supabase/migrations/202610150011_score_connection_recovery.sql",
+        "utf8",
+      ),
+    );
+  if (upgrade && closedTermWithdrawals)
+    await db.exec(
+      await readFile(
+        "supabase/migrations/202610150012_closed_term_withdrawals.sql",
         "utf8",
       ),
     );
@@ -120,8 +130,16 @@ export async function integrationFixture(upgrade = true) {
       number: null,
     })),
   });
-  const connect = async (workspace = schoolA, actor = teacherA) => {
-    const id = crypto.randomUUID();
+  const connect = async (
+    workspace = schoolA,
+    actor = teacherA,
+    remote?: {
+      connectionId: string;
+      destinationSchoolId: string;
+      requestId?: string;
+    },
+  ) => {
+    const id = remote?.requestId ?? crypto.randomUUID();
     await svc("mathquest_service_start_pairing", {
       school_id: workspace,
       actor_id: actor,
@@ -133,8 +151,9 @@ export async function integrationFixture(upgrade = true) {
       actor_id: actor,
       id,
       status: "active",
-      connection_id: crypto.randomUUID(),
-      destination_school_id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      connection_id: remote?.connectionId ?? crypto.randomUUID(),
+      destination_school_id:
+        remote?.destinationSchoolId ?? "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
       destination_label: "โรงเรียนทดสอบ",
       scope: "score:write",
       token_secret: envelope,

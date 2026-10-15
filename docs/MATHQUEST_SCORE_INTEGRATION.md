@@ -32,6 +32,8 @@ The separate receiver team can use [MATHQUEST_RECEIVER_HANDOFF.md](MATHQUEST_REC
 
 UI evidence and the independent Impeccable finish/documenter outcomes are recorded in [MATHQUEST_UI_REVIEW.md](MATHQUEST_UI_REVIEW.md). DESIGN.md and its sidecar remain unchanged.
 
+The subsequent **012** update allows explicitly consented historical withdrawals after term closure while retaining publication/auto/delete guards. Install 012 once after 011, before this application version; it is prepared locally, not installed live. MathQuest receiver migration 03/profile 1.1 is the counterpart, with unchanged wire schema 1.0. See [closed-term withdrawal setup, tests and rollback](MATHQUEST_CLOSED_TERM_WITHDRAWAL.md). The owner-reported 011 installation is not a reason to rerun older SQL.
+
 Wire version is `1.0`. One event contains at most 100 results; one revision contains at most 100 batches. `event_id` plus the exact UTF-8 payload hash is the idempotency identity. A revision is a cumulative confirmed snapshot for one source Workspace and exam. Batches in one revision are additive. Missing students are never interpreted as deletion. `withdraw_exam` is the only deletion signal.
 
 The current v1 publisher deliberately blocks:
@@ -127,11 +129,11 @@ Observed local checks on 15 October 2026:
 
 The optional skipped test requires a separately generated print-QA raster. No physical device accuracy claim is made. Impeccable kept the incumbent DESIGN.md and scoped this work to the settings section and publication dialog; broad existing CSS token advisories were not converted into a design-system rewrite.
 
-The later local receiver review inspected MathQuest commit `bb82d6c` and passed 39 source/receiver schema comparisons, its SQL/HTTP fixture suite and disposable PostgreSQL concurrency/batch tests. This is not deployed two-project acceptance. Student self-confirmation is the owner-approved policy; adding teacher verification is not a release gate. The 011 update implements source recovery, pending-approval cancellation and isolated `TERM_CLOSED` handling. Receiver-side old-score visibility on re-pair, missing/expired request recovery, deployed authorization checks and the shared staging matrix remain gates. Project pausing, quotas and background scheduling still need operational setup; continuous delivery requires a deployed runner.
+The initial local receiver review inspected MathQuest commit `bb82d6c` and passed 39 source/receiver schema comparisons, its SQL/HTTP fixture suite and disposable PostgreSQL concurrency/batch tests. Its later local migration 03/profile 1.1 fixes old-score visibility on re-pair and bound missing/expired cancellation; source 012 adds the safe closed-term withdrawal path. The optional two-database fixture exercises actual 012/03 payloads, purge evidence, lost ACK/replay and deletion guards. This is not deployed two-project acceptance. Student self-confirmation is the owner-approved policy; adding teacher verification is not a release gate. Receiver 03 deployment, actual authorization/switching, both projects' shared staging matrix and scheduled delivery still need approval/verification. Continuous delivery requires a deployed runner.
 
 ## Changed-file summary
 
-New runtime modules are under `lib/integrations/mathquest/`, `components/integrations/` and `types/integration.ts`. New routes are `app/api/integrations/mathquest/route.ts`, its `dispatch/route.ts`, and `app/api/exams/[id]/publication/route.ts`. The optional database additions are 010 and its additive recovery update 011.
+New runtime modules are under `lib/integrations/mathquest/`, `components/integrations/` and `types/integration.ts`. New routes are `app/api/integrations/mathquest/route.ts`, its `dispatch/route.ts`, and `app/api/exams/[id]/publication/route.ts`. The optional database additions are 010, additive recovery update 011 and safe closed-term withdrawals 012.
 
 Existing UI/API changes are limited to `app/settings/page.tsx`, `components/export/export-panel.tsx`, `app/globals.css` and the withdrawal-required error in `app/api/exams/route.ts`. No scanner, grading, historical QR/geometry, roster, logo or image-retention module was modified.
 

@@ -48,21 +48,23 @@ export function ExamPublication({
   const label =
     pub?.state === "withdrawn"
       ? "ถอนแล้ว"
-      : pub?.termClosed
-        ? "ปิดภาคเรียนแล้ว"
-        : pub?.recoveryRequired
-          ? "ต้องถอนคะแนนเดิม"
-          : pub?.state === "withdraw_pending"
-            ? "รอถอน"
-            : pub?.lastError
-              ? "ส่งไม่สำเร็จ"
-              : pub?.unmatched.length || pub?.invalid.length
-                ? "มีรหัสต้องตรวจ"
-                : pub?.pending
-                  ? "รอส่ง"
-                  : pub?.revision && pub.delivered
-                    ? "ส่งแล้ว"
-                    : "ยังไม่เผยแพร่";
+      : pub?.withdrawalBlocked
+        ? "รอตรวจสอบการถอน"
+        : pub?.state === "withdraw_pending"
+          ? "รอถอน"
+          : pub?.termClosed
+            ? "ปิดภาคเรียนแล้ว"
+            : pub?.recoveryRequired
+              ? "ต้องถอนคะแนนเดิม"
+              : pub?.lastError
+                ? "ส่งไม่สำเร็จ"
+                : pub?.unmatched.length || pub?.invalid.length
+                  ? "มีรหัสต้องตรวจ"
+                  : pub?.pending
+                    ? "รอส่ง"
+                    : pub?.revision && pub.delivered
+                      ? "ส่งแล้ว"
+                      : "ยังไม่เผยแพร่";
   return (
     <>
       <button
@@ -113,9 +115,11 @@ export function ExamPublication({
                   <dd>{pub?.delivered ?? 0} คน</dd>
                 </div>
               </dl>
-              {!!pub?.pending && (
-                <p className="muted">มีงานรอส่ง {pub.pending} รายการ</p>
-              )}
+              {!!pub?.pending &&
+                !pub.withdrawalBlocked &&
+                (!pub.termClosed || pub.state === "withdraw_pending") && (
+                  <p className="muted">มีงานรอส่ง {pub.pending} รายการ</p>
+                )}
               {!!pub?.unmatched.length && (
                 <details className="integration-unmatched">
                   <summary>รหัสไม่ตรง {pub.unmatched.length} คน</summary>
@@ -138,24 +142,35 @@ export function ExamPublication({
               )}
               {pub?.lastError && (
                 <Notice tone="warning">
-                  {pub.termClosed
-                    ? "MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว ชุดสอบภาคเรียนอื่นยังส่งได้"
-                    : pub.recoveryRequired
-                      ? "ถอนคะแนนเดิมผ่านการเชื่อมต่อนี้ก่อนเผยแพร่อีกครั้ง คะแนนใน ScanSob ยังคงอยู่"
-                      : "ส่งไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่"}
+                  {pub.withdrawalBlocked
+                    ? "MathQuest ยังยืนยันการถอนคะแนนไม่ได้ กรุณาติดต่อผู้ดูแลปลายทาง"
+                    : pub.canRetryWithdrawal
+                      ? "ส่งคำขอถอนไม่สำเร็จ ลองถอนอีกครั้งได้"
+                      : pub.termClosed
+                        ? pub.canWithdraw
+                          ? "ภาคเรียนนี้ปิดรับคะแนน แต่ขอถอนคะแนนเดิมได้"
+                          : "MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว"
+                        : pub.recoveryRequired
+                          ? "ถอนคะแนนเดิมผ่านการเชื่อมต่อนี้ก่อนเผยแพร่อีกครั้ง คะแนนใน ScanSob ยังคงอยู่"
+                          : "ส่งไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่"}
                 </Notice>
               )}
               {pub?.termClosed && !pub.lastError && (
                 <Notice tone="warning">
                   MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว
-                  ชุดสอบภาคเรียนอื่นยังส่งได้
+                  {pub.state === "withdraw_pending"
+                    ? " กำลังรอยืนยันการถอน"
+                    : pub.canWithdraw
+                      ? " แต่ขอถอนคะแนนเดิมได้"
+                      : ""}
                 </Notice>
               )}
               {withdraw ? (
                 <>
                   <Notice tone="warning">
-                    นักเรียนจะไม่เห็นคะแนนชุดนี้ใน MathQuest คะแนนใน ScanSob
-                    ยังคงอยู่
+                    {pub?.termClosed
+                      ? "ถอนสำเร็จเมื่อ MathQuest ยืนยันแล้ว คะแนนใน ScanSob ยังคงอยู่"
+                      : "นักเรียนจะไม่เห็นคะแนนชุดนี้ใน MathQuest คะแนนใน ScanSob ยังคงอยู่"}
                   </Notice>
                   <div className="integration-actions">
                     <button
@@ -167,7 +182,7 @@ export function ExamPublication({
                     </button>
                     <button
                       className="btn btn-danger"
-                      disabled={disabled || pub?.termClosed}
+                      disabled={disabled || !pub?.canWithdraw}
                       onClick={() => void command("withdraw")}
                     >
                       {busy ? "กำลังถอน…" : "ยืนยันถอนเผยแพร่"}
@@ -209,8 +224,10 @@ export function ExamPublication({
                       className="btn btn-secondary"
                       disabled={
                         disabled ||
-                        publicationBlocked ||
-                        (!conn.enabled && pub?.state !== "withdraw_pending") ||
+                        (!pub?.canRetryWithdrawal &&
+                          (publicationBlocked ||
+                            pub?.withdrawalBlocked ||
+                            !conn.enabled)) ||
                         (!pub?.pending &&
                           !pub?.unmatched.length &&
                           !pub?.invalid.length &&
@@ -218,20 +235,22 @@ export function ExamPublication({
                       }
                       onClick={() => void command("retry")}
                     >
-                      ลองส่งใหม่
+                      {pub?.canRetryWithdrawal
+                        ? "ลองถอนอีกครั้ง"
+                        : "ลองส่งใหม่"}
                     </button>
                     <button
                       className="btn btn-ghost"
                       disabled={
                         disabled ||
-                        pub?.termClosed ||
+                        !pub?.canWithdraw ||
                         !pub?.revision ||
                         pub.state === "withdrawn" ||
                         pub.state === "withdraw_pending"
                       }
                       onClick={() => setWithdraw(true)}
                     >
-                      ถอนเผยแพร่
+                      {pub?.withdrawalBlocked ? "ขอถอนอีกครั้ง" : "ถอนเผยแพร่"}
                     </button>
                   </div>
                 </>
