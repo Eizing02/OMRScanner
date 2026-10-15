@@ -1,5 +1,11 @@
 # Implementation status — 9 ตุลาคม 2569
 
+## Current override — 15 October 2026 optional MathQuest publication
+
+ผู้ใช้แจ้งว่ารัน SQL 010 แล้ว ก่อนเผยแพร่โค้ดรอบนี้ ยังไม่ได้ตรวจฐานข้อมูลจริงซ้ำ จึงไม่ต้องรัน migration ซ้ำระหว่าง Deploy และยังคงปิดการส่งคะแนนไว้จนปลายทางพร้อม
+
+เพิ่มโมดูลฝั่ง ScanSob สำหรับจับคู่ Workspace, consent/manual/auto publication, durable outbox/retry, unmatched และถอนคะแนนก่อนลบชุดสอบแล้ว ดู [คู่มือติดตั้งและผลตรวจ](MATHQUEST_SCORE_INTEGRATION.md) และ [เอกสารส่งต่อ MathQuest](MATHQUEST_RECEIVER_HANDOFF.md). ค่าเริ่มต้นปิด Migration 010 ยังไม่ได้ติดตั้งบน Production และยังไม่ได้ส่งคะแนนจริง ต้องพัฒนา receiver/สิทธิ์นักเรียนฝั่ง MathQuest และทดสอบ staging สองระบบก่อนเปิดใช้งานจริง
+
 ## Current override — 10 October 2026 scanner upgrade
 
 สถานะปัจจุบันอยู่ใน [SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md](SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md): Scanic/camera scheduler/still/binary JPEG/QR orientation และ benchmark เพิ่มในรอบนี้; Supabase schema เดิม ไม่รัน SQL เพิ่ม ไม่แตะข้อมูลจริง. ข้อความวันที่ 8–9 ตุลาคมด้านล่างเป็นประวัติแต่ละรอบ ไม่ใช่รายการงานที่ยังขาดทั้งหมดหรือสถานะ deployment ปัจจุบัน. ตาราง/RPC สแกนและรายงานมีแล้ว; Python/Cloudinary ไม่ใช่สถาปัตยกรรมที่อนุมัติล่าสุด. Physical calibration ยังไม่ผ่าน.

@@ -2,9 +2,9 @@
 
 Permanent instructions for all future Codex tasks in this repository.
 
-## Approved current implementation — 10 October 2026
+## Approved current implementation — 15 October 2026
 
-These rules supersede the original blueprint where noted. One Next.js modular monolith, private Supabase Storage, Google approval/private workspaces, shared SAS2 exam/template QR, five-digit student OMR, and immutable geometry versions 2/3/4 are the current system. Scanic 1.6.0 is the default classical document detector; OpenCV/jscanify are lazy legacy fallback. Browser edge detection is not answer grading. The server reads the exact retained JPEG and the grading/review RPC remains authoritative. No production schema/data changes without approval. No Python/queue/microservice in this upgrade. See docs/SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md and the migration/rollback document.
+These rules supersede the original blueprint where noted. One Next.js modular monolith, private Supabase Storage, Google approval/private workspaces, shared SAS2 exam/template QR, five-digit student OMR, and immutable geometry versions 2/3/4 are the current system. Scanic 1.6.0 is the default classical document detector; OpenCV/jscanify are lazy legacy fallback. Browser edge detection is not answer grading. The server reads the exact retained JPEG and the grading/review RPC remains authoritative. The optional MathQuest score-publication module uses a PostgreSQL outbox inside the same Supabase project; this is not an external broker or new service. It is disabled by default and cannot send real data until the independent receiver is verified. No production schema/data/env changes without approval. No Python, external queue or microservice. See docs/SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md, docs/MATHQUEST_SCORE_INTEGRATION.md and the migration/rollback documents.
 
 ## Project Overview
 

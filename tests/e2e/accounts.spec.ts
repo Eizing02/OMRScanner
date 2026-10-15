@@ -41,6 +41,20 @@ async function fixtures(
   await page.route("**/api/exams", (route) =>
     route.fulfill({ json: { data: [], error: null } }),
   );
+  await page.route("**/api/integrations/mathquest", (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          enabled: false,
+          receiverReady: false,
+          readOnly: false,
+          connection: null,
+          publication: null,
+        },
+        error: null,
+      },
+    }),
+  );
   await page.route("**/api/omr-layouts", (route) =>
     route.fulfill({ json: { data: [], error: null } }),
   );

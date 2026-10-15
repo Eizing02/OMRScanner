@@ -1,5 +1,9 @@
 # Test results — 9 October 2026
 
+## Current integration checks — 15 October 2026
+
+โมดูลเสริม MathQuest ผ่าน `npm test` 198 เคส / 33 ไฟล์ (ข้าม optional print raster 1 เคส), typecheck/lint, browser หลัก 25 flow, accounts 5 flow และ integration 2 flow พร้อม Axe/overflow desktop, phone และ iPad. อ่านขอบเขตและหลักฐานใน [MATHQUEST_SCORE_INTEGRATION.md](MATHQUEST_SCORE_INTEGRATION.md). เป็นข้อมูลสังเคราะห์และฐานข้อมูล PGlite ในเครื่อง ยังไม่ใช่ live receiver/Supabase E2E และไม่ได้รัน SQL 010 บน Production
+
 ## Current scanner upgrade — 10 October 2026
 
 หลักฐานล่าสุดและข้อจำกัดอยู่ใน [SCANNER_PERFORMANCE_BENCHMARK.md](SCANNER_PERFORMANCE_BENCHMARK.md), [SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md](SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md) และ [SCANNER_UI_AUDIT.md](SCANNER_UI_AUDIT.md). บันทึกด้านล่างเป็นประวัติ ไม่ใช่ผลทดสอบ current deployment. ไม่มีการทดสอบกับข้อมูลนักเรียน/คะแนนจริงหรือรัน SQL ในรอบนี้.

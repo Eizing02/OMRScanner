@@ -25,6 +25,7 @@ import {
   type SchoolBranding,
 } from "@/types/school";
 import { DEFAULT_SCHOOL_LOGO } from "@/lib/omr/logo-image";
+import { MathQuestSettings } from "@/components/integrations/mathquest-settings";
 
 const statusLabels: Record<AccessStatus, string> = {
   pending: "รออนุมัติ",
@@ -119,6 +120,7 @@ export default function Settings() {
             <p className="muted">โหมดตัวอย่าง · ข้อมูลอยู่ในเครื่อง</p>
           )}
         </section>
+        <MathQuestSettings />
         <WorkspaceSettingsEditor
           key={`${branding.school}:${JSON.stringify(settings)}`}
           branding={branding}

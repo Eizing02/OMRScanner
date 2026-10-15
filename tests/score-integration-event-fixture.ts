@@ -1,0 +1,32 @@
+export const syntheticScoreEvent = () => ({
+  schema_version: "1.0",
+  event_id: crypto.randomUUID(),
+  connection_id: crypto.randomUUID(),
+  source_workspace_id: crypto.randomUUID(),
+  source_exam_id: crypto.randomUUID(),
+  publication_revision: 1,
+  action: "publish_results",
+  batch_index: 0,
+  batch_count: 1,
+  occurred_at: "2026-10-15T00:00:00.000Z",
+  exam: {
+    title: "ข้อสอบจำลอง",
+    subject: "คณิตศาสตร์",
+    exam_type: "เก็บคะแนน",
+    classroom: "ม.1",
+    academic_year: 2569,
+    term: 1,
+  },
+  results: [
+    {
+      source_scan_id: crypto.randomUUID(),
+      source_exam_version_id: crypto.randomUUID(),
+      student_code: "00123",
+      score: 17.5,
+      max_score: 25,
+      percent: 70,
+      passed: true,
+      confirmed_at: "2026-10-15T00:00:00.000Z",
+    },
+  ],
+});

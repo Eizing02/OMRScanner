@@ -4418,3 +4418,93 @@ svg {
     padding: 14px 16px;
   }
 }
+
+/* Optional publication extends the existing workspace, not its visual system. */
+.integration-form,
+.integration-publication {
+  display: grid;
+  gap: 16px;
+}
+.integration-form > label:not(.checkbox-label) {
+  display: grid;
+  gap: 7px;
+  max-width: 480px;
+}
+.integration-form .checkbox-label,
+.integration-publication .checkbox-label {
+  align-items: flex-start;
+  white-space: normal;
+}
+.integration-form .checkbox-label input,
+.integration-publication .checkbox-label input {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+.integration-destination {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.integration-actions,
+.integration-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.integration-summary {
+  justify-content: space-between;
+}
+.integration-summary > strong {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.integration-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 0;
+}
+.integration-counts dt {
+  color: var(--muted);
+}
+.integration-counts dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.integration-unmatched summary {
+  cursor: pointer;
+  color: var(--amber);
+}
+.integration-unmatched ul {
+  max-height: 160px;
+  overflow: auto;
+  margin-block: 8px 0;
+  padding-inline-start: 24px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 640px) {
+  .integration-actions > .btn {
+    min-height: 44px;
+  }
+  .results-task .workspace-actionbar:has(.integration-trigger) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .results-task .workspace-actionbar:has(.integration-trigger) > label {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .results-task
+    .workspace-actionbar:has(.integration-trigger)
+    > .btn:last-of-type {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .results-task .workspace-actionbar > .integration-trigger {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

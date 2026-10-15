@@ -189,3 +189,12 @@ Offer recovery actions that preserve progress. Examples: retake image, adjust co
 - Cloud hosting region, hosting provider, operating cost assumptions and expected peak scanning volumes.
 
 **Current status (10 October 2026):** roster/exams/locked PDF/QR, private scan Storage, server ID/bubble reading, persisted provisional grading/review/confirmation and score reports exist. This upgrade adds Scanic/camera/binary-image optimization without changing historical QR/geometry or production schema. Local synthetic tests are not a physical accuracy certificate or live Google/Supabase end-to-end acceptance. See `docs/SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md` and `docs/SCANNER_PERFORMANCE_BENCHMARK.md` for measured results and remaining work.
+
+### Optional MathQuest score publication (15 October 2026)
+
+- ScanSob remains the grading source of truth. `confirmed` means teacher-confirmed in ScanSob; publication is a separate, explicit state.
+- An approved teacher may pair only the current private Workspace with a MathQuest destination using a short-lived code and manual destination approval. Tokens stay server-only and encrypted at rest.
+- Manual publication is the default. Future confirmations may be queued automatically only after separate consent; enabling auto mode never backfills older results.
+- Only the five-digit student code, confirmed score/maximum/percentage/pass state, exam metadata and source provenance IDs may leave ScanSob. Names, images, answers, credentials and school-logo files are excluded.
+- Publication is cumulative and versioned. Retries use a frozen event body; unmatched codes are reported without guessing. A permanent exam deletion is blocked until an acknowledged withdrawal.
+- This optional module is feature-flagged off by default. It is not production-ready until the independent MathQuest receiver implements the agreed v1 contract, secure student access, transactional idempotency/ordering, pairing approval/revocation and staging conformance tests. Scan, review, grading and export continue when the integration is disabled or unavailable.

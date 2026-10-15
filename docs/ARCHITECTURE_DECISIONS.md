@@ -1,5 +1,12 @@
 # Architecture decisions — 8 October 2026
 
+## Supplemental decisions — 15 October 2026
+
+- The optional MathQuest integration is a module in the current Next.js project with an outbox in the existing Supabase database. The receiver belongs to a separate MathQuest project. No external message broker or scanner service is added.
+- Teacher confirmation and student publication remain distinct. Only an approved current Workspace owner may pair or publish; owner inspection stays read-only. Teacher commands use their session/RLS; isolated server RPCs lease/send frozen events and never expose the encrypted connection token.
+- The v1 profile preserves five-digit student IDs, bounded additive batches and source revisions that survive deletion/re-pairing. A permanent deletion requires an acknowledged withdrawal. Mixed exam-version metadata and zero maximum scores block publication without changing grading.
+- Both integration flags default to false. The proposed pairing adapter, destination authorization and transactional receiver must pass shared staging conformance before real data flows. See [MATHQUEST_SCORE_INTEGRATION.md](MATHQUEST_SCORE_INTEGRATION.md) and [MATHQUEST_RECEIVER_HANDOFF.md](MATHQUEST_RECEIVER_HANDOFF.md).
+
 ## Supplemental decisions — 9 October 2026
 
 - Latest human instructions supersede no-login/Cloudinary-logo plans: Google Auth, approval gate, one private `schools.created_by` workspace per approved teacher; configured verified Google owner may inspect other workspaces read-only and manage account access. Database permissions are not derived from user_metadata, browser state or the first signup.

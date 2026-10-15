@@ -12,6 +12,10 @@ function lifecycleError(message: string) {
     FORBIDDEN: ["ไม่มีสิทธิ์จัดการชุดสอบในพื้นที่นี้", 403],
     EXAM_NOT_FOUND: ["ไม่พบชุดสอบ กรุณาโหลดรายการใหม่", 404],
     EXAM_DELETING: ["ชุดสอบนี้กำลังลบ กรุณาดำเนินการลบต่อให้เสร็จ", 409],
+    PUBLICATION_WITHDRAW_REQUIRED: [
+      "ถอนคะแนนใน MathQuest ให้สำเร็จก่อนลบชุดสอบ",
+      409,
+    ],
     DELETE_CONFIRMATION_REQUIRED: ["พิมพ์ชื่อชุดสอบให้ตรงก่อนลบถาวร", 422],
     MIXED_EXAM_UPLOAD: [
       "พบภาพที่ใช้ร่วมกับชุดสอบอื่น หยุดการลบเพื่อป้องกันข้อมูลสูญหาย",

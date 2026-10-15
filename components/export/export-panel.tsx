@@ -5,6 +5,7 @@ import { useWorkspace } from "@/components/layout/workspace-provider";
 import { scoreRow } from "@/lib/grading/recalculate";
 import { downloadScores } from "@/lib/export/export-excel";
 import { downloadScoreReport } from "@/lib/export/report-template";
+import { ExamPublication } from "@/components/integrations/exam-publication";
 import {
   Badge,
   EmptyState,
@@ -212,6 +213,13 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
         </div>
       </section>
       <footer className="workspace-actionbar">
+        {selected && (
+          <ExamPublication
+            key={selected.id}
+            examId={selected.id}
+            title={selected.title}
+          />
+        )}
         <label>
           <span className="sr-only">รูปแบบรายงาน</span>
           <select

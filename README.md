@@ -24,6 +24,7 @@ npm test
 npx playwright install chromium
 npm run test:e2e
 npm run test:accounts
+npm run test:integrations
 npm run test:scanner-benchmark
 npm run build
 ```
@@ -52,6 +53,7 @@ npm run build
 - Excel/CSV + PDF ทั้งห้อง/รายบุคคล ส่งออกคะแนน confirmed เท่านั้น ใช้ server-authoritative rows และบันทึก audit
 - Designer/Print/Scanner/Review/Results แบบ compact task workspace บน phone/iPad; รายการและคุณสมบัติเลื่อนภายใน ปุ่มหลักไม่หลุดใต้เมนูด่วน
 - โฉมใหม่ mint/sky/lavender/lilac กับตัวหนังสือเข้มและ motion สั้นที่รองรับ reduced motion; หัวพิมพ์ `school` รุ่น 4 ใช้โลโก้ใหญ่ขึ้น ช่องข้อมูลมีจุด และช่องคะแนน dots/total (SQL 009) กระดาษเดิมรุ่น 2/3 ยังสแกนได้ตามทะเบียนเดิม
+- การเผยแพร่คะแนนที่ยืนยันแล้วไป MathQuest เป็นโมดูลเสริมแบบ opt-in ต่อ Workspace มี consent, outbox/idempotency, retry, unmatched และถอนก่อนลบชุดสอบ; ค่าเริ่มต้นปิดและยังห้ามใช้ข้อมูลจริงจน receiver ฝั่ง MathQuest ผ่าน security/conformance gate ดู [คู่มือติดตั้งและสัญญาข้อมูล](docs/MATHQUEST_SCORE_INTEGRATION.md)
 
 ## รายชื่อ 4 คอลัมน์และโลโก้โรงเรียน
 
@@ -73,7 +75,7 @@ npm run build
 
 - ยังไม่รับรองความแม่นยำบนกระดาษ/กล้องจริง ต้อง pilot และเทียบการตรวจมือก่อนใช้คะแนนจริง; ภาพ rasterized PDF และ synthetic fixtures ไม่ใช่ภาพจากโทรศัพท์
 - SQL 001–007 ติดตั้งจริงจากรอบก่อน; รอบนี้ติดตั้ง 008/009 เพิ่มแล้ว ยังไม่ผ่าน physical Google → camera → confirm → export E2E
-- ไม่เพิ่ม Python service/microservice/worker และไม่มี student publication/A-B versions; confirmed คือคะแนนครูยืนยัน ไม่ใช่เผยแพร่ให้นักเรียน
+- ไม่เพิ่ม Python service/microservice/external queue; `confirmed` ยังเป็นคะแนนครูยืนยัน ไม่ใช่สถานะเผยแพร่ให้นักเรียน การเผยแพร่ MathQuest เก็บสถานะและ revision แยกกันและเปิดได้เฉพาะเมื่อเชื่อมต่อราย Workspace แล้ว
 - โลโก้และภาพสแกนใช้ private Supabase Storage ไม่ใช้ Cloudinary; ภาพสแกนใหม่เก็บเฉพาะ processed evidence เดียว ภาพเก่าต้นฉบับจะลบเมื่อเจ้าของเปิด Review และตรวจว่า processed ยังอยู่; TODO orphan cleanup สำหรับอัปโหลดเก่าที่ไม่สัมพันธ์กับ exam และ server pagination เมื่อข้อมูลโตมาก
 
 ## กล้องและ troubleshooting
