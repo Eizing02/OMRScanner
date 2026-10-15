@@ -17,6 +17,8 @@ The payload permits only:
 
 It excludes names, email, passwords, images, bubble observations, answers/answer keys, school logos and tokens. Unmatched codes are displayed; neither side may guess identity by name or classroom.
 
+Approved student access policy (15 October 2026): MathQuest keeps Google sign-in and lets students enter their five-digit code, preview the student's name/classroom and confirm personally. They may correct the linked code through another preview/confirmation. Teacher approval or an additional roster-ownership verification is not required for students. Scores stay with their original codes. See the approved policy in [MATHQUEST_RECEIVER_HANDOFF.md](MATHQUEST_RECEIVER_HANDOFF.md). Teacher Workspace pairing approval remains required.
+
 ## Files and contract
 
 - Runtime contract and ACK validation: `lib/integrations/mathquest/contract.ts`
@@ -40,11 +42,11 @@ The current v1 publisher deliberately blocks:
 
 These blocks affect publication only; they do not change ScanSob scores. Reconciliation of unmatched/invalid rows creates a new revision rather than replaying an already-acknowledged event.
 
-## Pairing profile — proposed, not yet a live MathQuest API
+## Pairing profile — locally reviewed, not deployed acceptance
 
-The blueprint path `pair-scansob-workspace` is an adapter proposal. It is not evidence that a receiver exists. The receiver must support request/status/revoke, one-time pairing codes, manual destination approval, Workspace-bound `score:write` opaque tokens, token hashing, constant-time verification and idempotent token delivery. A lost token is handled by revoke/re-pair in this version; token rotation UI is future work.
+The separate MathQuest implementation at local commit `bb82d6c` was reviewed against `pair-scansob-workspace`. Its protected request/status/revoke, expiring single-use codes, school approval and hash-only token storage match the source profile. That local evidence does not verify deployed endpoints, Google configuration or scheduling. A lost token is handled by protected delivery followed by revoke/re-pair; token rotation UI is future work.
 
-Each ScanSob teacher Workspace pairs independently, even when several teachers target the same destination school. The remote token is encrypted with AES-256-GCM and Workspace/connection associated data. It is never returned to the browser or stored in public tables. Active revoke requires a remote acknowledgment; while it is pending, new sends and mode changes are stopped. A request that never became active may be cancelled locally after a best-effort remote cleanup because it has no score scope/token and its one-time code expires.
+Each ScanSob teacher Workspace pairs independently, even when several teachers target the same destination school. The remote token is encrypted with AES-256-GCM and Workspace/connection associated data. It is never returned to the browser or stored in public tables. Revoke requires a remote acknowledgment; while pending, new sends and mode changes stop. Pending cancellation first checks protected status: an approved token lost during delivery is recovered in memory and used to revoke, without activating locally. Errors/timeouts never clear the local challenge. If the receiver has no request, or its active token-delivery window expired, audited receiver-side recovery is required; ScanSob must not report successful cancellation without proof.
 
 ## Migration and configuration
 
@@ -55,6 +57,14 @@ supabase/migrations/202610150010_score_integrations.sql
 ```
 
 Do not run `supabase/schema.sql` and individual migrations on the same fresh database. Do not rerun old migrations. Back up first and verify `private.app_installation` contains `202610090009`. The migration is additive but wraps the permanent-delete RPC so an externally published exam cannot be destroyed before withdrawal is acknowledged.
+
+For this recovery update, apply **011 once after 010**, first in isolated staging:
+
+```text
+supabase/migrations/202610150011_score_connection_recovery.sql
+```
+
+011 is locally tested. The owner subsequently reported running it and authorized pushing this release to `main`; this task has not independently verified the live installation or run production SQL. **Do not rerun 010 or 011.** Deploy 011 before this application version; old application DTOs tolerate the additive fields, but new recovery actions need the new RPC. Keep both feature flags false through rollout. See [recovery upgrade and rollback](MATHQUEST_RECOVERY_UPGRADE.md).
 
 Server environment variable names (values intentionally omitted):
 
@@ -117,11 +127,11 @@ Observed local checks on 15 October 2026:
 
 The optional skipped test requires a separately generated print-QA raster. No physical device accuracy claim is made. Impeccable kept the incumbent DESIGN.md and scoped this work to the settings section and publication dialog; broad existing CSS token advisories were not converted into a design-system rewrite.
 
-Production remains blocked until the MathQuest repository removes its browser/plaintext-password trust model, provides transactional receiver functions with school-scoped student reads, and passes the shared staging matrix. Free Supabase plans can connect two projects over HTTPS, but project pausing, quotas and lack of guaranteed background scheduling must be accounted for operationally; this design does not claim continuous delivery without a deployed runner.
+The later local receiver review inspected MathQuest commit `bb82d6c` and passed 39 source/receiver schema comparisons, its SQL/HTTP fixture suite and disposable PostgreSQL concurrency/batch tests. This is not deployed two-project acceptance. Student self-confirmation is the owner-approved policy; adding teacher verification is not a release gate. The 011 update implements source recovery, pending-approval cancellation and isolated `TERM_CLOSED` handling. Receiver-side old-score visibility on re-pair, missing/expired request recovery, deployed authorization checks and the shared staging matrix remain gates. Project pausing, quotas and background scheduling still need operational setup; continuous delivery requires a deployed runner.
 
 ## Changed-file summary
 
-New runtime modules are under `lib/integrations/mathquest/`, `components/integrations/` and `types/integration.ts`. New routes are `app/api/integrations/mathquest/route.ts`, its `dispatch/route.ts`, and `app/api/exams/[id]/publication/route.ts`. The only database addition is optional migration 010.
+New runtime modules are under `lib/integrations/mathquest/`, `components/integrations/` and `types/integration.ts`. New routes are `app/api/integrations/mathquest/route.ts`, its `dispatch/route.ts`, and `app/api/exams/[id]/publication/route.ts`. The optional database additions are 010 and its additive recovery update 011.
 
 Existing UI/API changes are limited to `app/settings/page.tsx`, `components/export/export-panel.tsx`, `app/globals.css` and the withdrawal-required error in `app/api/exams/route.ts`. No scanner, grading, historical QR/geometry, roster, logo or image-retention module was modified.
 

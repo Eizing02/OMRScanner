@@ -1,7 +1,7 @@
 "use client";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X, AlertTriangle, CheckCircle2, Info } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 export function Badge({
   children,
   tone = "neutral",
@@ -40,18 +40,32 @@ export function Modal({
   title,
   children,
   description,
+  returnFocusRef,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
   children: ReactNode;
   description?: string;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="dialog-overlay" />
-        <Dialog.Content className="dialog-content">
+        <Dialog.Content
+          className="dialog-content"
+          onCloseAutoFocus={
+            returnFocusRef
+              ? (event) => {
+                  if (returnFocusRef.current?.isConnected) {
+                    event.preventDefault();
+                    returnFocusRef.current.focus();
+                  }
+                }
+              : undefined
+          }
+        >
           <div className="dialog-heading">
             <Dialog.Title>{title}</Dialog.Title>
             <Dialog.Close className="icon-button" aria-label="ปิดหน้าต่าง">

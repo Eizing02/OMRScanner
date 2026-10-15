@@ -25,7 +25,10 @@ vi.mock("@/lib/supabase/api", async (original) => {
 });
 import { GET, POST } from "@/app/api/exams/[id]/publication/route";
 import { POST as RUNNER } from "@/app/api/integrations/mathquest/dispatch/route";
-import { POST as PAIR } from "@/app/api/integrations/mathquest/route";
+import {
+  POST as PAIR,
+  PATCH as CONNECTION,
+} from "@/app/api/integrations/mathquest/route";
 const id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
   params = { params: Promise.resolve({ id }) };
 const request = (body: unknown) =>
@@ -63,6 +66,27 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 describe("publication HTTP tenant and feature boundaries", () => {
+  it("requires owner, explicit consent and a verified receiver for recovery", async () => {
+    for (const input of [
+      { action: "recover" },
+      { action: "recover", consent: false },
+      { action: "recover", consent: true, school_id: "spoof" },
+    ])
+      expect((await CONNECTION(request(input))).status).toBe(422);
+    mock.readOnly = true;
+    expect(
+      (await CONNECTION(request({ action: "recover", consent: true }))).status,
+    ).toBe(403);
+    mock.readOnly = false;
+    expect(
+      (await CONNECTION(request({ action: "recover", consent: true }))).status,
+    ).toBe(503);
+    mock.authenticated = false;
+    expect(
+      (await CONNECTION(request({ action: "recover", consent: true }))).status,
+    ).toBe(401);
+    expect(mock.rpc).not.toHaveBeenCalled();
+  });
   it("derives workspace from session, commits a job and never calls a not-ready receiver", async () => {
     const requestId = crypto.randomUUID();
     const response = await POST(

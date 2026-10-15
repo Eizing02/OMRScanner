@@ -9,10 +9,13 @@ export const integrationConnectionSchema = z.object({
   mode: integrationModeSchema,
   enabled: z.boolean(),
   revocationPending: z.boolean(),
+  recoveryPending: z.boolean().default(false),
   lastSyncAt: z.string().nullable(),
   lastError: z.string().nullable(),
 });
 export const publicationSummarySchema = z.object({
+  recoveryRequired: z.boolean().default(false),
+  termClosed: z.boolean().default(false),
   state: z.enum(["draft", "active", "withdraw_pending", "withdrawn", "error"]),
   revision: z.number().int().min(0),
   confirmed: z.number().int().min(0),
@@ -50,6 +53,7 @@ export const connectionCommandSchema = z.discriminatedUnion("action", [
     consent: z.literal(true),
   }),
   z.strictObject({ action: z.literal("revoke"), consent: z.literal(true) }),
+  z.strictObject({ action: z.literal("recover"), consent: z.literal(true) }),
 ]);
 export const publicationCommandSchema = z.strictObject({
   action: z.enum(["publish", "withdraw", "retry"]),

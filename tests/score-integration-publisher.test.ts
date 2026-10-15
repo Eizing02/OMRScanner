@@ -74,6 +74,53 @@ afterEach(() => {
 });
 const db = () => ({ rpc }) as unknown as SupabaseClient;
 describe("server-only score publisher with a mock receiver", () => {
+  it("recognizes only the bounded documented 403 closed-term code without exposing response data", async () => {
+    fetcher.mockResolvedValue(
+      Response.json({ error: "TERM_CLOSED" }, { status: 403 }),
+    );
+    await dispatchScores({}, db());
+    expect(rpc).toHaveBeenCalledWith("mathquest_service_finish", {
+      input: expect.objectContaining({
+        error_code: "TERM_CLOSED",
+        retryable: false,
+      }),
+    });
+    for (const body of [
+      "not json",
+      JSON.stringify({ error: "TERM_CLOSED", secret: "untrusted" }),
+      JSON.stringify({ error: "unknown" }),
+      "x".repeat(2049),
+    ]) {
+      fetcher.mockResolvedValue(
+        new Response(body, {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      await expect(
+        receiverRequest("ingest-scansob-results", "{}", "synthetic"),
+      ).rejects.toMatchObject({ code: "CONNECTION_DENIED", retryable: false });
+    }
+    fetcher.mockResolvedValue(
+      Response.json({ error: "TERM_CLOSED" }, { status: 403 }),
+    );
+    await expect(
+      receiverRequest("pair-scansob-workspace", "{}"),
+    ).rejects.toMatchObject({ code: "CONNECTION_DENIED" });
+    fetcher.mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.error(new Error("connection lost"));
+          },
+        }),
+        { status: 403, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    await expect(
+      receiverRequest("ingest-scansob-results", "{}", "synthetic"),
+    ).rejects.toMatchObject({ code: "RECEIVER_UNAVAILABLE", retryable: true });
+  });
   it("retries network timeouts and response-body failures using the original event", async () => {
     fetcher.mockRejectedValueOnce(new DOMException("timeout", "TimeoutError"));
     await dispatchScores({}, db());

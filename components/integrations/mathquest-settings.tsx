@@ -8,8 +8,12 @@ export function MathQuestSettings() {
     useMathQuest("/api/integrations/mathquest");
   const [code, setCode] = useState(""),
     [consent, setConsent] = useState(false),
-    [revoke, setRevoke] = useState(false);
+    [confirmation, setConfirmation] = useState<"revoke" | "recover" | null>(
+      null,
+    );
   const pairRequest = useRef<{ code: string; id: string } | null>(null);
+  const confirmationTrigger = useRef<HTMLButtonElement | null>(null);
+  const pairInput = useRef<HTMLInputElement | null>(null);
   const connection = state?.connection;
   const disabled =
     busy ||
@@ -94,6 +98,7 @@ export function MathQuestSettings() {
           <label>
             รหัสเชื่อมต่อ
             <input
+              ref={pairInput}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               autoComplete="off"
@@ -130,10 +135,18 @@ export function MathQuestSettings() {
           )}
           {connection.revocationPending && (
             <Notice tone="warning">
-              ยังยกเลิกที่ MathQuest ไม่สำเร็จ
-              ลองยืนยันอีกครั้งเมื่อเชื่อมต่อได้
+              {connection.recoveryPending
+                ? "กู้คืนยังไม่สำเร็จ ลองกู้คืนอีกครั้งเมื่อเชื่อมต่อได้"
+                : "ยังยกเลิกที่ MathQuest ไม่สำเร็จ ลองยกเลิกอีกครั้ง"}
             </Notice>
           )}
+          {connection.lastError === "CONNECTION_DENIED" &&
+            !connection.recoveryPending && (
+              <Notice tone="warning">
+                MathQuest ปฏิเสธการเชื่อมต่อ
+                ตรวจปลายทางหรือกู้คืนเพื่อจับคู่ใหม่
+              </Notice>
+            )}
           {connection.status === "active" && (
             <>
               <label>
@@ -197,13 +210,30 @@ export function MathQuestSettings() {
                 </button>
                 <button
                   className="btn btn-ghost"
-                  disabled={busy || readOnly}
-                  onClick={() => setRevoke(true)}
+                  disabled={busy || readOnly || connection.recoveryPending}
+                  onClick={(event) => {
+                    confirmationTrigger.current = event.currentTarget;
+                    setConfirmation("revoke");
+                  }}
                 >
                   {connection.revocationPending
                     ? "ลองยกเลิกอีกครั้ง"
                     : "ยกเลิกการเชื่อมต่อ"}
                 </button>
+                {!connection.enabled && (
+                  <button
+                    className="btn btn-secondary"
+                    disabled={busy || readOnly || !state.receiverReady}
+                    onClick={(event) => {
+                      confirmationTrigger.current = event.currentTarget;
+                      setConfirmation("recover");
+                    }}
+                  >
+                    {connection.recoveryPending
+                      ? "ลองกู้คืนอีกครั้ง"
+                      : "กู้คืนการเชื่อมต่อ"}
+                  </button>
+                )}
               </div>
             </>
           )}
@@ -220,7 +250,10 @@ export function MathQuestSettings() {
               <button
                 className="btn btn-ghost"
                 disabled={busy || readOnly}
-                onClick={() => setRevoke(true)}
+                onClick={(event) => {
+                  confirmationTrigger.current = event.currentTarget;
+                  setConfirmation("revoke");
+                }}
               >
                 {connection.revocationPending
                   ? "ลองยกเลิกอีกครั้ง"
@@ -231,33 +264,57 @@ export function MathQuestSettings() {
         </div>
       )}
       <Modal
-        open={revoke}
-        onOpenChange={setRevoke}
-        title="ยกเลิกการเชื่อมต่อ MathQuest"
-        description="ต้องถอนคะแนนที่เผยแพร่ให้สำเร็จก่อนยกเลิก"
+        returnFocusRef={
+          connection?.status === "revoked" ? pairInput : confirmationTrigger
+        }
+        open={confirmation !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmation(null);
+        }}
+        title={
+          confirmation === "recover"
+            ? "กู้คืนการเชื่อมต่อ MathQuest"
+            : "ยกเลิกการเชื่อมต่อ MathQuest"
+        }
+        description={
+          confirmation === "recover"
+            ? "ยกเลิกการเชื่อมต่อเดิมเพื่อจับคู่ใหม่ คะแนนที่เคยเผยแพร่ยังไม่ถูกถอน"
+            : "ต้องถอนคะแนนที่เผยแพร่ให้สำเร็จก่อนยกเลิก"
+        }
       >
         {error && <Notice tone="error">{error}</Notice>}
         <div className="integration-actions">
           <button
             className="btn btn-secondary"
             disabled={busy}
-            onClick={() => setRevoke(false)}
+            onClick={() => setConfirmation(null)}
           >
             กลับ
           </button>
           <button
             className="btn btn-danger"
-            disabled={busy || readOnly || mode !== "connected"}
+            disabled={
+              busy ||
+              readOnly ||
+              mode !== "connected" ||
+              !state?.enabled ||
+              !state.receiverReady
+            }
             onClick={async () => {
-              if (await mutate("PATCH", { action: "revoke", consent: true }))
-                setRevoke(false);
+              if (
+                confirmation &&
+                (await mutate("PATCH", { action: confirmation, consent: true }))
+              )
+                setConfirmation(null);
             }}
           >
             {busy
-              ? "กำลังยกเลิก…"
-              : connection?.revocationPending
-                ? "ลองยกเลิกอีกครั้ง"
-                : "ยืนยันยกเลิก"}
+              ? "กำลังทำรายการ…"
+              : confirmation === "recover"
+                ? "ยืนยันกู้คืน"
+                : connection?.revocationPending
+                  ? "ลองยกเลิกอีกครั้ง"
+                  : "ยืนยันยกเลิก"}
           </button>
         </div>
       </Modal>

@@ -7,6 +7,7 @@ import {
   initiatePairing,
   refreshPairing,
   revokePairing,
+  recoverPairing,
 } from "@/lib/integrations/mathquest/pairing";
 import {
   openSecret,
@@ -236,7 +237,7 @@ describe("server-only MathQuest pairing adapter", () => {
     ).toEqual(["mathquest_service_revoke:false"]);
   });
 
-  it("can cancel a never-active request when the proposed receiver never received it", async () => {
+  it("preserves a pending request when the receiver cannot prove cancellation", async () => {
     const calls: string[] = [];
     const challenge = "p".repeat(43);
     const db = fakeDb((name, input) => {
@@ -260,12 +261,164 @@ describe("server-only MathQuest pairing adapter", () => {
       "fetch",
       vi.fn(async () => new Response("not found", { status: 404 })),
     );
-    await revokePairing(db, workspace, actor);
+    await expect(revokePairing(db, workspace, actor)).rejects.toMatchObject({
+      code: "RECEIVER_REJECTED",
+    });
     expect(
       calls.filter((call) => call.startsWith("mathquest_service_revoke")),
-    ).toEqual([
-      "mathquest_service_revoke:false",
-      "mathquest_service_revoke:true",
-    ]);
+    ).toEqual(["mathquest_service_revoke:false"]);
+  });
+  it("recovers a remotely approved token in memory to cancel without activating locally", async () => {
+    const challenge = "p".repeat(43);
+    const db = fakeDb((name) =>
+      name === "mathquest_service_credentials"
+        ? {
+            id: requestId,
+            status: "pending_approval",
+            connection_id: null,
+            secrets: {
+              token_secret: null,
+              pairing_secret: sealSecret(
+                challenge,
+                pairingBinding(workspace, requestId),
+              ),
+            },
+          }
+        : null,
+    );
+    const fetcher = vi.fn(async (_url: string, init: RequestInit) => {
+      const input = JSON.parse(String(init.body));
+      if (input.action === "status")
+        return Response.json({
+          schema_version: "1.0",
+          request_id: requestId,
+          status: "active",
+          connection: {
+            id: remoteConnection,
+            destination_school_id: destination,
+            destination_label: "โรงเรียนจำลอง",
+            scope: "score:write",
+            token,
+          },
+        });
+      expect(input).toMatchObject({
+        action: "revoke",
+        connection_id: remoteConnection,
+      });
+      expect(init.headers).toMatchObject({ Authorization: `Bearer ${token}` });
+      return Response.json({
+        schema_version: "1.0",
+        request_id: requestId,
+        status: "revoked",
+      });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    await revokePairing(db, workspace, actor);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(db.rpc).not.toHaveBeenCalledWith(
+      "mathquest_service_complete_pairing",
+      expect.anything(),
+    );
+    expect(db.rpc).toHaveBeenLastCalledWith("mathquest_service_revoke", {
+      input: {
+        school_id: workspace,
+        actor_id: actor,
+        id: requestId,
+        finish: true,
+      },
+    });
+    expect(JSON.stringify(vi.mocked(db.rpc).mock.calls)).not.toContain(token);
+  });
+  it.each(["pending", "timeout", "invalid"])(
+    "does not clear cancellation credentials after %s failure",
+    async (scenario) => {
+      const db = fakeDb((name) =>
+        name === "mathquest_service_credentials"
+          ? {
+              id: requestId,
+              status: "pending_approval",
+              connection_id: null,
+              secrets: {
+                token_secret: null,
+                pairing_secret: sealSecret(
+                  "p".repeat(43),
+                  pairingBinding(workspace, requestId),
+                ),
+              },
+            }
+          : null,
+      );
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (_url: string, init: RequestInit) => {
+          if (scenario === "timeout") throw new Error("timeout");
+          if (JSON.parse(String(init.body)).action === "status")
+            return Response.json({
+              schema_version: "1.0",
+              request_id: scenario === "invalid" ? actor : requestId,
+              status: "pending_approval",
+            });
+          // Approval races after the status check: challenge-only revocation is denied.
+          return Response.json({ error: "UNAUTHORIZED" }, { status: 403 });
+        }),
+      );
+      await expect(revokePairing(db, workspace, actor)).rejects.toThrow();
+      expect(db.rpc).not.toHaveBeenCalledWith("mathquest_service_revoke", {
+        input: expect.objectContaining({ finish: true }),
+      });
+    },
+  );
+  it("passes a verified bound revoke ACK to recovery and retains failure for retry", async () => {
+    const db = fakeDb((name) =>
+      name === "mathquest_service_credentials"
+        ? {
+            id: requestId,
+            status: "active",
+            connection_id: remoteConnection,
+            secrets: {
+              token_secret: sealSecret(
+                token,
+                tokenBinding(workspace, requestId),
+              ),
+            },
+          }
+        : null,
+    );
+    const fetcher = vi.fn(async () =>
+      Response.json({
+        schema_version: "1.0",
+        request_id: requestId,
+        status: "revoked",
+      }),
+    );
+    vi.stubGlobal("fetch", fetcher);
+    await recoverPairing(db, workspace, actor);
+    expect(db.rpc).toHaveBeenLastCalledWith("mathquest_service_recover", {
+      input: {
+        school_id: workspace,
+        actor_id: actor,
+        id: requestId,
+        finish: true,
+        ack: {
+          schema_version: "1.0",
+          request_id: requestId,
+          status: "revoked",
+        },
+      },
+    });
+    vi.mocked(db.rpc).mockClear();
+    fetcher.mockImplementation(async () =>
+      Response.json({
+        schema_version: "1.0",
+        request_id: actor,
+        status: "revoked",
+      }),
+    );
+    await expect(recoverPairing(db, workspace, actor)).rejects.toMatchObject({
+      code: "INVALID_ACK",
+    });
+    expect(db.rpc).not.toHaveBeenCalledWith("mathquest_service_recover", {
+      input: expect.objectContaining({ finish: true }),
+    });
   });
 });

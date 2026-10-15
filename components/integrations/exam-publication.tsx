@@ -17,6 +17,7 @@ export function ExamPublication({
     [consent, setConsent] = useState(false),
     [withdraw, setWithdraw] = useState(false);
   const prepared = useRef<{ action: string; id: string } | null>(null);
+  const trigger = useRef<HTMLButtonElement | null>(null);
   const pub = state?.publication,
     conn = state?.connection;
   const disabled =
@@ -24,7 +25,9 @@ export function ExamPublication({
     readOnly ||
     !state?.receiverReady ||
     !conn ||
+    conn.revocationPending ||
     conn.status !== "active";
+  const publicationBlocked = pub?.termClosed || pub?.recoveryRequired;
   async function command(action: "publish" | "withdraw" | "retry") {
     if (prepared.current?.action !== action)
       prepared.current = { action, id: crypto.randomUUID() };
@@ -45,20 +48,25 @@ export function ExamPublication({
   const label =
     pub?.state === "withdrawn"
       ? "ถอนแล้ว"
-      : pub?.state === "withdraw_pending"
-        ? "รอถอน"
-        : pub?.lastError
-          ? "ส่งไม่สำเร็จ"
-          : pub?.unmatched.length || pub?.invalid.length
-            ? "มีรหัสต้องตรวจ"
-            : pub?.pending
-              ? "รอส่ง"
-              : pub?.revision && pub.delivered
-                ? "ส่งแล้ว"
-                : "ยังไม่เผยแพร่";
+      : pub?.termClosed
+        ? "ปิดภาคเรียนแล้ว"
+        : pub?.recoveryRequired
+          ? "ต้องถอนคะแนนเดิม"
+          : pub?.state === "withdraw_pending"
+            ? "รอถอน"
+            : pub?.lastError
+              ? "ส่งไม่สำเร็จ"
+              : pub?.unmatched.length || pub?.invalid.length
+                ? "มีรหัสต้องตรวจ"
+                : pub?.pending
+                  ? "รอส่ง"
+                  : pub?.revision && pub.delivered
+                    ? "ส่งแล้ว"
+                    : "ยังไม่เผยแพร่";
   return (
     <>
       <button
+        ref={trigger}
         className="btn btn-secondary integration-trigger"
         onClick={() => setOpen(true)}
       >
@@ -66,6 +74,7 @@ export function ExamPublication({
         MathQuest
       </button>
       <Modal
+        returnFocusRef={trigger}
         open={open}
         onOpenChange={(value) => {
           setOpen(value);
@@ -129,7 +138,17 @@ export function ExamPublication({
               )}
               {pub?.lastError && (
                 <Notice tone="warning">
-                  ส่งไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่
+                  {pub.termClosed
+                    ? "MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว ชุดสอบภาคเรียนอื่นยังส่งได้"
+                    : pub.recoveryRequired
+                      ? "ถอนคะแนนเดิมผ่านการเชื่อมต่อนี้ก่อนเผยแพร่อีกครั้ง คะแนนใน ScanSob ยังคงอยู่"
+                      : "ส่งไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่"}
+                </Notice>
+              )}
+              {pub?.termClosed && !pub.lastError && (
+                <Notice tone="warning">
+                  MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว
+                  ชุดสอบภาคเรียนอื่นยังส่งได้
                 </Notice>
               )}
               {withdraw ? (
@@ -148,7 +167,7 @@ export function ExamPublication({
                     </button>
                     <button
                       className="btn btn-danger"
-                      disabled={disabled}
+                      disabled={disabled || pub?.termClosed}
                       onClick={() => void command("withdraw")}
                     >
                       {busy ? "กำลังถอน…" : "ยืนยันถอนเผยแพร่"}
@@ -162,7 +181,12 @@ export function ExamPublication({
                       type="checkbox"
                       checked={consent}
                       onChange={(e) => setConsent(e.target.checked)}
-                      disabled={disabled || !conn.enabled || !pub?.confirmed}
+                      disabled={
+                        disabled ||
+                        publicationBlocked ||
+                        !conn.enabled ||
+                        !pub?.confirmed
+                      }
                     />
                     อนุญาตให้นักเรียนดูคะแนนที่ยืนยันแล้วใน MathQuest
                   </label>
@@ -171,6 +195,7 @@ export function ExamPublication({
                       className="btn btn-primary"
                       disabled={
                         disabled ||
+                        publicationBlocked ||
                         !conn.enabled ||
                         !consent ||
                         !pub?.confirmed ||
@@ -184,6 +209,8 @@ export function ExamPublication({
                       className="btn btn-secondary"
                       disabled={
                         disabled ||
+                        publicationBlocked ||
+                        (!conn.enabled && pub?.state !== "withdraw_pending") ||
                         (!pub?.pending &&
                           !pub?.unmatched.length &&
                           !pub?.invalid.length &&
@@ -197,6 +224,7 @@ export function ExamPublication({
                       className="btn btn-ghost"
                       disabled={
                         disabled ||
+                        pub?.termClosed ||
                         !pub?.revision ||
                         pub.state === "withdrawn" ||
                         pub.state === "withdraw_pending"

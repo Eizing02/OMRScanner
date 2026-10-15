@@ -1,6 +1,19 @@
 import "server-only";
 import { ApiError } from "@/lib/supabase/api";
 const messages: Record<string, [string, number]> = {
+  TERM_CLOSED: [
+    "MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว ชุดสอบภาคเรียนอื่นยังส่งได้",
+    409,
+  ],
+  PUBLICATION_RECOVERY_REQUIRED: [
+    "ถอนคะแนนเดิมผ่านการเชื่อมต่อใหม่ก่อนเผยแพร่อีกครั้ง",
+    409,
+  ],
+  RECOVERY_PAUSE_REQUIRED: ["พักการส่งคะแนนก่อนกู้คืนการเชื่อมต่อ", 409],
+  RECOVERY_DESTINATION_MISMATCH: [
+    "ยังมีคะแนนที่โรงเรียนเดิม กรุณาจับคู่โรงเรียนเดิมเพื่อถอนคะแนนก่อน",
+    409,
+  ],
   FORBIDDEN: ["ไม่มีสิทธิ์จัดการการเชื่อมต่อในพื้นที่นี้", 403],
   CONNECTION_NOT_ACTIVE: [
     "การเชื่อมต่อยังไม่พร้อม กรุณาตรวจในหน้าตั้งค่า",

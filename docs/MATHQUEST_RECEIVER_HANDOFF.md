@@ -84,9 +84,36 @@ Proposed endpoint: `POST /functions/v1/pair-scansob-workspace`. Browser users ne
 
 `request`/`status` return exactly `schema_version`, `request_id`, `status`; status is `pending_approval`, `active`, `rejected` or `expired`. Only `active` includes a `connection` object containing `id`, `destination_school_id`, `destination_label`, `scope: "score:write"` and `token`. Tokens use 43–256 base64url characters and are specific to one approved source Workspace and school. Pending/rejected/expired replies contain no token.
 
-`revoke` returns exactly `{ "schema_version": "1.0", "request_id": "<same UUID>", "status": "revoked" }` only after invalidating the scope/token. A never-active source request can cancel locally after best-effort notification; its remote request/code must expire. A connection that ever became active needs remote revocation acknowledgment before ScanSob clears its secret.
+`revoke` returns exactly `{ "schema_version": "1.0", "request_id": "<same UUID>", "status": "revoked" }` only after invalidating the scope/token. ScanSob now requires this acknowledgment even for a pending request: local pending status does not prove remote approval never happened. It first retrieves protected status and, if active, uses the recovered token only in memory to revoke. An unknown request, expired delivery or a timeout stays pending for retry/operator recovery; it is never silently cancelled locally.
 
-Receiver work still required: expiring single-use pairing codes, explicit school-admin approval, idempotent request replay, protected status/revoke, and recovery when a token response is lost before source activation. Because MathQuest stores token hashes, lost delivery should issue a replacement token under the original authenticated approved request and invalidate the previous token, or use an agreed encrypted-delivery scheme. Never expose a stored plaintext token or silently share a global teacher secret. ScanSob clears its request secret after activation and supports revoke/re-pair; a dedicated rotate UI/handshake remains a TODO until both projects agree its contract.
+Local receiver commit `bb82d6c` implements expiring codes, administrator approval, idempotent delivery and protected status/revoke. Its HMAC delivery key must stay stable during the approved delivery window; no source-side token derivation is used. Never expose stored plaintext tokens or silently share a global teacher secret. A dedicated rotate UI/handshake remains future work.
+
+## Recovery follow-up for the MathQuest project
+
+Source SQL 011 and its UI implement paused-connection recovery using the existing authenticated revoke endpoint. The exact revoke ACK closes only the connection: it does **not** prove retained scores were withdrawn. ScanSob preserves historical publication/delete guards. After re-pairing to the **same destination school**, it requires a higher-revision withdrawal before publishing that exam again. Wrong-school activation is rejected while unresolved historical scores remain.
+
+Required receiver follow-ups before real data:
+
+1. **Old-score visibility on re-pair:** the reviewed receiver authorizes retained scores through any active connection for the Workspace. Re-pairing therefore makes old scores visible before a new event. Bind visibility to the score's approved publication/connection lifecycle, or perform an explicit audited reconciliation before reapproval. Do not treat a new connection as permission to resurface old retained data. ScanSob cannot close the gap between remote approval and token delivery.
+2. **Missing/expired request recovery:** absent protected status currently returns generic `403 UNAUTHORIZED`; after approval, delivery can expire while the actual connection remains active. Specify a secure idempotent cancellation/recovery contract that works in these states without leaking request existence. Do not tell ScanSob to treat every 403/404 as cancellation success. The current source deliberately retains the challenge and needs retry or destination-admin assistance.
+3. **Closed terms:** ingest already returns `403 application/json` with exactly `{ "error": "TERM_CLOSED" }`. Source 011 recognizes only this bounded, allowlisted code. It blocks that Workspace/destination/year/term, not the connection or other terms. No automatic reopening is provided. After receiver term reset/purge, agree an audited closure/withdrawal acknowledgment before clearing source historical delete guards; this update never pretends old scores were withdrawn after a rejection.
+4. Re-run the shared synthetic matrix: approval before cancellation, approval between status and revoke, lost revoke ACK/replay, receiver admin revocation with retained scores, wrong-school re-pair, historical higher-revision withdrawal, delayed old jobs and one closed term alongside an open term. Confirm deployed student self-link/switch isolation under the owner-approved policy.
+
+No MathQuest source, database, production environment or feature flags were changed by this ScanSob task. See [MATHQUEST_RECOVERY_UPGRADE.md](MATHQUEST_RECOVERY_UPGRADE.md).
+
+## Approved student-code linking policy — 15 October 2026
+
+The owner explicitly chose student self-confirmation, without teacher approval or an additional ownership-verification gate:
+
+1. Keep the Google sign-in flow. The student enters an existing five-digit roster code.
+2. Show that code, the student's name and classroom before saving the link.
+3. The student confirms the displayed information. Before confirmation, allow editing the code and repeating the lookup.
+4. After linking, offer a change-code action: enter the new code, preview the corresponding student information and confirm again.
+5. Keep scores/history tied to student codes. Switching the Google link must discard old profile/score caches and display the newly selected student's data, without moving scores between students.
+
+Do not introduce teacher approval or OTP as a condition for this student-link flow. Workspace pairing still requires the MathQuest administrator's approval. Student self-confirmation is the accepted account-link policy, not a claim that Google certifies ownership of a school roster code.
+
+The inspected MathQuest `google-auth.js` already provides lookup → preview → claim/switch and a fresh-page reload after changing the link. Existing MathQuest SQL additionally limits changes to two in 24 hours, prevents changes during an active relevant class and prevents two Google accounts claiming one code. Those restrictions remain implementation details to reconcile in the MathQuest project; this ScanSob documentation update does not remove them or change its database.
 
 ## Acceptance before live scores
 

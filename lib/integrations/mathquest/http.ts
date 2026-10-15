@@ -32,7 +32,32 @@ export async function receiverRequest(
     throw new ReceiverError("RECEIVER_UNAVAILABLE", true);
   }
   if (!response.ok) {
-    await response.body?.cancel();
+    // Only this bounded, documented code can be distinguished from denial.
+    // Never persist or return an arbitrary receiver error body.
+    if (
+      path === "ingest-scansob-results" &&
+      response.status === 403 &&
+      response.headers.get("content-type")?.includes("application/json")
+    ) {
+      try {
+        const value = await boundedJson(response, 2048);
+        if (
+          value &&
+          typeof value === "object" &&
+          Object.keys(value).length === 1 &&
+          "error" in value &&
+          value.error === "TERM_CLOSED"
+        )
+          throw new ReceiverError("TERM_CLOSED", false);
+      } catch (error) {
+        if (
+          error instanceof ReceiverError &&
+          (error.code === "TERM_CLOSED" ||
+            error.code === "RECEIVER_UNAVAILABLE")
+        )
+          throw error;
+      }
+    } else await response.body?.cancel();
     const retryable = response.status === 429 || response.status >= 500;
     const code =
       response.status === 401 || response.status === 403
@@ -56,6 +81,12 @@ export async function receiverRequest(
     await response.body?.cancel();
     throw new ReceiverError("INVALID_ACK", false);
   }
+  return boundedJson(response, 65536);
+}
+async function boundedJson(
+  response: Response,
+  limit: number,
+): Promise<unknown> {
   const reader = response.body?.getReader();
   if (!reader) throw new ReceiverError("INVALID_ACK", false);
   let size = 0,
@@ -66,7 +97,7 @@ export async function receiverRequest(
       const part = await reader.read();
       if (part.done) break;
       size += part.value.byteLength;
-      if (size > 65536) {
+      if (size > limit) {
         await reader.cancel();
         throw new ReceiverError("INVALID_ACK", false);
       }

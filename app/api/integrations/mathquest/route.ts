@@ -18,6 +18,7 @@ import {
   initiatePairing,
   refreshPairing,
   revokePairing,
+  recoverPairing,
   pairingFailure,
 } from "@/lib/integrations/mathquest/pairing";
 import { integrationOverview } from "@/lib/integrations/mathquest/overview";
@@ -86,6 +87,8 @@ export async function PATCH(request: Request) {
       const db = integrationServiceClient();
       if (input.data.action === "refresh")
         await refreshPairing(db, ctx.schoolId, ctx.user.id);
+      else if (input.data.action === "recover")
+        await recoverPairing(db, ctx.schoolId, ctx.user.id);
       else await revokePairing(db, ctx.schoolId, ctx.user.id);
     }
     return json(await integrationOverview(ctx.db, ctx.schoolId, false));

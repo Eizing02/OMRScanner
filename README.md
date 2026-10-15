@@ -54,6 +54,7 @@ npm run build
 - Designer/Print/Scanner/Review/Results แบบ compact task workspace บน phone/iPad; รายการและคุณสมบัติเลื่อนภายใน ปุ่มหลักไม่หลุดใต้เมนูด่วน
 - โฉมใหม่ mint/sky/lavender/lilac กับตัวหนังสือเข้มและ motion สั้นที่รองรับ reduced motion; หัวพิมพ์ `school` รุ่น 4 ใช้โลโก้ใหญ่ขึ้น ช่องข้อมูลมีจุด และช่องคะแนน dots/total (SQL 009) กระดาษเดิมรุ่น 2/3 ยังสแกนได้ตามทะเบียนเดิม
 - การเผยแพร่คะแนนที่ยืนยันแล้วไป MathQuest เป็นโมดูลเสริมแบบ opt-in ต่อ Workspace มี consent, outbox/idempotency, retry, unmatched และถอนก่อนลบชุดสอบ; ค่าเริ่มต้นปิดและยังห้ามใช้ข้อมูลจริงจน receiver ฝั่ง MathQuest ผ่าน security/conformance gate ดู [คู่มือติดตั้งและสัญญาข้อมูล](docs/MATHQUEST_SCORE_INTEGRATION.md)
+- อัปเดตการเชื่อมต่อใช้ SQL 011 ต่อจาก 010: กู้คืน connection, ยกเลิกคำขอที่อนุมัติคาบเกี่ยว และแยกภาคเรียนที่ปิดแล้ว ดู [ขั้นตอนอัปเกรดและข้อจำกัดฝั่ง MathQuest](docs/MATHQUEST_RECOVERY_UPGRADE.md) — ผู้ใช้แจ้งว่ารัน 011 แล้ว ยังไม่ได้ตรวจฐานข้อมูลจริงซ้ำ จึงไม่ต้องรันซ้ำ
 
 ## รายชื่อ 4 คอลัมน์และโลโก้โรงเรียน
 

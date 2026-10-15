@@ -12,7 +12,7 @@ const envelope = {
   tag: "synthetic",
   ciphertext: "not-a-real-secret",
 };
-export async function integrationFixture() {
+export async function integrationFixture(upgrade = true) {
   const db = new PGlite();
   await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
     create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb default '{}');
@@ -28,6 +28,13 @@ export async function integrationFixture() {
     "utf8",
   );
   await db.exec(migration);
+  if (upgrade)
+    await db.exec(
+      await readFile(
+        "supabase/migrations/202610150011_score_connection_recovery.sql",
+        "utf8",
+      ),
+    );
   const asUser = async <T = Record<string, unknown>>(
     user: string,
     sql: string,
@@ -138,7 +145,12 @@ export async function integrationFixture() {
     studentIndex = 0,
     targetExam?: string,
     version = 1,
-    overrides: { title?: string; subject?: string } = {},
+    overrides: {
+      title?: string;
+      subject?: string;
+      term?: number;
+      year?: number;
+    } = {},
   ) => {
     const config = {
       title: "แบบทดสอบจำลอง",
@@ -173,6 +185,8 @@ export async function integrationFixture() {
       title: config.title,
       subject: config.subject,
       classroom: config.classroom,
+      term: config.term,
+      year: config.year,
       answerKeySignature: JSON.stringify(config.answerKey),
     });
     const print = await rpc<{ templateUuid: string }>(

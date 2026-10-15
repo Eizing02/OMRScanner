@@ -25,13 +25,7 @@ const remotePairSchema = z.strictObject({
     })
     .optional(),
 });
-async function completePair(
-  db: SupabaseClient,
-  workspace: string,
-  actor: string,
-  id: string,
-  result: unknown,
-) {
+function parsePair(id: string, result: unknown) {
   let value;
   try {
     value = remotePairSchema.parse(result);
@@ -43,6 +37,16 @@ async function completePair(
     (value.status === "active") !== Boolean(value.connection)
   )
     throw new ReceiverError("INVALID_ACK", false);
+  return value;
+}
+async function completePair(
+  db: SupabaseClient,
+  workspace: string,
+  actor: string,
+  id: string,
+  result: unknown,
+) {
+  const value = parsePair(id, result);
   if (value.status === "pending_approval") return;
   await integrationRpc(db, "mathquest_service_complete_pairing", {
     school_id: workspace,
@@ -137,9 +141,10 @@ export async function revokePairing(
   await integrationRpc(db, "mathquest_service_revoke", {
     school_id: workspace,
     actor_id: actor,
+    id: row.id,
     finish: false,
   });
-  const token = row.secrets.token_secret
+  let token = row.secrets.token_secret
     ? openSecret(row.secrets.token_secret, tokenBinding(workspace, row.id))
     : undefined;
   const challenge = row.secrets.pairing_secret
@@ -147,44 +152,94 @@ export async function revokePairing(
     : undefined;
   if ((row.status === "active" || row.connection_id) && !token)
     throw new ReceiverError("INTEGRATION_SECRET_UNAVAILABLE", false);
-  if (token || challenge) {
-    try {
-      const response = await receiverRequest(
+  let connectionId = row.connection_id;
+  if (!connectionId && !token && challenge) {
+    // A remote approval can commit before its token reaches ScanSob. Recover
+    // that token in memory; never activate the locally frozen request.
+    const value = parsePair(
+      row.id,
+      await receiverRequest(
         "pair-scansob-workspace",
         JSON.stringify({
           schema_version: "1.0",
-          action: "revoke",
+          action: "status",
           request_id: row.id,
           source_workspace_id: workspace,
-          ...(row.connection_id ? { connection_id: row.connection_id } : {}),
-          ...(challenge ? { request_secret: challenge } : {}),
+          request_secret: challenge,
         }),
-        token,
-      );
-      const ack = z
-        .strictObject({
-          schema_version: z.literal("1.0"),
-          request_id: z.uuid(),
-          status: z.literal("revoked"),
-        })
-        .safeParse(response);
-      if (!ack.success || ack.data.request_id !== row.id)
-        throw new ReceiverError("INVALID_ACK", false);
-    } catch (error) {
-      // A never-active request has no score scope or bearer token. Its one-time
-      // pairing code expires remotely, so local cancellation stays recoverable.
-      if (
-        row.status !== "pending_approval" ||
-        token ||
-        !(error instanceof ReceiverError)
-      )
-        throw error;
+      ),
+    );
+    if (value.connection) {
+      token = value.connection.token;
+      connectionId = value.connection.id;
     }
   }
+  if (!token && !challenge)
+    throw new ReceiverError("INTEGRATION_SECRET_UNAVAILABLE", false);
+  await remoteRevoke(workspace, row.id, connectionId, token, challenge);
   await integrationRpc(db, "mathquest_service_revoke", {
     school_id: workspace,
     actor_id: actor,
+    id: row.id,
     finish: true,
+  });
+}
+async function remoteRevoke(
+  workspace: string,
+  id: string,
+  connectionId: string | null,
+  token?: string,
+  challenge?: string,
+) {
+  const response = await receiverRequest(
+    "pair-scansob-workspace",
+    JSON.stringify({
+      schema_version: "1.0",
+      action: "revoke",
+      request_id: id,
+      source_workspace_id: workspace,
+      ...(connectionId ? { connection_id: connectionId } : {}),
+      ...(challenge ? { request_secret: challenge } : {}),
+    }),
+    token,
+  );
+  const ack = z
+    .strictObject({
+      schema_version: z.literal("1.0"),
+      request_id: z.uuid(),
+      status: z.literal("revoked"),
+    })
+    .safeParse(response);
+  if (!ack.success || ack.data.request_id !== id)
+    throw new ReceiverError("INVALID_ACK", false);
+  return ack.data;
+}
+export async function recoverPairing(
+  db: SupabaseClient,
+  workspace: string,
+  actor: string,
+) {
+  const row = await integrationRpc(db, "mathquest_service_credentials", {
+    school_id: workspace,
+    actor_id: actor,
+  });
+  const token = openSecret(
+    row.secrets.token_secret,
+    tokenBinding(workspace, row.id),
+  );
+  await integrationRpc(db, "mathquest_service_recover", {
+    school_id: workspace,
+    actor_id: actor,
+    id: row.id,
+    finish: false,
+  });
+  const ack = await remoteRevoke(workspace, row.id, row.connection_id, token);
+  await integrationRpc(db, "mathquest_service_recover", {
+    school_id: workspace,
+    actor_id: actor,
+    id: row.id,
+    finish: true,
+    ack,
   });
 }
 export function pairingFailure(error: unknown) {
@@ -192,8 +247,10 @@ export function pairingFailure(error: unknown) {
     return new ApiError(
       error.code,
       error.code === "CONNECTION_DENIED"
-        ? "รหัสเชื่อมต่อไม่ถูกต้องหรือไม่ได้รับอนุมัติ"
-        : "ติดต่อ MathQuest ไม่สำเร็จ กรุณาลองตรวจสถานะอีกครั้ง",
+        ? "MathQuest ไม่อนุญาตคำขอนี้ กรุณาตรวจรหัสหรือสอบถามผู้ดูแลปลายทาง"
+        : error.code === "INTEGRATION_SECRET_UNAVAILABLE"
+          ? "ข้อมูลเชื่อมต่อไม่พร้อม กรุณาติดต่อผู้ดูแลเพื่อกู้คืน"
+          : "ติดต่อ MathQuest ไม่สำเร็จ กรุณาลองตรวจสถานะอีกครั้ง",
       error.retryable ? 503 : 409,
     );
   return error;

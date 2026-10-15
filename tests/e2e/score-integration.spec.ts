@@ -26,6 +26,7 @@ const confirmed = demoReviews.slice(0, 2).map((review, index) => ({
 
 async function fixtures(page: Page) {
   let readOnly = false;
+  let recoveryFails = false;
   let connection: null | Record<string, unknown> = null;
   let publication: {
     state: string;
@@ -37,6 +38,8 @@ async function fixtures(page: Page) {
     invalid: string[];
     lastError: string | null;
     lastSyncAt: string | null;
+    recoveryRequired?: boolean;
+    termClosed?: boolean;
   } = {
     state: "draft",
     revision: 0,
@@ -139,7 +142,30 @@ async function fixtures(page: Page) {
           mode: input.mode,
           enabled: input.enabled,
         };
-      else
+      else if (input.action === "recover") {
+        if (recoveryFails) {
+          connection = {
+            ...connection!,
+            recoveryPending: true,
+            revocationPending: true,
+          };
+          return route.fulfill({
+            status: 503,
+            json: {
+              error: {
+                messageTh: "ติดต่อ MathQuest ไม่สำเร็จ กรุณาลองอีกครั้ง",
+              },
+            },
+          });
+        }
+        connection = {
+          ...connection!,
+          enabled: false,
+          status: "revoked",
+          recoveryPending: false,
+          revocationPending: false,
+        };
+      } else
         connection = {
           ...connection!,
           enabled: false,
@@ -177,6 +203,48 @@ async function fixtures(page: Page) {
     route.fulfill({ json: { data: { reviews: confirmed, versions: [exam] } } }),
   );
   return {
+    pauseConnection() {
+      connection = {
+        id: localConnection,
+        connectionId: remoteConnection,
+        destinationSchoolId: destination,
+        destinationLabel: "โรงเรียนปลายทางทดสอบ",
+        status: "active",
+        mode: "manual",
+        enabled: false,
+        revocationPending: false,
+        recoveryPending: false,
+        lastSyncAt: null,
+        lastError: "CONNECTION_DENIED",
+      };
+    },
+    recoveryFails(value: boolean) {
+      recoveryFails = value;
+    },
+    publicationRecovery() {
+      connection = {
+        ...connection!,
+        status: "active",
+        enabled: true,
+        recoveryPending: false,
+        revocationPending: false,
+      };
+      publication = {
+        ...publication,
+        revision: 2,
+        state: "error",
+        recoveryRequired: true,
+        lastError: "REMOTE_REVOKED",
+      };
+    },
+    closeTerm() {
+      publication = {
+        ...publication,
+        recoveryRequired: false,
+        termClosed: true,
+        lastError: "TERM_CLOSED",
+      };
+    },
     deliverPartial() {
       publication = {
         ...publication,
@@ -278,4 +346,85 @@ test("read-only inspection cannot expose publication controls", async ({
   state.setReadOnly();
   await page.goto("/export");
   await expect(page.getByRole("button", { name: "MathQuest" })).toHaveCount(0);
+});
+
+test("recovers with explicit consent and honest retained-score states across supported viewports", async ({
+  page,
+}) => {
+  const state = await fixtures(page);
+  state.pauseConnection();
+  await page.goto("/settings");
+  const section = page.getByRole("region", { name: "เชื่อมต่อ MathQuest" });
+  for (const [name, width, height] of [
+    ["desktop", 1440, 1000],
+    ["phone", 390, 844],
+    ["ipad", 768, 1024],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await section.scrollIntoViewIfNeeded();
+    await expect(
+      section.getByRole("button", { name: "กู้คืนการเชื่อมต่อ" }),
+    ).toBeEnabled();
+    await accessibleAndContained(page);
+    await section.screenshot({
+      path: `.impeccable/review/integration-recovery-${name}.png`,
+    });
+  }
+  await section.getByRole("button", { name: "กู้คืนการเชื่อมต่อ" }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "กู้คืนการเชื่อมต่อ MathQuest",
+  });
+  await expect(dialog).toContainText("คะแนนที่เคยเผยแพร่ยังไม่ถูกถอน");
+  await expect(
+    dialog.getByRole("button", { name: "ปิดหน้าต่าง", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    dialog.getByRole("button", { name: "กลับ", exact: true }),
+  ).toBeFocused();
+  state.recoveryFails(true);
+  await dialog.getByRole("button", { name: "ยืนยันกู้คืน" }).click();
+  await expect(dialog).toContainText("ติดต่อ MathQuest ไม่สำเร็จ");
+  state.recoveryFails(false);
+  await dialog.getByRole("button", { name: "ยืนยันกู้คืน" }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(section.getByLabel("รหัสเชื่อมต่อ")).toBeVisible();
+  await expect(section.getByLabel("รหัสเชื่อมต่อ")).toBeFocused();
+  state.publicationRecovery();
+  await page.goto("/export");
+  await page.getByRole("button", { name: "MathQuest", exact: true }).click();
+  const publication = page.getByRole("dialog", {
+    name: "เผยแพร่คะแนนไป MathQuest",
+  });
+  await expect(publication).toContainText("ถอนคะแนนเดิมผ่านการเชื่อมต่อนี้");
+  await expect(
+    publication.getByRole("button", { name: "เผยแพร่คะแนน", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    publication.getByRole("button", { name: "ถอนเผยแพร่", exact: true }),
+  ).toBeEnabled();
+  state.closeTerm();
+  await publication.getByRole("button", { name: "ตรวจสถานะ" }).click();
+  await expect(publication).toContainText("ชุดสอบภาคเรียนอื่นยังส่งได้");
+  await expect(
+    publication.getByRole("button", { name: "ลองส่งใหม่" }),
+  ).toBeDisabled();
+  await expect(
+    publication.getByRole("button", { name: "ถอนเผยแพร่", exact: true }),
+  ).toBeDisabled();
+  for (const [name, width, height] of [
+    ["desktop", 1440, 1000],
+    ["phone", 390, 844],
+    ["ipad", 768, 1024],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await accessibleAndContained(page);
+    await publication.screenshot({
+      path: `.impeccable/review/integration-term-closed-${name}.png`,
+    });
+  }
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "MathQuest", exact: true }),
+  ).toBeFocused();
 });
