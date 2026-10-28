@@ -242,6 +242,7 @@ test("auto capture locks QR first, stops the camera, supports retake and saves p
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/scan");
+  await page.getByLabel("สแกนต่อเนื่อง", { exact: true }).uncheck();
   await page
     .getByRole("combobox", { name: "รูปแบบกระดาษ" })
     .selectOption("single");
@@ -390,6 +391,156 @@ test("a refreshed account remounts caches and scopes all data requests", async (
     page.getByRole("cell", { name: "เด็กชายนักเรียนบัญชีข", exact: true }),
   ).toHaveCount(0);
 });
+test("continuous scanning keeps the camera live, retains failed images, retries idempotently and waits for paper removal", async ({
+  page,
+}) => {
+  await fixtures(page, () => access());
+  const { image, template } = await captureFixture();
+  const submissions: { requestId: string; paper: string }[] = [];
+  await page.route("**/api/scan-records**", async (route) => {
+    if (route.request().method() !== "POST") {
+      if (new URL(route.request().url()).searchParams.has("token"))
+        return route.fulfill({ json: { data: template, error: null } });
+      return route.fallback();
+    }
+    const form = await new Response(
+      new Uint8Array(route.request().postDataBuffer()!),
+      {
+        headers: { "Content-Type": route.request().headers()["content-type"] },
+      },
+    ).formData();
+    submissions.push(JSON.parse(String(form.get("metadata"))));
+    if (submissions.length === 1)
+      return route.fulfill({
+        status: 503,
+        json: {
+          data: null,
+          error: { messageTh: "เครือข่ายขัดข้อง กดลองใหม่" },
+        },
+      });
+    return route.fulfill({
+      json: {
+        data: [
+          {
+            id: crypto.randomUUID(),
+            studentCode: submissions.length === 2 ? "02074" : "02075",
+            name: "นักเรียนจำลอง",
+            score: 20,
+            maxScore: 20,
+          },
+        ],
+        error: null,
+      },
+    });
+  });
+  await page.addInitScript(
+    async (png) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1200;
+      canvas.height = 1600;
+      const ctx = canvas.getContext("2d")!;
+      const image = new Image();
+      image.src = png;
+      await image.decode();
+      let present = true;
+      window.addEventListener("test-paper-presence", (event) => {
+        present = (event as CustomEvent<boolean>).detail;
+      });
+      const draw = () => {
+        ctx.fillStyle = "#273642";
+        ctx.fillRect(0, 0, 1200, 1600);
+        if (present) ctx.drawImage(image, 150, 160, 900, 1273);
+      };
+      draw();
+      Object.defineProperty(window, "ImageCapture", {
+        configurable: true,
+        value: undefined,
+      });
+      Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+        value: async () => {
+          const media = canvas.captureStream(10);
+          const timer = setInterval(() => {
+            if (media.getVideoTracks().every((t) => t.readyState === "ended"))
+              clearInterval(timer);
+            else draw();
+          }, 100);
+          return media;
+        },
+      });
+    },
+    `data:image/png;base64,${image.toString("base64")}`,
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/scan");
+  await expect(page.getByLabel("สแกนต่อเนื่อง", { exact: true })).toBeChecked();
+  await expect(
+    page.getByRole("combobox", { name: "รูปแบบกระดาษ" }),
+  ).toHaveValue("single");
+  await page.getByRole("button", { name: "เปิดกล้อง", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "ลองส่งอีกครั้ง" }),
+  ).toBeVisible({ timeout: 45000 });
+  await page.getByRole("link", { name: "ตรวจผล", exact: true }).click();
+  await expect(page).toHaveURL(/\/scan$/);
+  await page.getByRole("button", { name: "ลองส่งอีกครั้ง" }).click();
+  await expect(page.locator(".scan-batch-status")).toContainText(
+    "บันทึกแล้ว 1 ใบ",
+  );
+  expect(submissions[0].requestId).toBe(submissions[1].requestId);
+  await page.waitForTimeout(1800);
+  expect(submissions).toHaveLength(2);
+  expect(
+    await page
+      .locator("video")
+      .evaluate(
+        (v) =>
+          ((v as HTMLVideoElement).srcObject as MediaStream).getVideoTracks()[0]
+            .readyState,
+      ),
+  ).toBe("live");
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new CustomEvent("test-paper-presence", { detail: false }),
+    ),
+  );
+  await page.waitForTimeout(1600);
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new CustomEvent("test-paper-presence", { detail: true }),
+    ),
+  );
+  await expect(page.locator(".scan-batch-status")).toContainText(
+    "บันทึกแล้ว 2 ใบ",
+    { timeout: 30000 },
+  );
+  expect(submissions).toHaveLength(3);
+  expect(submissions[2].requestId).not.toBe(submissions[1].requestId);
+  for (const [name, width, height] of [
+    ["phone", 390, 844],
+    ["ipad", 768, 1024],
+    ["ipad-landscape", 1024, 768],
+    ["desktop", 1440, 1000],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > innerWidth + 1,
+      ),
+    ).toBe(false);
+    await page.screenshot({
+      path: `.impeccable/review/continuous-scanner-${name}.png`,
+      fullPage: true,
+    });
+    expect(
+      (
+        await new AxeBuilder({ page })
+          .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+          .analyze()
+      ).violations,
+    ).toEqual([]);
+  }
+});
+
 test("Google entry and pending state have Thai accessible desktop and mobile layouts", async ({
   page,
 }) => {

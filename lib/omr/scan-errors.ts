@@ -36,7 +36,7 @@ export function scanDatabaseError(message: string) {
   if (message.includes("does not exist") || message.includes("schema cache"))
     return new ApiError(
       "SCAN_SETUP_REQUIRED",
-      "ยังติดตั้งส่วนสแกนไม่ครบ กรุณาให้เจ้าของระบบตรวจ SQL 006–009",
+      "ยังติดตั้งส่วนสแกนไม่ครบ กรุณาให้เจ้าของระบบตรวจ SQL ส่วนสแกนล่าสุด",
       503,
     );
   return new ApiError(

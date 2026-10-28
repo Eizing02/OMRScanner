@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import * as XLSX from "xlsx";
+import { readFile } from "node:fs/promises";
 import { rosterBrowserFixture } from "./roster-fixtures";
 import { owner, teacherA } from "../score-integration-fixture";
 test.use({ actionTimeout: 15000 });
@@ -89,6 +90,80 @@ test("a paged connected review loads one detail and confirms through the existin
       ).rows[0].status,
     ).toBe("confirmed");
     expect(runtimeErrors).toEqual([]);
+  } finally {
+    await f.db.close();
+  }
+});
+
+test("batch confirmation previews current-page readiness and confirms selected scores through PostgreSQL", async ({
+  page,
+}) => {
+  const f = await rosterBrowserFixture(page);
+  try {
+    for (const file of [
+      "202610280017_print_v5.sql",
+      "202610280018_batch_confirmation.sql",
+    ])
+      await f.db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
+    const ready = await f.exam(0),
+      unclear = await f.exam(1);
+    await f.db.query(
+      "update detected_answers set detection_status='ambiguous' where scan_id=$1 and question_number=1",
+      [unclear.scanId],
+    );
+    await f.db.query("select private.recalculate_scan($1)", [unclear.scanId]);
+    await page.goto("/review");
+    await page
+      .getByRole("button", { name: "ยืนยันหลายรายการ", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", { name: "ยืนยันคะแนนที่เลือก" });
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByRole("button", { name: "ยืนยัน 1 รายการ", exact: true }),
+    ).toBeEnabled();
+    await expect(
+      dialog.getByRole("checkbox", { name: /ยืนยัน 00124/ }),
+    ).toBeDisabled();
+    for (const [name, width, height] of [
+      ["phone", 390, 844],
+      ["ipad", 768, 1024],
+      ["ipad-landscape", 1024, 768],
+      ["desktop", 1440, 1000],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth > innerWidth + 1,
+        ),
+      ).toBe(false);
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      await page.screenshot({
+        path: `.impeccable/review/batch-confirm-${name}.png`,
+        fullPage: true,
+      });
+    }
+    await dialog
+      .getByRole("button", { name: "ยืนยัน 1 รายการ", exact: true })
+      .click();
+    await expect(dialog).toBeHidden();
+    const states = (
+      await f.db.query<{ id: string; scan_status: string }>(
+        "select id,scan_status from scan_records where id=any($1::uuid[])",
+        [[ready.scanId, unclear.scanId]],
+      )
+    ).rows;
+    expect(states.find((r) => r.id === ready.scanId)?.scan_status).toBe(
+      "confirmed",
+    );
+    expect(states.find((r) => r.id === unclear.scanId)?.scan_status).toBe(
+      "pending_review",
+    );
   } finally {
     await f.db.close();
   }

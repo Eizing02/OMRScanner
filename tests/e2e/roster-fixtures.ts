@@ -73,10 +73,18 @@ export async function rosterBrowserFixture(
       } else if (url.pathname === "/api/scan-records") {
         const query = Object.fromEntries(url.searchParams);
         if (request.method() === "PATCH")
-          data = await f.rpc(actor, "review_scan", {
-            ...request.postDataJSON(),
-            school_id: tenant,
-          });
+          data = await f.rpc(
+            actor,
+            request.postDataJSON().action === "preview_confirm"
+              ? "preview_scan_confirmation"
+              : request.postDataJSON().action === "confirm_batch"
+                ? "confirm_scan_batch"
+                : "review_scan",
+            {
+              ...request.postDataJSON(),
+              school_id: tenant,
+            },
+          );
         else if (query.media) {
           const template = (
             await f.asUser<{ layout_json: unknown; omr_json: unknown }>(

@@ -9,6 +9,7 @@ import {
 } from "@/lib/supabase/api";
 import {
   reviewInputSchema,
+  batchReviewSchema,
   setTokenSchema,
   type LockedScanTemplate,
 } from "@/types/scan";
@@ -399,7 +400,21 @@ export async function DELETE(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const { db, schoolId } = await context(true);
-    const parsed = reviewInputSchema.safeParse(await requestBody(request));
+    const raw = await requestBody(request);
+    const batch = batchReviewSchema.safeParse(raw);
+    if (batch.success) {
+      const result = await db.rpc(
+        batch.data.action === "preview_confirm"
+          ? "preview_scan_confirmation"
+          : "confirm_scan_batch",
+        {
+          input: { ...batch.data, school_id: schoolId },
+        },
+      );
+      if (result.error) throw scanDatabaseError(result.error.message);
+      return json(result.data);
+    }
+    const parsed = reviewInputSchema.safeParse(raw);
     if (!parsed.success)
       throw new ApiError(
         "INVALID_REVIEW",

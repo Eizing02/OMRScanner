@@ -113,6 +113,8 @@ Document detection in the browser and optical-mark recognition on the server are
 
 ### Live scanning requirements
 
+- Approved 28 October 2026: keep four existing corner markers; defer extra/coded markers. New print jobs use school-v2 / geometry 5 with one-line school name, bold populated identity, larger QR and fill examples outside answer fields; preserve geometry 2/3/4 reads. Cut half-sheets are the primary continuous-scanning format. Auto capture feeds a bounded in-memory serial upload queue, waits for paper removal before re-arming, retains failed jobs for retry and keeps every score pending. Teachers may preview/select ready results from the current page and confirm them together through revision-guarded authoritative review. SQL 017/018 are prepared locally; installation requires separate production approval. See docs/CONTINUOUS_SCAN_PRINT_V5.md.
+
 - In-browser paper detection from the camera feed: **show an outline on the four document corners and darken the area outside the detected paper**.
 - Clearly distinguish searching (neutral), detected but not ready (amber), and ready to capture (green), supported by text/icons rather than color alone.
 - Offer device-friendly prompts: move closer, improve lighting, hold steady, include all corners, turn off glare.

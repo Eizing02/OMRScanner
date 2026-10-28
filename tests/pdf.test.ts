@@ -34,7 +34,9 @@ beforeAll(() => {
     const file = await readFile(
       url.endsWith("school-logo.png")
         ? "public/omr-assets/school-logo.png"
-        : "public/omr-assets/NotoSansThai-Regular.ttf",
+        : url.endsWith("NotoSansThai-Bold.ttf")
+          ? "public/omr-assets/NotoSansThai-Bold.ttf"
+          : "public/omr-assets/NotoSansThai-Regular.ttf",
     );
     return new Response(file);
   });
@@ -71,6 +73,14 @@ describe("print PDF actual output", () => {
         font.cmap.unicode.codeMap[char.codePointAt(0)!],
         `font missing ${char}`,
       ).toBeGreaterThan(0);
+    result.pdf.setFont("Thai", "bold");
+    const bold = result.pdf.getFont().metadata as typeof font;
+    for (const char of "0123456789.A4%ชื่อรหัส…–กขคงจ /·")
+      expect(
+        bold.cmap.unicode.codeMap[char.codePointAt(0)!],
+        `bold missing ${char}`,
+      ).toBeGreaterThan(0);
+    result.pdf.setFont("Thai", "normal");
   });
   it("rejects noninteger counts and unsafe layouts", async () => {
     await expect(buildPrintPdf(defaultLayout, 1.2)).rejects.toThrow();

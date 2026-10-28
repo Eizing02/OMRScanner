@@ -8,6 +8,8 @@ import {
   validateLayout,
   printStudentErrors,
   resolvePrintLayout,
+  modernPrint,
+  fillExamples,
   type SheetLayout,
 } from "@/lib/omr/generate-template";
 import { createSetIdentity, qrDataUrl } from "@/lib/omr/qr";
@@ -54,8 +56,17 @@ export async function buildPrintPdf(
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   doc.addFileToVFS("Thai.ttf", btoa(fontBinary));
   doc.addFont("Thai.ttf", "Thai", "normal");
+  if (modernPrint(layout)) {
+    const response = await fetch("/omr-assets/NotoSansThai-Bold.ttf");
+    if (!response.ok) throw new Error("โหลดฟอนต์ตัวหนาไม่สำเร็จ กรุณาลองใหม่");
+    const bold = new Uint8Array(await response.arrayBuffer());
+    let binary = "";
+    for (const byte of bold) binary += String.fromCharCode(byte);
+    doc.addFileToVFS("Thai-Bold.ttf", btoa(binary));
+    doc.addFont("Thai-Bold.ttf", "Thai", "bold");
+  }
   doc.setFont("Thai");
-  const qr = await qrDataUrl(identity.token);
+  const qr = await qrDataUrl(identity.token, modernPrint(layout) ? 512 : 256);
   const logo = layout.logo ? await printableLogo(layout.logo) : null;
   const sheets: PrintManifest["sheets"] = [];
   for (let index = 0; index < count; index++) {
@@ -69,7 +80,9 @@ export async function buildPrintPdf(
       y: number,
       size: number,
       align: "left" | "center" = "left",
+      weight: "normal" | "bold" = "normal",
     ) => {
+      doc.setFont("Thai", weight);
       doc.setFontSize(mmToPt(size));
       doc.text(value, offset + x, y, { align });
     };
@@ -98,8 +111,32 @@ export async function buildPrintPdf(
     doc.rect(offset + g.score.x, g.score.y, g.score.width, g.score.height);
     doc.addImage(qr, "PNG", offset + g.qr.x, g.qr.y, g.qr.width, g.qr.width);
     printTexts(layout, g, student).forEach((t) =>
-      text(t.value, t.x, t.y, t.size, t.align),
+      text(t.value, t.x, t.y, t.size, t.align, t.weight),
     );
+    if (modernPrint(layout))
+      for (const example of fillExamples(g)) {
+        doc.circle(
+          offset + example.x,
+          example.y,
+          example.kind === "outside" ? 2.5 : 1.8,
+          example.kind === "partial" ? "S" : "F",
+        );
+        if (example.kind === "partial")
+          doc.circle(offset + example.x - 0.4, example.y, 0.8, "F");
+        if (example.kind === "outside") {
+          doc.setDrawColor(255);
+          doc.circle(offset + example.x, example.y, 1.8);
+          doc.setDrawColor(0);
+        }
+        if (example.kind === "multiple")
+          doc.circle(offset + example.x + 5.5, example.y, 1.8, "F");
+        text(
+          `${example.kind === "correct" ? "ถูก" : "ผิด"} · ${example.label}`,
+          example.labelX,
+          example.y + 0.9,
+          2.5,
+        );
+      }
     for (let digit = 0; digit < 5; digit++) {
       doc.rect(offset + g.idStart.x + digit * g.idStepX - 2, 75, 4, 4);
       if (student)

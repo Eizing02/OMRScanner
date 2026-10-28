@@ -26,6 +26,7 @@ import { thaiChoices, choices, type Choice } from "@/types/exam";
 import { gradeExam, canVerify } from "@/lib/grading/grade-exam";
 import { effectiveAnswers } from "@/lib/grading/recalculate";
 import type { StoredReview, LockedScanTemplate } from "@/types/scan";
+import type { ConfirmationCandidate } from "@/types/scan";
 import type { Exam } from "@/types/exam";
 import { useReviewPage } from "./use-review-data";
 type Media = {
@@ -73,6 +74,10 @@ export function ReviewCenter({
     [mediaError, setMediaError] = useState("");
   const [refreshImage, setRefreshImage] = useState(0);
   const [queuePage, setQueuePage] = useState(0);
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [candidates, setCandidates] = useState<ConfirmationCandidate[]>([]);
+  const [selectedScans, setSelectedScans] = useState<string[]>([]);
+  const [batchMessage, setBatchMessage] = useState("");
   const [detail, setDetail] = useState<{
     review: StoredReview;
     version: Exam;
@@ -94,6 +99,135 @@ export function ReviewCenter({
       `${r.studentCode} ${r.name}`.includes(query),
   );
   const items = mode === "connected" ? (remote.data?.items ?? []) : demoItems;
+  async function previewConfirmation() {
+    if (readOnly || busy || !items.length) return;
+    setBusy(true);
+    setError("");
+    setBatchMessage("");
+    try {
+      let rows: ConfirmationCandidate[];
+      if (mode === "connected") {
+        const response = await request(
+          "/api/scan-records",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "preview_confirm",
+              items: items.slice(0, 50).map((r) => ({ scanId: r.id })),
+            }),
+          },
+          true,
+        );
+        const body = await response.json();
+        if (!response.ok)
+          throw new Error(body.error?.messageTh ?? "โหลดรายการไม่สำเร็จ");
+        rows = body.data;
+      } else
+        rows = demoItems.slice(0, 50).map((r) => {
+          const version = getExamVersion(r.examId, r.examVersion);
+          const ready = Boolean(
+            r.status === "needs_review" &&
+            r.studentCode &&
+            version &&
+            canVerify(
+              effectiveAnswers(r),
+              version.questionCount,
+              version.choiceCount,
+            ),
+          );
+          const score = version
+            ? gradeExam(version, effectiveAnswers(r))
+            : null;
+          return {
+            scanId: r.id,
+            revision: 1,
+            name: r.name,
+            studentCode: r.studentCode,
+            ready,
+            reason: ready ? "พร้อมยืนยัน" : "ตรวจคำตอบหรือรหัสก่อน",
+            score: score?.score ?? 0,
+            maxScore: score?.maxScore ?? 0,
+            blankCount: score?.blank ?? 0,
+            multipleCount: score?.multiple ?? 0,
+          };
+        });
+      setCandidates(rows);
+      setSelectedScans(rows.filter((r) => r.ready).map((r) => r.scanId));
+      setBatchOpen(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "โหลดรายการไม่สำเร็จ");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function confirmSelected() {
+    if (readOnly || busy || !selectedScans.length) return;
+    setBusy(true);
+    setBatchMessage("");
+    try {
+      const selected = candidates.filter(
+        (r) => r.ready && selectedScans.includes(r.scanId),
+      );
+      if (mode === "connected") {
+        const response = await request(
+          "/api/scan-records",
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "confirm_batch",
+              items: selected.map(({ scanId, revision }) => ({
+                scanId,
+                revision,
+              })),
+            }),
+          },
+          true,
+        );
+        const body = await response.json();
+        if (!response.ok)
+          throw new Error(body.error?.messageTh ?? "ยืนยันไม่สำเร็จ");
+        const outcomes = body.data as {
+          scanId: string;
+          confirmed: boolean;
+          reason?: string;
+        }[];
+        const failed = outcomes.filter((r) => !r.confirmed);
+        await refreshReviews();
+        if (failed.length) {
+          setSelectedScans([]);
+          setCandidates((old) =>
+            old.map((r) => ({
+              ...r,
+              ready: false,
+              reason: failed.some((f) => f.scanId === r.scanId)
+                ? "ข้อมูลเปลี่ยน กรุณาเปิดตรวจรายการนี้"
+                : "ยืนยันแล้ว",
+            })),
+          );
+          setBatchMessage(
+            `ยืนยันแล้ว ${outcomes.length - failed.length} รายการ · ต้องตรวจใหม่ ${failed.length} รายการ`,
+          );
+          return;
+        }
+      } else
+        setReviews(
+          reviews.map((r) =>
+            selectedScans.includes(r.id) ? { ...r, status: "verified" } : r,
+          ),
+        );
+      notify(`ยืนยันคะแนนแล้ว ${selected.length} รายการ`);
+      setBatchOpen(false);
+      setSelectedScans([]);
+    } catch (e) {
+      setBatchMessage(
+        e instanceof Error ? e.message : "ยืนยันไม่สำเร็จ กดลองใหม่",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
   const chosen = items.find((r) => r.id === activeId) ?? items[0];
   const item =
     mode === "connected"
@@ -373,9 +507,24 @@ export function ReviewCenter({
       <PageHeading
         title="ศูนย์ตรวจสอบ"
         actions={
-          <Link href="/scan" className="btn btn-secondary">
-            สแกนเพิ่ม <ArrowRight size={16} />
-          </Link>
+          <>
+            <button
+              className="btn btn-secondary"
+              disabled={
+                readOnly ||
+                busy ||
+                filter !== "needs_review" ||
+                !items.length ||
+                remote.loading
+              }
+              onClick={() => void previewConfirmation()}
+            >
+              ยืนยันหลายรายการ
+            </button>
+            <Link href="/scan" className="btn btn-secondary">
+              สแกนเพิ่ม <ArrowRight size={16} />
+            </Link>
+          </>
         }
       />
       <div className="review-context-bar">
@@ -861,6 +1010,82 @@ export function ReviewCenter({
               : dialog === "confirm"
                 ? "ยืนยันคะแนน"
                 : "บันทึก"}
+          </button>
+        </div>
+      </Modal>
+      <Modal
+        open={batchOpen}
+        onOpenChange={(open) => {
+          if (!busy) setBatchOpen(open);
+        }}
+        title="ยืนยันคะแนนที่เลือก"
+        description="เฉพาะรายการในหน้าปัจจุบันที่ตรวจครบแล้ว"
+      >
+        <label className="confirmation-select-all">
+          <input
+            type="checkbox"
+            checked={
+              candidates.some((r) => r.ready) &&
+              candidates
+                .filter((r) => r.ready)
+                .every((r) => selectedScans.includes(r.scanId))
+            }
+            disabled={busy || !candidates.some((r) => r.ready)}
+            onChange={(e) =>
+              setSelectedScans(
+                e.target.checked
+                  ? candidates.filter((r) => r.ready).map((r) => r.scanId)
+                  : [],
+              )
+            }
+          />
+          เลือกที่พร้อมทั้งหมด
+        </label>
+        <div className="confirmation-list">
+          {candidates.map((r) => (
+            <label key={r.scanId} className="confirmation-row">
+              <input
+                type="checkbox"
+                aria-label={`ยืนยัน ${r.studentCode} ${r.name}`}
+                disabled={busy || !r.ready}
+                checked={selectedScans.includes(r.scanId)}
+                onChange={(e) =>
+                  setSelectedScans((old) =>
+                    e.target.checked
+                      ? [...old, r.scanId]
+                      : old.filter((id) => id !== r.scanId),
+                  )
+                }
+              />
+              <span>
+                <strong>
+                  {r.studentCode || "รอตรวจรหัส"} · {r.name}
+                </strong>
+                <small>{r.reason}</small>
+                <small>
+                  {r.score} / {r.maxScore} คะแนน
+                  {r.blankCount > 0 ? ` · ไม่ตอบ ${r.blankCount}` : ""}
+                  {r.multipleCount > 0 ? ` · ฝนหลายวง ${r.multipleCount}` : ""}
+                </small>
+              </span>
+            </label>
+          ))}
+        </div>
+        {batchMessage && <Notice>{batchMessage}</Notice>}
+        <div className="dialog-actions">
+          <button
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={() => setBatchOpen(false)}
+          >
+            ปิด
+          </button>
+          <button
+            className="btn btn-primary"
+            disabled={busy || readOnly || !selectedScans.length}
+            onClick={() => void confirmSelected()}
+          >
+            {busy ? "กำลังยืนยัน…" : `ยืนยัน ${selectedScans.length} รายการ`}
           </button>
         </div>
       </Modal>

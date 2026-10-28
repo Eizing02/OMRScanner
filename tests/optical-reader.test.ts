@@ -114,7 +114,11 @@ describe("optical reader and QR", () => {
       compact = { ...defaultLayout, printStyle: "compact" as const };
     expect(compileOmrTemplate(classic).geometryVersion).toBe(2);
     expect(compileOmrTemplate(compact).geometryVersion).toBe(3);
-    expect(compileOmrTemplate(defaultLayout).geometryVersion).toBe(4);
+    expect(
+      compileOmrTemplate({ ...defaultLayout, printStyle: "school" })
+        .geometryVersion,
+    ).toBe(4);
+    expect(compileOmrTemplate(defaultLayout).geometryVersion).toBe(5);
     expect(compileOmrTemplate(defaultLayout).centersMm).toEqual(
       compileOmrTemplate(compact).centersMm,
     );

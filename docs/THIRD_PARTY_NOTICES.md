@@ -45,6 +45,8 @@ The copied runtime and source package are equal in the verification run. Retain 
 
 ## PDF font source and modification
 
+- Added 28 October 2026: `NotoSansThai-Bold.ttf`, static 700 with Thai/Latin/digits/punctuation, served by [Google Fonts](https://fonts.googleapis.com/css?family=Noto+Sans+Thai:700&subset=thai,latin), [exact font file](https://fonts.gstatic.com/s/notosansthai/v29/iJWnBXeUZi_OHPqn4wq6hQ2_hbJ1xyN9wd43SofNWcd1MKVQt_So_9CdU3NqlyJ0RQ.ttf). SHA-256 `7b922f05e9913fb77abacadab0fad432c10422a0b76c7855dc53290dd063709c`, 38,784 bytes, 302 mapped characters. Same retained OFL notice. No new runtime dependency or fontTools invocation. Advance metrics extracted via jsPDF into `lib/omr/print-font-metrics.json` and migration 017; update/test both when replacing fonts. Bold cmap assertions and rendered PDF checks cover Thai, Latin, leading-zero digits, dots and ellipses.
+
 - Source: [Google Fonts Noto Sans Thai directory](https://github.com/google/fonts/tree/main/ofl/notosansthai), `NotoSansThai[wdth,wght].ttf` downloaded to `public/omr-assets/NotoSansThai-Variable.ttf`
 - Copyright 2022 The Noto Project Authors; [SIL Open Font License 1.1](https://github.com/google/fonts/blob/main/ofl/notosansthai/OFL.txt) retained verbatim as `public/omr-assets/FONT-LICENSE.txt`
 - Local modification: generate a static instance at wght=400, wdth=100 with fontTools 4.66.1 for jsPDF compatibility. Output: `NotoSansThai-Regular.ttf`; 426 glyphs, including Thai, Latin and digits. Not a new designed typeface, no endorsement implied

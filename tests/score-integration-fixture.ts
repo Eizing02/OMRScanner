@@ -1,7 +1,13 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFile } from "node:fs/promises";
 import { createSetIdentity } from "@/lib/omr/qr";
-import { defaultLayout } from "@/lib/omr/generate-template";
+import { defaultLayout as currentLayout } from "@/lib/omr/generate-template";
+const defaultLayout = {
+  ...currentLayout,
+  printStyle: "school" as const,
+  instructions:
+    "ตรวจข้อมูลนักเรียน ใช้ดินสอ 2B ฝนคำตอบให้เต็มวง เพียงหนึ่งคำตอบต่อข้อ",
+};
 export const owner = "30000000-0000-4000-8000-000000000011";
 export const teacherA = "30000000-0000-4000-8000-000000000012";
 export const teacherB = "30000000-0000-4000-8000-000000000013";

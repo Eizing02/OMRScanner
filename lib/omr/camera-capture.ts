@@ -5,7 +5,7 @@ type CaptureConstructor = new (track: MediaStreamTrack) => StillCamera;
 export async function captureCameraFrame(
   video: HTMLVideoElement,
   track?: MediaStreamTrack,
-): Promise<{ canvas: HTMLCanvasElement; photo: boolean }> {
+): Promise<{ canvas: HTMLCanvasElement; photo: boolean; originalBlob?: Blob }> {
   const Capture = (
     globalThis as unknown as { ImageCapture?: CaptureConstructor }
   ).ImageCapture;
@@ -32,7 +32,7 @@ export async function captureCameraFrame(
         if (!ctx) throw new Error("อ่านภาพไม่ได้");
         // Browser decoding applies image orientation; re-detect on this decoded still.
         ctx.drawImage(image, 0, 0);
-        return { canvas, photo: true };
+        return { canvas, photo: true, originalBlob: blob };
       } finally {
         URL.revokeObjectURL(url);
       }

@@ -9,7 +9,8 @@ import {
 
 describe("school print header", () => {
   it("enlarges identity and writable score without touching compact answer/QR positions", () => {
-    const current = resolveGeometry(defaultLayout);
+    const legacy = { ...defaultLayout, printStyle: "school" as const };
+    const current = resolveGeometry(legacy);
     const compact = resolveGeometry({
       ...defaultLayout,
       printStyle: "compact",
@@ -20,7 +21,7 @@ describe("school print header", () => {
     expect(answerBubbles(defaultLayout)).toEqual(
       answerBubbles({ ...defaultLayout, printStyle: "compact" }),
     );
-    const text = printTexts(defaultLayout, current, {
+    const text = printTexts(legacy, current, {
       id: "fixture",
       student_code: "02074",
       full_name: "เด็กชายกิตติกร ตัวอย่าง",

@@ -5,6 +5,8 @@ import {
   idBubbles,
   answerBubbles,
   printTexts,
+  modernPrint,
+  fillExamples,
   type SheetLayout,
 } from "@/lib/omr/generate-template";
 import { createSetIdentity, qrDataUrl } from "@/lib/omr/qr";
@@ -81,11 +83,54 @@ export function SheetContent({
           x={t.x}
           y={t.y}
           fontSize={t.size}
+          fontWeight={t.weight === "bold" ? 700 : 400}
           textAnchor={t.align === "center" ? "middle" : "start"}
         >
           {t.value}
         </text>
       ))}
+      {modernPrint(layout) &&
+        fillExamples(g).map((example) => (
+          <g key={example.kind} data-fill-example={example.kind}>
+            <circle
+              cx={example.x}
+              cy={example.y}
+              r={example.kind === "outside" ? 2.5 : 1.8}
+              fill={example.kind === "partial" ? "none" : "black"}
+              stroke="black"
+              strokeWidth="0.2"
+            />
+            {example.kind === "partial" && (
+              <circle
+                cx={example.x - 0.4}
+                cy={example.y}
+                r="0.8"
+                fill="black"
+              />
+            )}
+            {example.kind === "outside" && (
+              <circle
+                cx={example.x}
+                cy={example.y}
+                r="1.8"
+                fill="none"
+                stroke="white"
+                strokeWidth="0.2"
+              />
+            )}
+            {example.kind === "multiple" && (
+              <circle
+                cx={example.x + 5.5}
+                cy={example.y}
+                r="1.8"
+                fill="black"
+              />
+            )}
+            <text x={example.labelX} y={example.y + 0.9} fontSize="2.5">
+              {example.kind === "correct" ? "ถูก" : "ผิด"} · {example.label}
+            </text>
+          </g>
+        ))}
       {Array.from({ length: 5 }, (_, i) => (
         <g key={i}>
           <rect
@@ -211,7 +256,9 @@ export function SheetPreview({
   useEffect(() => {
     let active = true;
     createSetIdentity(layout)
-      .then((identity) => qrDataUrl(identity.token))
+      .then((identity) =>
+        qrDataUrl(identity.token, modernPrint(layout) ? 512 : 256),
+      )
       .then(
         (value) => active && setQr(value),
         () => active && setQr(""),

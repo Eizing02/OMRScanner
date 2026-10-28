@@ -23,11 +23,17 @@ import {
 } from "@/lib/omr/camera-geometry";
 import { readSetQr } from "@/lib/omr/scan-qr";
 import { warpCanvas } from "@/lib/omr/perspective-canvas";
-import { compressScanBlob } from "@/lib/omr/compress-image";
+import { compressScanBlob, retainCaptureBlob } from "@/lib/omr/compress-image";
 import { startCameraLoop } from "@/lib/omr/camera-loop";
 import { captureCameraFrame } from "@/lib/omr/camera-capture";
 import { scannerPhase } from "@/lib/omr/scanner-state";
 import { templateOverlay } from "@/lib/omr/template-overlay";
+import {
+  PaperRearm,
+  SCAN_QUEUE_LIMIT,
+  scanUploadForm,
+  type QueuedScan,
+} from "@/lib/omr/scan-batch";
 import {
   captureGeometry,
   assessPaperQuality,
@@ -95,7 +101,7 @@ export function Scanner({ examId }: { examId?: string }) {
   const [template, setTemplate] = useState<LockedScanTemplate | null>(null),
     [qrBusy, setQrBusy] = useState(false);
   const [quad, setQuad] = useState<Quad>(defaultQuad),
-    [single, setSingle] = useState(false),
+    [single, setSingle] = useState(true),
     [auto, setAuto] = useState(true);
   const [captureHint, setCaptureHint] = useState(
       "ให้เห็นกระดาษครบแล้วถือให้นิ่ง",
@@ -110,6 +116,16 @@ export function Scanner({ examId }: { examId?: string }) {
   const [receipt, setReceipt] = useState<ScanReceipt[]>([]),
     [duplicate, setDuplicate] = useState(false),
     [reason, setReason] = useState("");
+  const [continuous, setContinuous] = useState(true);
+  const continuousRef = useRef(true);
+  const queue = useRef<QueuedScan<LockedScanTemplate>[]>([]);
+  const [queueView, setQueueView] = useState<
+    { id: string; state: string; message?: string }[]
+  >([]);
+  const [savedCount, setSavedCount] = useState(0);
+  const queueSending = useRef(false);
+  const queueController = useRef<AbortController | null>(null);
+  const paperRearm = useRef(new PaperRearm());
   const video = useRef<HTMLVideoElement>(null),
     viewport = useRef<HTMLDivElement>(null),
     stream = useRef<MediaStream | null>(null);
@@ -117,6 +133,7 @@ export function Scanner({ examId }: { examId?: string }) {
     loadingDetector = useRef<Promise<Detector> | null>(null),
     cancelLoop = useRef<(() => void) | null>(null),
     stable = useRef(0);
+  const detectorGeneration = useRef(0);
   const quadRef = useRef(quad),
     autoRef = useRef(auto),
     templateRef = useRef(template),
@@ -140,6 +157,114 @@ export function Scanner({ examId }: { examId?: string }) {
     id: string;
     processed: Blob;
   } | null>(null);
+  function paintQueue() {
+    if (mounted.current)
+      setQueueView(
+        queue.current.map(({ id, state, message }) => ({ id, state, message })),
+      );
+  }
+  async function drainQueue() {
+    if (queueSending.current || !mounted.current || !isCurrentWorkspace())
+      return;
+    queueSending.current = true;
+    try {
+      while (queue.current.length && mounted.current && isCurrentWorkspace()) {
+        const job = queue.current[0];
+        if (job.state === "failed") break;
+        job.state = "sending";
+        paintQueue();
+        const controller = new AbortController();
+        const timeout = window.setTimeout(() => controller.abort(), 45000);
+        queueController.current = controller;
+        try {
+          const response = await request(
+            "/api/scan-records",
+            {
+              method: "POST",
+              signal: controller.signal,
+              body: scanUploadForm({ ...job, examId: job.template.exam_id }),
+            },
+            true,
+          );
+          const body = await response.json();
+          if (!mounted.current || !isCurrentWorkspace()) return;
+          if (!response.ok)
+            throw new Error(
+              body.error?.messageTh ?? "ส่งภาพไม่สำเร็จ กดลองใหม่",
+            );
+          const receipts = body.data as ScanReceipt[];
+          queue.current.shift();
+          setSavedCount((v) => v + receipts.length);
+          setReceipt(receipts);
+          paintQueue();
+        } catch (error) {
+          if (!mounted.current || !isCurrentWorkspace()) return;
+          job.state = "failed";
+          job.message =
+            error instanceof Error ? error.message : "ส่งภาพไม่สำเร็จ";
+          paintQueue();
+          break;
+        } finally {
+          clearTimeout(timeout);
+          queueController.current = null;
+        }
+      }
+      if (mounted.current && isCurrentWorkspace() && !queue.current.length)
+        void refreshReviews().catch(() => undefined);
+    } finally {
+      queueSending.current = false;
+    }
+  }
+  async function inspectQueued() {
+    const job = queue.current[0];
+    if (!job || job.state !== "failed") return;
+    stop();
+    const current = epoch.current;
+    const decode = async (blob: Blob) => {
+      const bitmap = await createImageBitmap(blob);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.getContext("2d")!.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      return canvas;
+    };
+    try {
+      const original = await decode(job.original),
+        processed = await decode(job.processed);
+      if (
+        !mounted.current ||
+        current !== epoch.current ||
+        !isCurrentWorkspace()
+      )
+        return;
+      setContinuous(false);
+      continuousRef.current = false;
+      setSource(original);
+      setCrop(processed);
+      setTemplate(job.template);
+      templateRef.current = job.template;
+      setSingle(job.paper === "single");
+      singleRef.current = job.paper === "single";
+      setDimensions({ width: processed.width, height: processed.height });
+      scanRequest.current = { id: job.id, processed: job.processed };
+      setReceipt([]);
+      setError(job.message ?? "");
+      setFromCamera(true);
+      queue.current.shift();
+      paintQueue();
+    } catch {
+      setError("เปิดภาพไม่สำเร็จ ภาพยังอยู่ในคิว กดลองใหม่");
+    }
+  }
+  function releaseDetector() {
+    detectorGeneration.current++;
+    detector.current?.dispose();
+    detector.current = null;
+    loadingDetector.current = null;
+    if (qrFrame.current) qrFrame.current.width = qrFrame.current.height = 0;
+    if (qrSample.current) qrSample.current.width = qrSample.current.height = 0;
+  }
   useEffect(() => {
     if (!live) quadRef.current = quad;
     autoRef.current = auto;
@@ -164,24 +289,53 @@ export function Scanner({ examId }: { examId?: string }) {
         cancelLoop.current?.();
         cancelLoop.current = null;
         setLive(false);
+        releaseDetector();
       }
     };
     document.addEventListener("visibilitychange", hide);
+    const guard = (event: BeforeUnloadEvent) => {
+      if (queue.current.length || scanRequest.current) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", guard);
+    const guardLink = (event: MouseEvent) => {
+      const anchor =
+        event.target instanceof Element
+          ? event.target.closest("a[href]")
+          : null;
+      if (
+        (queue.current.length || scanRequest.current) &&
+        anchor instanceof HTMLAnchorElement &&
+        anchor.origin === location.origin &&
+        anchor.pathname !== location.pathname
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        notify("ยังมีภาพรอส่ง กรุณารอหรือจัดการรายการในคิวก่อนเปลี่ยนหน้า");
+      }
+    };
+    document.addEventListener("click", guardLink, true);
     return () => {
       mounted.current = false;
       document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("beforeunload", guard);
+      document.removeEventListener("click", guardLink, true);
       stream.current?.getTracks().forEach((t) => t.stop());
       // Session token is intentionally read at cleanup; it is not a DOM ref.
       // eslint-disable-next-line react-hooks/exhaustive-deps
       epoch.current++;
       cancelLoop.current?.();
-      detector.current?.dispose();
+      releaseDetector();
       submitController.current?.abort();
+      queueController.current?.abort();
+      queue.current = [];
       if (qrFrame.current) qrFrame.current.width = qrFrame.current.height = 0;
       if (qrSample.current)
         qrSample.current.width = qrSample.current.height = 0;
     };
-  }, []);
+  }, [notify]);
   useEffect(() => {
     const element = viewport.current;
     if (!element) return;
@@ -200,9 +354,15 @@ export function Scanner({ examId }: { examId?: string }) {
     return () => observer.disconnect();
   }, [dimensions]);
   function ensureDetector() {
-    return (loadingDetector.current ??= createDocumentDetector()
+    if (loadingDetector.current) return loadingDetector.current;
+    const generation = detectorGeneration.current;
+    const pending = createDocumentDetector()
       .then((d) => {
-        if (!mounted.current) {
+        if (
+          !mounted.current ||
+          generation !== detectorGeneration.current ||
+          document.hidden
+        ) {
           d.dispose();
           throw new Error("SCANNER_CLOSED");
         }
@@ -211,9 +371,11 @@ export function Scanner({ examId }: { examId?: string }) {
         return d;
       })
       .catch((error) => {
-        loadingDetector.current = null;
+        if (loadingDetector.current === pending) loadingDetector.current = null;
         throw error;
-      }));
+      });
+    loadingDetector.current = pending;
+    return pending;
   }
   async function resolveQr(canvas: HTMLCanvasElement, force = false) {
     if (reading.current !== null && !force) return;
@@ -328,6 +490,14 @@ export function Scanner({ examId }: { examId?: string }) {
     if (!v?.videoWidth || fired.current) return;
     if (
       automatic &&
+      continuousRef.current &&
+      (paperRearm.current.blocked ||
+        queue.current.length >= SCAN_QUEUE_LIMIT ||
+        queue.current.some((j) => j.state === "failed"))
+    )
+      return;
+    if (
+      automatic &&
       (!detector.current ||
         !templateRef.current ||
         Date.now() < nextQualityCheck.current)
@@ -338,8 +508,9 @@ export function Scanner({ examId }: { examId?: string }) {
     setCapturing(true);
     let canvas: HTMLCanvasElement;
     let photo: boolean;
+    let originalBlob: Blob | undefined;
     try {
-      ({ canvas, photo } = await captureCameraFrame(
+      ({ canvas, photo, originalBlob } = await captureCameraFrame(
         v,
         stream.current?.getVideoTracks()[0],
       ));
@@ -377,7 +548,32 @@ export function Scanner({ examId }: { examId?: string }) {
         setEngineName(detector.current!.engine);
         setStatus("ready");
         setFromCamera(true);
-        await accept(canvas, processed, locked);
+        if (continuousRef.current) {
+          const processedBlob = await compressScanBlob(processed, 1800);
+          const original = originalBlob ?? (await retainCaptureBlob(canvas));
+          if (
+            !mounted.current ||
+            current !== epoch.current ||
+            !isCurrentWorkspace()
+          )
+            return;
+          queue.current.push({
+            id: crypto.randomUUID(),
+            processed: processedBlob,
+            original,
+            template: locked,
+            paper: singleRef.current ? "single" : "a4",
+            state: "waiting",
+          });
+          paperRearm.current.captured();
+          stable.current = 0;
+          setProgress(0);
+          setCaptureHint("รับภาพแล้ว · ยกใบเดิมออกก่อนวางใบถัดไป");
+          paintQueue();
+          void drainQueue();
+          fired.current = false;
+          canvas.width = canvas.height = processed.width = processed.height = 0;
+        } else await accept(canvas, processed, locked);
       } else {
         setFromCamera(true);
         await accept(canvas);
@@ -425,6 +621,7 @@ export function Scanner({ examId }: { examId?: string }) {
     nextQualityCheck.current = 0;
     setProgress(0);
     setStatus("searching");
+    paperRearm.current.reset();
     setFromCamera(true);
     setDuplicate(false);
     setReason("");
@@ -504,10 +701,30 @@ export function Scanner({ examId }: { examId?: string }) {
               return;
             setEngineName(detector.current.engine);
             if (!found.quad) {
+              paperRearm.current.observe(false);
               stable.current = 0;
               setStatus("searching");
               setProgress(0);
               setCaptureHint("ให้เห็นขอบกระดาษครบทั้ง 4 มุม");
+              return;
+            }
+            if (continuousRef.current && !paperRearm.current.observe(true)) {
+              setCaptureHint("ยกใบเดิมออกจากกรอบก่อนวางใบถัดไป");
+              setProgress(0);
+              return;
+            }
+            if (
+              continuousRef.current &&
+              (queue.current.length >= SCAN_QUEUE_LIMIT ||
+                queue.current.some((j) => j.state === "failed"))
+            ) {
+              setCaptureHint(
+                queue.current.some((j) => j.state === "failed")
+                  ? "พักรับภาพ · จัดการรายการส่งไม่สำเร็จ"
+                  : "คิวเต็ม · รอส่งภาพก่อน",
+              );
+              stable.current = 0;
+              setProgress(0);
               return;
             }
             const movement = motionDistance(quadRef.current, found.quad);
@@ -638,18 +855,13 @@ export function Scanner({ examId }: { examId?: string }) {
         !isCurrentWorkspace()
       )
         return;
-      const form = new FormData();
-      form.set(
-        "metadata",
-        JSON.stringify({
-          requestId: scanRequest.current.id,
-          paper: single ? "single" : "a4",
-          expectedExamId: template.exam_id,
-          replacePending,
-          reason,
-        }),
-      );
-      form.set("processed", scanRequest.current.processed, "scan.jpg");
+      const form = scanUploadForm({
+        ...scanRequest.current,
+        paper: single ? "single" : "a4",
+        examId: template.exam_id,
+        replacePending,
+        reason,
+      });
       const response = await request(
         "/api/scan-records",
         {
@@ -674,12 +886,14 @@ export function Scanner({ examId }: { examId?: string }) {
         throw new Error(body.error?.messageTh ?? "ตรวจคำตอบไม่สำเร็จ");
       }
       setReceipt(body.data);
+      setSavedCount((n) => n + body.data.length);
       // Retain the rectified preview only after the server stored evidence
       // and scores. Failed submissions keep the original locally for recovery.
       setSource(crop);
       scanRequest.current = null;
       setDuplicate(false);
       notify("บันทึกผลสแกนแล้ว รอตรวจและยืนยันคะแนน");
+      void drainQueue();
       await refreshReviews().catch(() => {
         if (mounted.current && current === epoch.current)
           setError(
@@ -742,7 +956,7 @@ export function Scanner({ examId }: { examId?: string }) {
     live,
     source: Boolean(source),
     crop: Boolean(crop),
-    saved: receipt.length > 0,
+    saved: receipt.length > 0 && !live,
     error: Boolean(error),
     progress,
     detected: status !== "searching",
@@ -773,7 +987,7 @@ export function Scanner({ examId }: { examId?: string }) {
                 : "อ่าน QR เพื่อเลือกชุดสอบ"}
           </span>
           {template && (
-            <Badge tone="green">รุ่น {template.layout_json.examVersion}</Badge>
+            <Badge tone="blue">รุ่น {template.layout_json.examVersion}</Badge>
           )}
         </div>
         <label>
@@ -799,13 +1013,26 @@ export function Scanner({ examId }: { examId?: string }) {
             <option value="single">ครึ่ง A4 ที่ตัดแล้ว</option>
           </select>
         </label>
+        <label className="scan-continuous-toggle">
+          <input
+            type="checkbox"
+            checked={continuous}
+            disabled={Boolean(source) || capturing || queueView.length > 0}
+            onChange={(e) => {
+              setContinuous(e.target.checked);
+              continuousRef.current = e.target.checked;
+              paperRearm.current.reset();
+            }}
+          />
+          สแกนต่อเนื่อง
+        </label>
       </div>
       {error && <Notice tone="error">{error}</Notice>}
       <section className="camera-stage">
         <div className="camera-topbar">
           <span>
             <ScanLine size={18} />
-            {receipt.length
+            {receipt.length && !live
               ? "บันทึกผลแล้ว"
               : crop
                 ? "ตรวจความชัดของภาพ"
@@ -970,7 +1197,7 @@ export function Scanner({ examId }: { examId?: string }) {
           </p>
         )}
         <div className="camera-controls">
-          {receipt.length ? (
+          {receipt.length && !live ? (
             <>
               <button
                 className="btn btn-camera-secondary"
@@ -1082,11 +1309,43 @@ export function Scanner({ examId }: { examId?: string }) {
           )}
         </div>
       </section>
+      {(queueView.length > 0 || savedCount > 0) && (
+        <div className="scan-batch-status" aria-live="polite">
+          <span>
+            บันทึกแล้ว {savedCount} ใบ · รอส่ง {queueView.length} ภาพ
+          </span>
+          {queueView[0]?.state === "failed" && (
+            <div className="scan-batch-recovery">
+              <span role="alert">{queueView[0].message}</span>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  queue.current[0].state = "waiting";
+                  paintQueue();
+                  void drainQueue();
+                }}
+              >
+                ลองส่งอีกครั้ง
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => void inspectQueued()}
+              >
+                ตรวจภาพ
+              </button>
+            </div>
+          )}
+          {queueView.length > 0 && (
+            <small>ภาพรอส่งอยู่ในหน้านี้ กรุณาอย่าปิดหน้า</small>
+          )}
+        </div>
+      )}
       {receipt.length > 0 && (
         <div className="scan-receipts" role="status">
           {receipt.map((r) => (
             <span key={r.id}>
-              {r.studentCode || "รอตรวจรหัส"} · {r.name || "ยังไม่ระบุนักเรียน"}{" "}
+              รอตรวจ · {r.studentCode || "รอตรวจรหัส"} ·{" "}
+              {r.name || "ยังไม่ระบุนักเรียน"}{" "}
               <strong>
                 {r.score} / {r.maxScore}
               </strong>

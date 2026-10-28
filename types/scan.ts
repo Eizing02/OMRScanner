@@ -68,6 +68,40 @@ export const reviewInputSchema = z
     if (v.action === "identify" && !v.studentCode)
       ctx.addIssue({ code: "custom", message: "เลือกรหัสนักเรียนก่อนบันทึก" });
   });
+export const batchReviewSchema = z
+  .object({
+    action: z.enum(["preview_confirm", "confirm_batch"]),
+    items: z
+      .array(
+        z.object({
+          scanId: z.uuid(),
+          revision: z.number().int().positive().optional(),
+        }),
+      )
+      .min(1)
+      .max(50),
+  })
+  .superRefine((value, ctx) => {
+    if (new Set(value.items.map((i) => i.scanId)).size !== value.items.length)
+      ctx.addIssue({ code: "custom", message: "รายการซ้ำ" });
+    if (
+      value.action === "confirm_batch" &&
+      value.items.some((i) => !i.revision)
+    )
+      ctx.addIssue({ code: "custom", message: "โหลดรายการล่าสุดก่อนยืนยัน" });
+  });
+export type ConfirmationCandidate = {
+  scanId: string;
+  revision: number;
+  name: string;
+  studentCode: string;
+  ready: boolean;
+  reason: string;
+  score: number;
+  maxScore: number;
+  blankCount: number;
+  multipleCount: number;
+};
 export type LockedScanTemplate = {
   id: string;
   exam_id: string;

@@ -1,4 +1,19 @@
 /** Binary v2: one JPEG encode, no quality reduction to force a storage target. */
+export function retainCaptureBlob(source: HTMLCanvasElement): Promise<Blob> {
+  // Local recovery only: preserve the camera's pixel dimensions until save.
+  // This is never uploaded and never used as the grading evidence.
+  return new Promise((resolve, reject) =>
+    source.toBlob(
+      (blob) => {
+        if (!blob || blob.type !== "image/jpeg")
+          reject(new Error("เก็บภาพสำหรับลองใหม่ไม่สำเร็จ กรุณาถ่ายใหม่"));
+        else resolve(blob);
+      },
+      "image/jpeg",
+      0.85,
+    ),
+  );
+}
 export async function compressScanBlob(
   source: HTMLCanvasElement,
   maxWidth = 1800,

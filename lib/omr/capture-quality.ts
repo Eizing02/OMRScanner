@@ -52,6 +52,8 @@ export function luminanceQuality(
   image: Raster,
   top = 0,
   bottom = image.height,
+  left = 0,
+  right = image.width,
 ) {
   const gray = (x: number, y: number) => {
     const i = (y * image.width + x) * 4;
@@ -71,7 +73,11 @@ export function luminanceQuality(
     y < Math.min(image.height - 2, bottom);
     y += 3
   )
-    for (let x = 2; x < image.width - 2; x += 3) {
+    for (
+      let x = Math.max(2, Math.floor(left));
+      x < Math.min(image.width - 2, right);
+      x += 3
+    ) {
       const value = gray(x, y);
       const laplacian =
         gray(x - 1, y) +
@@ -131,7 +137,16 @@ export function assessPaperQuality(
     ])
       if (fillPercentage(leaf, x * sx, y * sy, 0.65 * Math.min(sx, sy)) < 55)
         return "ให้เห็นจุดดำครบ หลีกเลี่ยงเงาและแสงสะท้อน";
-    const answers = luminanceQuality(leaf, 70 * sy, 190 * sy);
+    // Only the locked answer field can establish answer detail. Printed IDs,
+    // QR and the new fill examples must never make blurred answers look sharp.
+    const centers = template.omr_json.centersMm.answers;
+    const answers = luminanceQuality(
+      leaf,
+      (Math.min(...centers.map((b) => b.y)) - 3) * sy,
+      (Math.max(...centers.map((b) => b.y)) + 3) * sy,
+      (Math.min(...centers.map((b) => b.x)) - 3) * sx,
+      (Math.max(...centers.map((b) => b.x)) + 3) * sx,
+    );
     if (answers.sharpness < 35 || answers.ink < 0.002)
       return "ภาพคำตอบยังไม่ชัด ถือให้นิ่งหรือถ่ายใหม่";
   }

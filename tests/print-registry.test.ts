@@ -2,7 +2,14 @@ import { beforeAll, afterAll, describe, it, expect } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
 import { readFile } from "node:fs/promises";
 import { createSetIdentity } from "@/lib/omr/qr";
-import { defaultLayout } from "@/lib/omr/generate-template";
+import { defaultLayout as currentLayout } from "@/lib/omr/generate-template";
+// This suite intentionally installs only the historical print migrations.
+const defaultLayout = {
+  ...currentLayout,
+  printStyle: "school" as const,
+  instructions:
+    "ตรวจข้อมูลนักเรียน ใช้ดินสอ 2B ฝนคำตอบให้เต็มวง เพียงหนึ่งคำตอบต่อข้อ",
+};
 const db = new PGlite();
 const owner = "20000000-0000-4000-8000-000000000011";
 const teacher = "20000000-0000-4000-8000-000000000012";

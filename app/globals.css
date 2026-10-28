@@ -3514,13 +3514,97 @@ svg {
   min-width: 0;
   flex: 1;
 }
-.scan-phase > span {
+.scan-phase > span:not(.badge) {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .scan-context-bar label {
   max-width: 200px;
+}
+.scan-context-bar .scan-continuous-toggle {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+.scan-continuous-toggle input[type="checkbox"],
+.confirmation-row input[type="checkbox"],
+.confirmation-select-all input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: var(--blue);
+}
+.scan-batch-status {
+  flex-shrink: 0;
+  max-height: 150px;
+  overflow: auto;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: var(--blue-light);
+  border-radius: 8px;
+}
+.scan-batch-status small {
+  display: block;
+  color: var(--muted);
+}
+.scan-batch-recovery {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.scan-batch-recovery > span {
+  flex: 1 1 240px;
+}
+.confirmation-list {
+  max-height: min(45dvh, 360px);
+  overflow: auto;
+  margin-block: 12px;
+}
+.confirmation-row,
+.confirmation-select-all {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 4px;
+}
+.confirmation-row {
+  border-bottom: 1px solid var(--line);
+}
+.confirmation-row span {
+  min-width: 0;
+}
+.confirmation-row strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.confirmation-row small {
+  display: block;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .scan-context-bar {
+    flex-wrap: wrap;
+  }
+  .scan-context-bar .scan-phase {
+    flex-basis: 100%;
+  }
+  .review-task > .page-heading {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .scan-batch-status {
+    max-height: 130px;
+  }
 }
 .scanner-task .camera-stage {
   --camera-adjust: #cadefc;
@@ -3610,7 +3694,7 @@ svg {
   font-size: 13px;
 }
 .scan-receipts strong {
-  color: var(--teal);
+  color: var(--ink);
   margin-left: 8px;
 }
 .review-task .review-workspace {
@@ -4138,8 +4222,12 @@ svg {
     flex-wrap: wrap;
     gap: 4px;
   }
-  .scan-phase > span {
-    flex-basis: calc(100% - 25px);
+  .scan-phase > span:not(.badge) {
+    min-width: 0;
+    flex-basis: auto;
+  }
+  .scan-phase .badge {
+    flex-shrink: 0;
   }
   .scan-context-bar select {
     width: 142px;

@@ -348,6 +348,10 @@ Phone landscape จอสูง ≤500px ใช้หัว/บริบทใ�
 
 ### School paper header and print identity
 
+28 October 2026 extension: new work uses `school-v2` / geometryVersion 5. The school name stays on one line at up to 4.1mm (minimum 3.1mm before full-page expansion); the title is bold 4.2mm, populated subject/student/class/code fields bold 2.8/2.6mm. SVG/PDF share measured Noto Sans Thai advances; PDF embeds actual 700 weight with complete Thai/Latin/digit coverage. QR becomes 28mm with a four-module quiet zone; four existing corner marks and answer coordinates remain. Correct/incorrect fill examples sit under the ID field, outside answer sampling. Footer wraps at Thai word boundaries. The next paragraphs describe immutable historical school 4 and remain applicable when replaying that version.
+
+Continuous capture adds a compact queue strip and an explicitly labelled checkbox. Camera stays live while serial uploads run; saved counts appear only after acknowledgement and scores say “รอตรวจ”. Errors expose retry/inspect actions. The batch-confirmation dialog uses 48px labelled selection rows, an internally scrolling list and a fixed action row; unavailable entries explain why. Existing palette, focus, motion and viewport rules remain in force.
+
 รูปแบบ school ใหม่เป็น geometryVersion 4; classic 2 และ compact 3 คงไว้สำหรับความเข้ากันได้. พรีวิว SVG และ jsPDF ใช้ resolveGeometry/printTexts ชุดเดียวกัน. กระดาษขาว หมึกดำ QR และ marker แยกจากสี UI.
 
 โลโก้ school อยู่ในกรอบ 20 × 20mm ทางซ้าย รักษาสัดส่วนและ orientation ของภาพต้นฉบับ; ขนาดกรอบไม่ย่อไฟล์ที่จัดเก็บ. หัวโรงเรียนขนาด 4.1mm แยกคำ “โรงเรียน” กับชื่อในบรรทัดถัดไปเมื่อใช้ prefix นี้; pitch 4.5mm. กล่องเขียนคะแนน 29 × 14mm ด้านขวาบนแสดงจุดแล้ว / คะแนนเต็ม โดยไม่มีคำ “คะแนน”; QR กว้าง 23mm อยู่ด้านล่างกล่องในพื้นที่สำรอง.

@@ -433,6 +433,33 @@ describe("scan HTTP boundary with real compressed QR/OMR pixels", () => {
       ).status,
     ).toBe(409);
   });
+  it("validates batch selections, enforces write access and dispatches only guarded confirmation RPCs", async () => {
+    const command = {
+      action: "confirm_batch",
+      items: [{ scanId: examId, revision: 1 }],
+    };
+    const patch = (body: unknown) =>
+      new Request("http://localhost/api/scan-records", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    expect(
+      (
+        await PATCH(
+          patch({ ...command, items: [command.items[0], command.items[0]] }),
+        )
+      ).status,
+    ).toBe(422);
+    expect(mock.rpc).not.toHaveBeenCalled();
+    mock.readOnly = true;
+    expect((await PATCH(patch(command))).status).toBe(403);
+    mock.readOnly = false;
+    expect((await PATCH(patch(command))).status).toBe(200);
+    expect(mock.rpc).toHaveBeenCalledWith("confirm_scan_batch", {
+      input: { ...command, school_id: "20000000-0000-4000-8000-000000000099" },
+    });
+  });
   it("validates public QR payloads without accepting unrelated QR links", async () => {
     expect(
       (

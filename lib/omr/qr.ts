@@ -33,5 +33,5 @@ export async function createSetIdentity(layout: SheetLayout) {
     snapshot,
   };
 }
-export const qrDataUrl = (token: string) =>
-  QRCode.toDataURL(token, { errorCorrectionLevel: "M", margin: 4, width: 256 });
+export const qrDataUrl = (token: string, width = 256) =>
+  QRCode.toDataURL(token, { errorCorrectionLevel: "M", margin: 4, width });
