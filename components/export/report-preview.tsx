@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Download, ArrowLeft } from "lucide-react";
 import { useWorkspace } from "@/components/layout/workspace-provider";
@@ -12,6 +12,7 @@ import {
 } from "@/lib/omr/generate-template";
 import { buildPrintPdf } from "@/lib/export/export-pdf";
 import { studentFullName } from "@/types/student";
+import type { Student } from "@/types/student";
 import type { PrintStudent } from "@/types/print";
 import {
   PageHeading,
@@ -31,8 +32,11 @@ export function PrintPreview({ examId }: { examId: string }) {
     registerPrint,
     isCurrentWorkspace,
     branding,
+    request,
+    reviewRevision,
   } = useWorkspace();
   const exam = exams.find((e) => e.id === examId);
+  const examVersion = exam?.version;
   const [count, setCount] = useState(2),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -40,6 +44,45 @@ export function PrintPreview({ examId }: { examId: string }) {
     [selectedIds, setSelectedIds] = useState<string[] | null>(null),
     [previewId, setPreviewId] = useState("");
   const [pane, setPane] = useState("preview");
+  const [scopedStudents, setScopedStudents] = useState<Student[]>([]),
+    [rosterLoading, setRosterLoading] = useState(mode === "connected"),
+    [rosterError, setRosterError] = useState("");
+  useEffect(() => {
+    if (mode !== "connected" || !examVersion) return;
+    let active = true;
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (active) setRosterLoading(true);
+    });
+    request(
+      `/api/scan-records?${new URLSearchParams({ view: "exam_roster", examId, version: String(examVersion) })}`,
+      { signal: controller.signal },
+    )
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok)
+          throw new Error(body.error?.messageTh ?? "โหลดรายชื่อไม่สำเร็จ");
+        if (active) {
+          setScopedStudents(body.data.students);
+          setRosterError("");
+        }
+      })
+      .catch((e) => {
+        if (active && !controller.signal.aborted) {
+          setScopedStudents([]);
+          setRosterError(
+            e instanceof Error ? e.message : "โหลดรายชื่อไม่สำเร็จ",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setRosterLoading(false);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [mode, request, examId, examVersion, reviewRevision]);
   const registrationKey = useRef({ key: "", id: "" });
   if (!exam)
     return (
@@ -49,13 +92,19 @@ export function PrintPreview({ examId }: { examId: string }) {
         </Link>
       </EmptyState>
     );
-  const roster: PrintStudent[] = students
-    .filter((s) => s.classroom_name === exam.classroom)
+  const roster: PrintStudent[] = (
+    mode === "connected" ? scopedStudents : students
+  )
+    .filter(
+      (s) =>
+        mode === "connected" ||
+        (s.active !== false && s.classroom_name === exam.classroom),
+    )
     .sort((a, b) => a.student_code.localeCompare(b.student_code))
     .map((s) => ({
       id: s.id,
       student_code: s.student_code,
-      full_name: studentFullName(s),
+      full_name: s.full_name ?? studentFullName(s),
       classroom_name: s.classroom_name,
       number: s.number,
     }));
@@ -79,6 +128,7 @@ export function PrintPreview({ examId }: { examId: string }) {
     layout.questionCount !== exam.questionCount ||
     layout.choiceCount !== exam.choiceCount;
   async function download() {
+    if (personalized && (rosterLoading || rosterError)) return;
     setBusy(true);
     setError("");
     try {
@@ -150,6 +200,8 @@ export function PrintPreview({ examId }: { examId: string }) {
         ]}
       />
       {error && <Notice tone="error">{error}</Notice>}
+      {rosterError && <Notice tone="error">{rosterError}</Notice>}
+      {rosterLoading && <Notice>กำลังโหลดรายชื่อของชุดสอบ…</Notice>}
       <div className="print-workspace">
         <section className="print-canvas" data-work-pane="preview">
           <div className="preview-top">
@@ -295,6 +347,7 @@ export function PrintPreview({ examId }: { examId: string }) {
             structureChanged ||
             validation.errors.length > 0 ||
             busy ||
+            (personalized && (rosterLoading || Boolean(rosterError))) ||
             readOnly ||
             !printCount ||
             printCount > 200 ||

@@ -40,7 +40,13 @@ export type Student = Omit<
 > &
   Partial<
     Pick<NormalizedStudent, "prefix" | "full_name" | "grade_level" | "room">
-  > & { id: string };
+  > & {
+    id: string;
+    active?: boolean;
+    revision?: number;
+    directory_student_id?: string | null;
+    directory_revision?: number;
+  };
 export function studentFullName(
   student: Pick<Student, "prefix" | "first_name" | "last_name">,
 ) {

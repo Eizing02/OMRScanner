@@ -21,6 +21,8 @@ import {
 import { studentFullName } from "@/types/student";
 import { createSetIdentity } from "@/lib/omr/qr";
 import { z } from "zod";
+import { rosterRpc } from "@/lib/import/roster-api";
+import type { Student } from "@/types/student";
 
 export async function GET(request: Request) {
   try {
@@ -61,6 +63,7 @@ export async function POST(request: Request) {
         422,
       );
     const input = parsed.data;
+    await rosterRpc(db, "sync_student_directory", { school_id: schoolId });
     const previous = await db
       .from("print_jobs")
       .select(
@@ -93,20 +96,15 @@ export async function POST(request: Request) {
             : [],
         );
     if (input.studentIds && !previous.data) {
-      const result = await db
-        .from("students")
-        .select(
-          "id,student_code,prefix,first_name,last_name,classroom_name,number",
-        )
-        .eq("school_id", schoolId)
-        .in("id", input.studentIds);
-      if (result.error)
-        throw new ApiError(
-          "STUDENT_READ_FAILED",
-          "โหลดรายชื่อนักเรียนสำหรับพิมพ์ไม่สำเร็จ",
-          500,
-        );
-      const byId = new Map(result.data.map((student) => [student.id, student]));
+      const roster = (await rosterRpc(db, "get_workspace_read_model", {
+        school_id: schoolId,
+        view: "exam_roster",
+        examId: input.layout.examId,
+        version: input.layout.examVersion,
+      })) as { students: Student[] };
+      const byId = new Map(
+        roster.students.map((student) => [student.id, student]),
+      );
       students = input.studentIds.map((id) => {
         const student = byId.get(id);
         if (!student)
@@ -118,7 +116,7 @@ export async function POST(request: Request) {
         return {
           id,
           student_code: student.student_code,
-          full_name: studentFullName(student),
+          full_name: student.full_name ?? studentFullName(student),
           classroom_name: student.classroom_name,
           number: student.number,
         };

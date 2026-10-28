@@ -87,28 +87,42 @@ for (const format of ["csv", "xlsx"] as const) {
       "ถูกต้อง",
     ]);
     await expect(page.locator(".legacy-mapping")).not.toHaveAttribute("open");
-    const button = page.getByRole("button", { name: "นำเข้า 3 รายชื่อ" });
+    const button = page.getByRole("button", {
+      name: "ตรวจ 3 รายชื่อ",
+      exact: true,
+    });
     await expect(button).toBeEnabled();
     if (format === "csv") await capture(page, "import");
     await button.click();
+    await page
+      .getByRole("button", { name: "ยืนยันบันทึก 3 รายชื่อ", exact: true })
+      .click();
     await expect(page).toHaveURL(/\/students$/);
-    await expect(page.locator("thead th")).toHaveText(headers);
+    await expect(page.locator("thead th")).toHaveText([
+      "",
+      ...headers,
+      "จัดการนักเรียน",
+    ]);
     await page.getByLabel("ค้นหานักเรียน").fill("00007");
     await expect(page.locator("tbody tr")).toHaveCount(1);
     await expect(page.locator("tbody td")).toHaveText([
+      "",
       "00007",
       "เด็กชายกิตติกร",
       "ตัวอย่าง",
       "ม.1/1",
+      "",
     ]);
     if (format === "csv") await capture(page, "list");
     await page.reload();
     await page.getByLabel("ค้นหานักเรียน").fill("00009");
     await expect(page.locator("tbody td")).toHaveText([
+      "",
       "00009",
       "นางสาวมณี",
       "ตัวอย่าง",
       "ม.6",
+      "",
     ]);
     const stored = await page.evaluate(() =>
       JSON.parse(

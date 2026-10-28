@@ -51,9 +51,14 @@ test("legacy XLSX preserves formatted five-digit codes, prefixes and optional nu
   await expect(page.locator("tbody td").nth(2)).toHaveText("นายกิตติกร");
   await expect(page.locator("tbody td").nth(3)).toHaveText("ตัวอย่าง");
   await expect(
-    page.getByRole("button", { name: "นำเข้า 1 รายชื่อ" }),
+    page.getByRole("button", { name: "ตรวจ 1 รายชื่อ", exact: true }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "นำเข้า 1 รายชื่อ" }).click();
+  await page
+    .getByRole("button", { name: "ตรวจ 1 รายชื่อ", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "ยืนยันบันทึก 1 รายชื่อ", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/students$/);
   const stored = await page.evaluate(() =>
     JSON.parse(
@@ -86,7 +91,7 @@ test("preview pagination exposes errors beyond the first hundred rows", async ({
       buffer: Buffer.from(`รหัสประจำตัว,ชื่อ-สกุล,ชั้น\n${rows.join("\n")}\n`),
     });
   await expect(
-    page.getByRole("button", { name: "นำเข้า 101 รายชื่อ" }),
+    page.getByRole("button", { name: "ตรวจ 101 รายชื่อ", exact: true }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "ถัดไป", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(1);
@@ -151,13 +156,20 @@ test("three-column CSV preserves zeros/prefixes, previews errors, imports and fi
       ).violations,
     ).toEqual([]);
   }
-  await page.getByRole("button", { name: "นำเข้า 2 รายชื่อ" }).click();
+  await page
+    .getByRole("button", { name: "ตรวจ 2 รายชื่อ", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "ยืนยันบันทึก 2 รายชื่อ", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/students$/);
   await expect(page.locator("thead th")).toHaveText([
+    "",
     "รหัสประจำตัว",
     "ชื่อ",
     "นามสกุล",
     "ระดับชั้น",
+    "จัดการนักเรียน",
   ]);
   await page
     .getByRole("combobox", { name: "ระดับชั้น", exact: true })
@@ -197,9 +209,10 @@ test("three-column CSV preserves zeros/prefixes, previews errors, imports and fi
     ),
   });
   await expect(
-    page.getByRole("button", { name: "นำเข้า 2 รายชื่อ" }),
+    page.getByRole("button", { name: "ตรวจ 2 รายชื่อ", exact: true }),
   ).toBeDisabled();
-  await expect(page.locator("tbody")).toContainText("รหัสมีอยู่ในระบบแล้ว");
+  // Existing codes remain valid candidates for an explicit update preview.
+  await expect(page.locator("tbody")).not.toContainText("รหัสมีอยู่ในระบบแล้ว");
   await expect(page.locator("tbody")).toContainText(
     "รหัสนักเรียนต้องเป็นตัวเลข 5 หลัก",
   );

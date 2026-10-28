@@ -7,6 +7,7 @@ import {
 } from "@/lib/supabase/api";
 import { examSchema } from "@/types/exam";
 import { z } from "zod";
+import { rosterRpc } from "@/lib/import/roster-api";
 function lifecycleError(message: string) {
   const errors: Record<string, [string, number]> = {
     FORBIDDEN: ["ไม่มีสิทธิ์จัดการชุดสอบในพื้นที่นี้", 403],
@@ -36,11 +37,10 @@ function lifecycleError(message: string) {
     503,
   );
 }
-export async function GET(request?: Request) {
+export async function GET(request: Request) {
   try {
     const { db, schoolId } = await context();
-    const preview =
-      request && new URL(request.url).searchParams.get("deletePreview");
+    const preview = new URL(request.url).searchParams.get("deletePreview");
     if (preview) {
       if (!z.uuid().safeParse(preview).success)
         throw new ApiError("INVALID_EXAM", "รหัสชุดสอบไม่ถูกต้อง", 422);
@@ -103,6 +103,7 @@ export async function POST(request: Request) {
         parsed.error.issues.map((i) => i.message).join(" · "),
         422,
       );
+    await rosterRpc(db, "sync_student_directory", { school_id: schoolId });
     const { data, error } = await db.rpc("create_exam_draft", {
       input: { ...parsed.data, school_id: schoolId },
     });

@@ -5,6 +5,7 @@ export default defineConfig({
     "accounts.spec.ts",
     "scanner-performance.spec.ts",
     "score-integration.spec.ts",
+    "roster-management.spec.ts",
   ],
   timeout: 90000,
   workers: 1,
@@ -17,7 +18,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev",
+    command: "npm run dev -- --webpack",
     url: "http://127.0.0.1:3000/dashboard",
     reuseExistingServer: false,
     env: {

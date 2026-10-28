@@ -22,12 +22,53 @@ import {
 } from "@/lib/omr/scan-qr";
 import { readOpticalMarks } from "@/lib/omr/detect-bubbles";
 import { scanDatabaseError } from "@/lib/omr/scan-errors";
+import { rosterRpc } from "@/lib/import/roster-api";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
     const { db, schoolId } = await context();
     const params = new URL(request.url).searchParams;
+    if (params.has("view")) {
+      const parsed = z
+        .object({
+          view: z.enum([
+            "summary",
+            "queue",
+            "detail",
+            "results",
+            "exam_roster",
+          ]),
+          examId: z.uuid().optional(),
+          id: z.uuid().optional(),
+          version: z.coerce.number().int().positive().optional(),
+          page: z.coerce.number().int().min(0).max(20000).default(0),
+          limit: z.coerce.number().int().min(1).max(2000).default(50),
+          status: z
+            .enum(["needs_review", "verified", "voided", "all"])
+            .optional(),
+          query: z.string().max(100).optional(),
+        })
+        .safeParse(Object.fromEntries(params));
+      if (
+        !parsed.success ||
+        (parsed.data.view === "detail" && !parsed.data.id) ||
+        (parsed.success &&
+          ["results", "exam_roster"].includes(parsed.data.view) &&
+          !parsed.data.examId)
+      )
+        throw new ApiError(
+          "INVALID_READ",
+          "เลือกชุดสอบหรือรายการให้ถูกต้อง",
+          422,
+        );
+      return json(
+        await rosterRpc(db, "get_workspace_read_model", {
+          ...parsed.data,
+          school_id: schoolId,
+        }),
+      );
+    }
     if (params.has("token")) {
       const token = setTokenSchema.safeParse(params.get("token"));
       if (!token.success)

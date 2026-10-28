@@ -6,6 +6,12 @@ Permanent instructions for all future Codex tasks in this repository.
 
 These rules supersede the original blueprint where noted. One Next.js modular monolith, private Supabase Storage, Google approval/private workspaces, shared SAS2 exam/template QR, five-digit student OMR, and immutable geometry versions 2/3/4 are the current system. Scanic 1.6.0 is the default classical document detector; OpenCV/jscanify are lazy legacy fallback. Browser edge detection is not answer grading. The server reads the exact retained JPEG and the grading/review RPC remains authoritative. The optional MathQuest score-publication module uses a PostgreSQL outbox inside the same Supabase project; this is not an external broker or new service. It is disabled by default and cannot send real data until the independent receiver is verified. No production schema/data/env changes without approval. No Python, external queue or microservice. See docs/SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md, docs/MATHQUEST_SCORE_INTEGRATION.md and the migration/rollback documents.
 
+## Approved roster extension — 28 October 2026
+
+Student management is now exact five-digit-code preview/upsert with stable UUIDs, revision/expiry/idempotency guards, manual forms, templates, complete exports and archive/restore. Never delete a student because a file omitted them. Migrations 013–016 preserve exam/scan identity before enabling edits. Keep historical print/review/export snapshots and confirmed scores immutable during roster changes.
+
+The owner approved one narrow sharing exception: explicit school-directory grants to approved teachers of that school. Directory managers maintain central records; classroom subscriptions follow the current classroom cohort and central fields overwrite linked copies. Private/manual/detached records and local exclusions are protected. Owner workspace inspection remains read-only. No general teacher-to-teacher sharing. Synchronize on open/visibility return, at bounded visible intervals, and before exam/print creation. Use paged list summaries and selected detail reads; never derive complete counts/print/export sets from the loaded page. See docs/STUDENT_ROSTER_IMPLEMENTATION.md. Prepared migrations do not authorize installing them in production.
+
 ## Project Overview
 
 This project is **Smart OMR & Exam Management System**, a Smart OMR MVP for Thai school teachers.

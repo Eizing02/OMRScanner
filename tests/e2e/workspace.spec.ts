@@ -3,6 +3,9 @@ import AxeBuilder from "@axe-core/playwright";
 test("Thai workspace: real rendered evidence, responsive layouts, accessibility", async ({
   page,
 }) => {
+  // This matrix drives 30 route/viewport combinations; WASM/Webpack also
+  // compiles each route on first navigation on Windows without native SWC.
+  test.setTimeout(240000);
   const pages = [
     ["dashboard", "/dashboard"],
     ["exams", "/exams"],

@@ -12,7 +12,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev -- --port 3102",
+    command: "npm run dev -- --webpack --port 3102",
     url: "http://127.0.0.1:3102/login",
     timeout: 120000,
     reuseExistingServer: false,

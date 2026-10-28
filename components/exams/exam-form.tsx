@@ -27,16 +27,16 @@ export function ExamForm() {
     createExam,
     mode,
     notify,
-    students,
+    rosterSummary,
     exams,
     branding,
     readOnly,
     loading,
   } = useWorkspace();
   const settings = branding.settings ?? defaultWorkspaceSettings;
-  const classrooms = [
-    ...new Set(students.map((student) => student.classroom_name)),
-  ].sort((a, b) => a.localeCompare(b, "th", { numeric: true }));
+  const classrooms = rosterSummary.classrooms
+    .map((c) => c.name)
+    .sort((a, b) => a.localeCompare(b, "th", { numeric: true }));
   const subjects = [
     ...new Set([...settings.subjects, ...exams.map((exam) => exam.subject)]),
   ]
@@ -56,9 +56,9 @@ export function ExamForm() {
     .filter((value) => value >= 2500 && value <= 2700)
     .sort((a, b) => b - a);
   const selectedClassroom = classrooms.includes(classroom) ? classroom : "";
-  const selectedClassSize = students.filter(
-    (student) => student.classroom_name === selectedClassroom,
-  ).length;
+  const selectedClassSize =
+    rosterSummary.classrooms.find((c) => c.name === selectedClassroom)?.count ??
+    0;
   const router = useRouter();
   async function save() {
     setError("");

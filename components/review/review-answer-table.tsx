@@ -26,6 +26,8 @@ import { thaiChoices, choices, type Choice } from "@/types/exam";
 import { gradeExam, canVerify } from "@/lib/grading/grade-exam";
 import { effectiveAnswers } from "@/lib/grading/recalculate";
 import type { StoredReview, LockedScanTemplate } from "@/types/scan";
+import type { Exam } from "@/types/exam";
+import { useReviewPage } from "./use-review-data";
 type Media = {
   original: string | null;
   processed: string;
@@ -45,6 +47,7 @@ export function ReviewCenter({
     request,
     readOnly,
     refreshReviews,
+    reviewRevision,
   } = useWorkspace();
   const [activeId, setActiveId] = useState<string | null>(
       initialItemId ?? null,
@@ -69,15 +72,72 @@ export function ReviewCenter({
     [mediaId, setMediaId] = useState(""),
     [mediaError, setMediaError] = useState("");
   const [refreshImage, setRefreshImage] = useState(0);
+  const [queuePage, setQueuePage] = useState(0);
+  const [detail, setDetail] = useState<{
+    review: StoredReview;
+    version: Exam;
+  } | null>(null);
+  const [detailError, setDetailError] = useState("");
+  const remote = useReviewPage({
+    view: "queue",
+    examId,
+    status: filter,
+    query,
+    page: queuePage,
+    limit: 50,
+  });
   const retired = useRef(new Set<string>());
-  const items = reviews.filter(
+  const demoItems = reviews.filter(
     (r) =>
       (!examId || r.examId === examId) &&
       r.status === filter &&
       `${r.studentCode} ${r.name}`.includes(query),
   );
-  const item = items.find((r) => r.id === activeId) ?? items[0],
-    exam = item ? getExamVersion(item.examId, item.examVersion) : undefined;
+  const items = mode === "connected" ? (remote.data?.items ?? []) : demoItems;
+  const chosen = items.find((r) => r.id === activeId) ?? items[0];
+  const item =
+    mode === "connected"
+      ? detail && detail.review.id === chosen?.id
+        ? detail.review
+        : undefined
+      : demoItems.find((r) => r.id === chosen?.id);
+  const exam =
+    mode === "connected"
+      ? item
+        ? detail?.version
+        : undefined
+      : item
+        ? getExamVersion(item.examId, item.examVersion)
+        : undefined;
+  const chosenId = chosen?.id;
+  useEffect(() => {
+    if (mode !== "connected" || !chosenId) return;
+    let active = true;
+    const controller = new AbortController();
+    request(
+      `/api/scan-records?view=detail&id=${encodeURIComponent(chosenId)}`,
+      { signal: controller.signal },
+    )
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok)
+          throw new Error(body.error?.messageTh ?? "โหลดคำตอบไม่สำเร็จ");
+        if (active) {
+          setDetail(body.data);
+          setDetailError("");
+        }
+      })
+      .catch((e) => {
+        if (active && !controller.signal.aborted) {
+          setDetail(null);
+          setDetailError(e instanceof Error ? e.message : "โหลดคำตอบไม่สำเร็จ");
+        }
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [chosenId, mode, request, reviewRevision]);
   const stored = item as StoredReview | undefined,
     answers = item ? effectiveAnswers(item) : [],
     grade = exam ? gradeExam(exam, answers) : null;
@@ -327,15 +387,22 @@ export function ReviewCenter({
             onChange={(e) => {
               setFilter(e.target.value);
               setActiveId(null);
+              setQueuePage(0);
             }}
           >
             <option value="needs_review">
               รอตรวจสอบ (
-              {reviews.filter((r) => r.status === "needs_review").length})
+              {mode === "connected"
+                ? (remote.data?.counts.needs_review ?? 0)
+                : reviews.filter((r) => r.status === "needs_review").length}
+              )
             </option>
             <option value="verified">
               ยืนยันแล้ว (
-              {reviews.filter((r) => r.status === "verified").length})
+              {mode === "connected"
+                ? (remote.data?.counts.verified ?? 0)
+                : reviews.filter((r) => r.status === "verified").length}
+              )
             </option>
             <option value="voided">ปฏิเสธแล้ว</option>
           </select>
@@ -344,7 +411,7 @@ export function ReviewCenter({
           <span className="sr-only">เลือกกระดาษคำตอบ</span>
           <select
             aria-label="เลือกกระดาษคำตอบ"
-            value={item?.id ?? ""}
+            value={chosen?.id ?? ""}
             onChange={(e) => {
               setActiveId(e.target.value);
               setHighlight(undefined);
@@ -371,7 +438,27 @@ export function ReviewCenter({
         ]}
       />
       {error && !dialog && <Notice tone="error">{error}</Notice>}
-      {!reviews.length ? (
+      {(remote.error || detailError) && (
+        <Notice tone="error">
+          {remote.error || detailError}
+          <button
+            className="text-button"
+            onClick={() =>
+              void refreshReviews().catch((e) =>
+                setError(e instanceof Error ? e.message : "โหลดไม่สำเร็จ"),
+              )
+            }
+          >
+            ลองใหม่
+          </button>
+        </Notice>
+      )}
+      {remote.loading && <Notice>กำลังโหลดรายการตรวจ…</Notice>}
+      {(
+        mode === "connected"
+          ? remote.data && !Object.values(remote.data.counts).some(Boolean)
+          : !reviews.length
+      ) ? (
         <EmptyState
           title="ยังไม่มีผลสแกน"
           description="สแกนกระดาษคำตอบเพื่อเริ่มตรวจคะแนน"
@@ -390,14 +477,18 @@ export function ReviewCenter({
                 placeholder="ชื่อหรือรหัสนักเรียน"
                 aria-label="ค้นหารายการตรวจสอบ"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value);
+                  setQueuePage(0);
+                  setActiveId(null);
+                }}
               />
             </label>
             <div className="review-queue-list">
               {items.map((r) => (
                 <button
                   key={r.id}
-                  className={item?.id === r.id ? "active" : ""}
+                  className={chosen?.id === r.id ? "active" : ""}
                   onClick={() => {
                     setActiveId(r.id);
                     setHighlight(undefined);
@@ -416,6 +507,36 @@ export function ReviewCenter({
                 </button>
               ))}
             </div>
+            {mode === "connected" && (
+              <div className="roster-pagination">
+                <span>
+                  {remote.data?.total ?? 0} รายการ · หน้า {queuePage + 1}
+                </span>
+                <button
+                  className="btn btn-secondary"
+                  disabled={remote.loading || !queuePage}
+                  onClick={() => {
+                    setQueuePage((v) => v - 1);
+                    setActiveId(null);
+                  }}
+                >
+                  ก่อนหน้า
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  disabled={
+                    remote.loading ||
+                    (queuePage + 1) * 50 >= (remote.data?.total ?? 0)
+                  }
+                  onClick={() => {
+                    setQueuePage((v) => v + 1);
+                    setActiveId(null);
+                  }}
+                >
+                  ถัดไป
+                </button>
+              </div>
+            )}
           </aside>
           {item && exam ? (
             <>

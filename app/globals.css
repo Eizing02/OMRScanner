@@ -4484,6 +4484,383 @@ svg {
   padding-inline-start: 24px;
   font-variant-numeric: tabular-nums;
 }
+.roster-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.roster-workspace > .page-heading {
+  margin-bottom: 0;
+}
+.roster-tools-row,
+.roster-selection,
+.roster-row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.roster-selection {
+  padding: 12px 16px;
+  background: var(--blue-light);
+}
+.roster-selection > span {
+  margin-inline-end: auto;
+}
+.roster-panel {
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.roster-panel > .table-scroll {
+  flex: 1;
+  min-height: 100px;
+  overflow: auto;
+}
+.roster-panel > .table-toolbar,
+.roster-panel > .roster-selection,
+.roster-panel > .roster-pagination {
+  flex-shrink: 0;
+}
+.roster-panel .table-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(120px, 140px)) auto;
+  align-items: end;
+  padding: 16px 4px;
+}
+.roster-panel .table-toolbar > label,
+.roster-panel .table-toolbar .search-input {
+  min-width: 0;
+}
+.roster-panel .table-toolbar select {
+  width: 100%;
+  min-width: 0;
+}
+body:has(.roster-form, .roster-directory) .toast {
+  z-index: 99;
+}
+.roster-import-workspace .import-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow: hidden;
+}
+.roster-import-workspace .import-panel > .table-scroll {
+  flex: 1;
+  min-height: 120px;
+  overflow: auto;
+}
+.roster-import-setup {
+  flex-shrink: 0;
+  max-height: 48%;
+  overflow: auto;
+}
+.roster-import-setup > summary {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.roster-import-setup .file-drop {
+  padding: 16px;
+  margin-block: 8px 12px;
+}
+.roster-import-setup > .btn {
+  margin-block: 8px;
+}
+.roster-import-setup .mapping-grid {
+  margin-block: 12px;
+}
+.roster-import-setup .legacy-mapping {
+  margin-block: 12px;
+}
+.roster-import-workspace .section-title,
+.roster-import-workspace .roster-import-results,
+.roster-import-workspace .dialog-actions,
+.roster-import-workspace .roster-pagination,
+.roster-import-workspace .import-panel > p {
+  flex-shrink: 0;
+  margin: 0;
+}
+@media (max-width: 1100px) {
+  .roster-panel .table-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  }
+  .roster-panel .table-toolbar .search-input {
+    grid-column: 1 / -1;
+  }
+}
+.roster-panel input[type="checkbox"],
+.roster-class-options input[type="checkbox"] {
+  min-width: 20px;
+  min-height: 20px;
+  cursor: pointer;
+  accent-color: var(--blue);
+}
+.roster-panel td:first-child,
+.roster-panel th:first-child {
+  width: 44px;
+}
+.roster-panel .roster-pagination {
+  padding: 16px;
+  margin-top: 0;
+  border-top: 1px solid var(--line);
+}
+.roster-row-actions {
+  flex-wrap: nowrap;
+}
+.roster-source {
+  display: block;
+  color: var(--muted);
+}
+.roster-loading {
+  padding: 16px;
+}
+.roster-download {
+  position: relative;
+}
+.roster-download > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.roster-download > summary::-webkit-details-marker {
+  display: none;
+}
+.roster-download[open] > div {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 100%;
+  z-index: 5;
+  display: grid;
+  min-width: 220px;
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.roster-download .btn {
+  justify-content: flex-start;
+}
+.roster-form,
+.roster-directory {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.roster-form .form-grid {
+  margin: 0;
+  gap: 16px;
+}
+.roster-form label,
+.roster-directory > label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.roster-form input,
+.roster-form select,
+.roster-directory select {
+  width: 100%;
+  min-width: 0;
+}
+.roster-directory .form-grid {
+  margin: 0;
+  gap: 16px;
+}
+.roster-directory .workspace-tabs {
+  display: flex;
+}
+.roster-class-options {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  min-width: 0;
+}
+.roster-class-options label {
+  min-height: 44px;
+  padding: 8px;
+}
+.roster-class-options .badge {
+  margin-inline-start: auto;
+}
+.roster-confirm-list {
+  max-height: 240px;
+  overflow: auto;
+  padding-inline-start: 24px;
+  overflow-wrap: anywhere;
+}
+.roster-confirm-list li + li {
+  margin-top: 8px;
+}
+.roster-member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.roster-member-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.roster-member-list li > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.roster-member-list span {
+  display: block;
+  color: var(--muted);
+}
+.roster-import-results {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-block: 16px;
+}
+.roster-diff {
+  min-width: 240px;
+  max-width: 360px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.roster-diff summary {
+  cursor: pointer;
+  color: var(--blue);
+}
+.roster-diff p {
+  margin-block: 8px;
+}
+.roster-import-workspace .data-table td {
+  vertical-align: top;
+}
+@media (max-width: 640px) {
+  .roster-import-workspace .data-table,
+  .roster-import-workspace .data-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+  .roster-import-workspace .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .roster-import-workspace .data-table tbody tr {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 4px 12px;
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--line);
+  }
+  .roster-import-workspace .data-table td {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .roster-import-workspace .data-table td:first-child {
+    display: none;
+  }
+  .roster-import-workspace .data-table td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 1;
+    font-weight: 600;
+  }
+  .roster-import-workspace .data-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .roster-import-workspace .data-table td:nth-child(4) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .roster-import-workspace .data-table td:nth-child(5) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .roster-import-workspace .data-table td:last-child {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    padding-top: 4px;
+  }
+  .roster-import-workspace .roster-diff {
+    min-width: 0;
+    max-width: none;
+  }
+  .roster-import-workspace .roster-diff summary {
+    min-height: 32px;
+    padding-block: 6px;
+  }
+}
+@media (max-height: 500px) and (max-width: 1100px) {
+  .roster-workspace {
+    flex: none;
+    min-height: 460px;
+  }
+}
+@media (max-width: 640px) {
+  .roster-panel {
+    padding: 12px;
+  }
+  .roster-panel .table-toolbar {
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 4px 0 12px;
+  }
+  .roster-panel .table-toolbar > .badge {
+    display: none;
+  }
+  .roster-panel .roster-pagination {
+    padding: 12px 0 0;
+  }
+  .roster-import-workspace .roster-import-results {
+    gap: 6px;
+  }
+  .roster-import-workspace .roster-import-results .notice {
+    padding: 8px;
+    font-size: 11px;
+  }
+  .roster-workspace .roster-tools-row > .btn {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+  .roster-workspace .roster-tools-row {
+    align-items: stretch;
+  }
+  .roster-row-actions .icon-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .roster-selection .btn,
+  .roster-download .btn,
+  .roster-directory .btn {
+    min-height: 44px;
+  }
+  .roster-directory .dialog-actions,
+  .roster-form .dialog-actions {
+    flex-wrap: wrap;
+  }
+  .roster-member-list li {
+    align-items: start;
+    flex-wrap: wrap;
+  }
+}
 @media (max-width: 640px) {
   .integration-actions > .btn {
     min-height: 44px;

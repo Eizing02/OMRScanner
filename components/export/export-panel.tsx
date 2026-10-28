@@ -6,6 +6,7 @@ import { scoreRow } from "@/lib/grading/recalculate";
 import { downloadScores } from "@/lib/export/export-excel";
 import { downloadScoreReport } from "@/lib/export/report-template";
 import { ExamPublication } from "@/components/integrations/exam-publication";
+import { useReviewPage } from "@/components/review/use-review-data";
 import {
   Badge,
   EmptyState,
@@ -31,7 +32,14 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
     [error, setError] = useState(""),
     [page, setPage] = useState(0);
   const selected = exams.find((e) => e.id === examId) ?? exams[0];
-  const items = reviews
+  const remote = useReviewPage({
+    view: "results",
+    examId: selected?.id,
+    status: onlyVerified ? "verified" : "all",
+    page,
+    limit: 20,
+  });
+  const demoItems = reviews
     .filter(
       (r) =>
         r.examId === selected?.id &&
@@ -40,13 +48,30 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
         getExamVersion(r.examId, r.examVersion),
     )
     .sort((a, b) => a.studentCode.localeCompare(b.studentCode));
-  const rows: Record<string, string | number>[] = items.map((item) => ({
-    ...scoreRow(item, getExamVersion(item.examId, item.examVersion)!),
-    สถานะ: item.status === "verified" ? "ยืนยันแล้ว" : "รอตรวจสอบ",
-  }));
-  const pages = Math.max(1, Math.ceil(rows.length / 20)),
+  const items = mode === "connected" ? (remote.data?.items ?? []) : demoItems;
+  const rows: Record<string, string | number>[] =
+    mode === "connected"
+      ? items.map((item) => ({
+          รหัสนักเรียน: item.studentCode,
+          "ชื่อ-สกุล": item.name,
+          "ชั้น/ห้อง": item.classroom,
+          คะแนนที่ได้: "score" in item ? item.score : 0,
+          คะแนนเต็ม: "maxScore" in item ? item.maxScore : 0,
+          "ผ่าน/ไม่ผ่าน": "passed" in item && item.passed ? "ผ่าน" : "ไม่ผ่าน",
+          สถานะ: item.status === "verified" ? "ยืนยันแล้ว" : "รอตรวจสอบ",
+        }))
+      : demoItems.map((item) => ({
+          ...scoreRow(item, getExamVersion(item.examId, item.examVersion)!),
+          สถานะ: item.status === "verified" ? "ยืนยันแล้ว" : "รอตรวจสอบ",
+        }));
+  const total = mode === "connected" ? (remote.data?.total ?? 0) : rows.length;
+  const pages = Math.max(1, Math.ceil(total / 20)),
     current = Math.min(page, pages - 1),
     start = current * 20;
+  const visibleRows =
+    mode === "connected" ? rows : rows.slice(start, start + 20);
+  const visibleItems =
+    mode === "connected" ? items : items.slice(start, start + 20);
   async function download(individualId?: string) {
     if (!selected || readOnly) return;
     setBusy(true);
@@ -73,7 +98,7 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
           throw new Error(body.error?.messageTh ?? "ส่งออกไม่สำเร็จ");
         exportRows = body.data.rows;
       } else if (mode === "demo")
-        exportRows = items
+        exportRows = demoItems
           .filter(
             (r) =>
               r.status === "verified" &&
@@ -129,6 +154,8 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
         </label>
       </div>
       {error && <Notice tone="error">{error}</Notice>}
+      {remote.error && <Notice tone="error">{remote.error}</Notice>}
+      {remote.loading && <Notice>กำลังโหลดผลสอบ…</Notice>}
       <section className="panel scorebook">
         <div
           className="table-scroll"
@@ -151,8 +178,8 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
               </tr>
             </thead>
             <tbody>
-              {rows.slice(start, start + 20).map((row, i) => (
-                <tr key={items[start + i].id}>
+              {visibleRows.map((row, i) => (
+                <tr key={visibleItems[i].id}>
                   <td>{row["รหัสนักเรียน"] || "รอตรวจ"}</td>
                   <td>{row["ชื่อ-สกุล"]}</td>
                   <td>{row["ชั้น/ห้อง"]}</td>
@@ -172,7 +199,7 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
                       className="icon-button"
                       aria-label={`ดาวน์โหลดรายงาน ${row["รหัสนักเรียน"]}`}
                       disabled={row.สถานะ !== "ยืนยันแล้ว" || busy || readOnly}
-                      onClick={() => void download(items[start + i].id)}
+                      onClick={() => void download(visibleItems[i].id)}
                     >
                       <FileText size={18} />
                     </button>
@@ -181,7 +208,7 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
               ))}
             </tbody>
           </table>
-          {!rows.length && (
+          {!rows.length && !remote.loading && !remote.error && (
             <EmptyState
               title="ยังไม่มีคะแนนในรายการนี้"
               description="ตรวจและยืนยันผลในศูนย์ตรวจสอบก่อนส่งออก"
@@ -190,13 +217,13 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
         </div>
         <div className="table-pagination">
           <span>
-            {rows.length} รายการ · หน้า {current + 1} / {pages}
+            {total} รายการ · หน้า {current + 1} / {pages}
           </span>
           <div>
             <button
               className="icon-button"
               aria-label="หน้าก่อนหน้า"
-              disabled={!current}
+              disabled={!current || remote.loading}
               onClick={() => setPage(current - 1)}
             >
               <ChevronLeft size={18} />
@@ -204,7 +231,7 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
             <button
               className="icon-button"
               aria-label="หน้าถัดไป"
-              disabled={current >= pages - 1}
+              disabled={current >= pages - 1 || remote.loading}
               onClick={() => setPage(current + 1)}
             >
               <ChevronRight size={18} />
@@ -235,7 +262,12 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
         <button
           className="btn btn-primary"
           disabled={
-            busy || readOnly || !items.some((r) => r.status === "verified")
+            busy ||
+            readOnly ||
+            remote.loading ||
+            (mode === "connected"
+              ? !remote.data?.counts.verified
+              : !items.some((r) => r.status === "verified"))
           }
           onClick={() => void download()}
         >

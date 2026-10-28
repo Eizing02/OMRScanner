@@ -42,7 +42,7 @@ export function MainShell({ children }: { children: ReactNode }) {
   const [mobileNav, setMobileNav] = useState(false);
   const [notifications, setNotifications] = useState(false);
   const main = useRef<HTMLElement>(null);
-  const { mode, error, loading, reviews, exams, branding, notify } =
+  const { mode, error, loading, reviewCount, exams, branding, notify } =
     useWorkspace();
   const auth = useAuth();
   useEffect(() => {
@@ -62,7 +62,7 @@ export function MainShell({ children }: { children: ReactNode }) {
     );
     return () => transition.cancel();
   }, [path]);
-  const pending = reviews.filter((r) => r.status === "needs_review").length;
+  const pending = reviewCount;
   const title =
     path === "/settings"
       ? "การตั้งค่า"
@@ -144,7 +144,7 @@ export function MainShell({ children }: { children: ReactNode }) {
   }
   return (
     <div
-      className={`app-shell ${path === "/scan" || path.endsWith("/scan") || path === "/review" || path.endsWith("/review") || path.includes("omr-generate") || path.endsWith("/print") || path === "/export" || path.endsWith("/results") ? "task-shell" : ""}`}
+      className={`app-shell ${path.startsWith("/students") || path === "/scan" || path.endsWith("/scan") || path === "/review" || path.endsWith("/review") || path.includes("omr-generate") || path.endsWith("/print") || path === "/export" || path.endsWith("/results") ? "task-shell" : ""}`}
     >
       <a className="skip-link" href="#main">
         ข้ามไปเนื้อหาหลัก

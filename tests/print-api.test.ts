@@ -19,7 +19,18 @@ vi.mock("@/lib/supabase/api", async (importOriginal) => {
       return {
         schoolId: "20000000-0000-4000-8000-000000000099",
         db: {
-          rpc: mock.rpc,
+          rpc: async (
+            name: string,
+            args: { input: Record<string, unknown> },
+          ) => {
+            if (name === "sync_student_directory")
+              return { data: { added: 0, updated: 0 }, error: null };
+            if (name === "get_workspace_read_model") {
+              mock.studentReads++;
+              return { data: { students: mock.students }, error: null };
+            }
+            return mock.rpc(name, args);
+          },
           from: (table: string) => {
             const chain = {
               select: () => chain,

@@ -73,7 +73,7 @@ export function previewStudents(
     if ((counts.get(code) ?? 0) > 1)
       errors.push("รหัสซ้ำภายในไฟล์ กรุณาตรวจสอบทั้งสองแถว");
     return {
-      row: i + 2,
+      row: typeof row.__rowNum__ === "number" ? row.__rowNum__ + 1 : i + 2,
       data: parsed.success
         ? parsed.data
         : {

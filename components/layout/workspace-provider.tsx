@@ -18,6 +18,8 @@ import {
 import type { Exam, ExamInput } from "@/types/exam";
 import type { ReviewItem } from "@/types/result";
 import type { Student } from "@/types/student";
+import type { WorkspaceSummary, RecentReview } from "@/types/roster";
+import { usePathname } from "next/navigation";
 import type { SchoolBranding } from "@/types/school";
 import {
   defaultWorkspaceSettings,
@@ -68,6 +70,14 @@ type Workspace = {
   registerPrint: (input: PrintRegistrationInput) => Promise<RegisteredPrint>;
   isCurrentWorkspace: () => boolean;
   refreshReviews: () => Promise<void>;
+  refreshRoster: () => Promise<void>;
+  rosterSummary: {
+    activeCount: number;
+    classrooms: { name: string; count: number }[];
+  };
+  reviewCount: number;
+  recentReviews: RecentReview[];
+  reviewRevision: number;
 };
 const Context = createContext<Workspace | null>(null);
 const storageKey = "smart-answer-sheet-demo-v1";
@@ -107,6 +117,12 @@ function WorkspaceData({ children }: { children: ReactNode }) {
       : [],
   );
   const [examHistory, setExamHistory] = useState<Exam[]>([]);
+  const [summary, setSummary] = useState<WorkspaceSummary | null>(null);
+  const [reviewRevision, setReviewRevision] = useState(0);
+  const path = usePathname();
+  const layoutExamId =
+    /^\/exams\/([^/]+)\/(omr-generate|print)/.exec(path)?.[1] ?? "";
+  const [layoutReady, setLayoutReady] = useState("");
   const [layout, setLayout] = useState(defaultLayout);
   const [branding, setBranding] = useState<SchoolBranding>({
     school: mode === "demo" ? DEFAULT_SCHOOL_NAME : "พื้นที่ส่วนตัว",
@@ -173,13 +189,31 @@ function WorkspaceData({ children }: { children: ReactNode }) {
   );
   const refreshReviews = useCallback(async () => {
     if (mode !== "connected") return;
-    const response = await request("/api/scan-records");
+    const response = await request("/api/scan-records?view=summary");
     const body = await response.json();
     if (!response.ok)
       throw new Error(body.error?.messageTh ?? "โหลดผลสแกนไม่สำเร็จ");
-    setReviews(body.data.reviews);
-    setExamHistory(body.data.versions);
+    setSummary(body.data);
+    setReviewRevision((v) => v + 1);
   }, [mode, request]);
+  const refreshRoster = useCallback(async () => {
+    if (mode !== "connected") return;
+    if (!readOnly) {
+      const response = await request(
+        "/api/students",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "sync" }),
+        },
+        true,
+      );
+      const body = await response.json();
+      if (!response.ok)
+        throw new Error(body.error?.messageTh ?? "อัปเดตทะเบียนไม่สำเร็จ");
+    }
+    await refreshReviews();
+  }, [mode, readOnly, request, refreshReviews]);
   useEffect(() => {
     let active = true;
     queueMicrotask(() => {
@@ -267,51 +301,122 @@ function WorkspaceData({ children }: { children: ReactNode }) {
     )
       return;
     let active = true;
-    Promise.all([
-      request("/api/exams").then((r) => r.json()),
-      request("/api/students").then((r) => r.json()),
-      request("/api/settings").then((r) => r.json()),
-      request("/api/omr-layouts").then((r) => r.json()),
-      request("/api/scan-records").then((r) => r.json()),
-    ])
-      .then(([e, s, b, l, r]) => {
+    const sync = readOnly
+      ? Promise.resolve()
+      : request(
+          "/api/students",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "sync" }),
+          },
+          true,
+        ).then(async (r) => {
+          const body = await r.json();
+          if (!r.ok)
+            throw new Error(body.error?.messageTh ?? "อัปเดตรายชื่อไม่สำเร็จ");
+        });
+    sync
+      .then(() =>
+        Promise.all([
+          request("/api/exams").then((r) => r.json()),
+          request("/api/settings").then((r) => r.json()),
+          request("/api/scan-records?view=summary").then((r) => r.json()),
+        ]),
+      )
+      .then(([e, b, r]) => {
         if (!active) return;
-        if (e.error || s.error)
-          setError(e.error?.messageTh ?? s.error.messageTh);
-        else {
-          setExams(e.data);
-          setStudents(s.data);
-        }
+        if (e.error) setError(e.error.messageTh);
+        else setExams(e.data);
         if (b.error) setBrandingError(b.error.messageTh);
         else {
           setBranding(b.data);
           setCanUploadLogo(b.data.canUpload);
         }
-        if (l.error) setError(l.error.messageTh);
-        else {
-          const restored: Record<string, SheetLayout> = {};
-          for (const item of l.data ?? []) {
-            const parsed = layoutSchema.safeParse(item.layout ?? item);
-            if (parsed.success)
-              restored[`${parsed.data.examId}:${parsed.data.examVersion}`] =
-                parsed.data;
-          }
-          setSheetLayouts(restored);
-        }
         if (r.error) setError(r.error.messageTh);
         else {
-          setReviews(r.data.reviews);
-          setExamHistory(r.data.versions);
+          setSummary(r.data);
         }
       })
       .catch(
-        () => active && setError("เชื่อมต่อไม่สำเร็จ กรุณาลองโหลดหน้าใหม่"),
+        (error) =>
+          active &&
+          setError(
+            error instanceof Error
+              ? error.message
+              : "เชื่อมต่อไม่สำเร็จ กรุณาลองโหลดหน้าใหม่",
+          ),
       )
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [mode, auth.access?.status, auth.workspaceId, request]);
+  }, [mode, auth.access?.status, auth.workspaceId, request, readOnly]);
+  useEffect(() => {
+    if (
+      mode !== "connected" ||
+      !layoutExamId ||
+      !auth.workspaceId ||
+      auth.access?.status !== "approved"
+    )
+      return;
+    let active = true;
+    const controller = new AbortController();
+    request(`/api/omr-layouts?examId=${encodeURIComponent(layoutExamId)}`, {
+      signal: controller.signal,
+    })
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok)
+          throw new Error(body.error?.messageTh ?? "โหลดรูปแบบกระดาษไม่สำเร็จ");
+        if (!active) return;
+        const restored: Record<string, SheetLayout> = {};
+        for (const item of body.data ?? []) {
+          const parsed = layoutSchema.safeParse(item.layout ?? item);
+          if (parsed.success)
+            restored[`${parsed.data.examId}:${parsed.data.examVersion}`] =
+              parsed.data;
+        }
+        setSheetLayouts((old) => ({ ...old, ...restored }));
+        setLayoutReady(layoutExamId);
+      })
+      .catch((error) => {
+        if (active && !controller.signal.aborted) {
+          setError(
+            error instanceof Error ? error.message : "โหลดรูปแบบไม่สำเร็จ",
+          );
+          setLayoutReady(layoutExamId);
+        }
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [mode, layoutExamId, auth.workspaceId, auth.access?.status, request]);
+  useEffect(() => {
+    if (mode !== "connected" || readOnly) return;
+    let running = false;
+    const visible = () => {
+      if (document.visibilityState === "visible" && !running) {
+        running = true;
+        void refreshRoster()
+          .catch((error) =>
+            setError(
+              error instanceof Error ? error.message : "อัปเดตรายชื่อไม่สำเร็จ",
+            ),
+          )
+          .finally(() => {
+            running = false;
+          });
+      }
+    };
+    document.addEventListener("visibilitychange", visible);
+    const timer = window.setInterval(visible, 60000);
+    return () => {
+      document.removeEventListener("visibilitychange", visible);
+      window.clearInterval(timer);
+    };
+  }, [mode, readOnly, refreshRoster]);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
@@ -334,6 +439,7 @@ function WorkspaceData({ children }: { children: ReactNode }) {
       if (!response.ok)
         throw new Error(body.error?.messageTh ?? "สร้างชุดสอบไม่สำเร็จ");
       setExams((old) => [body.data, ...old]);
+      await refreshReviews();
       return body.data;
     }
     const exam: Exam = {
@@ -518,6 +624,19 @@ function WorkspaceData({ children }: { children: ReactNode }) {
       value={{
         exams: exams.map((exam) => {
           if (mode !== "connected") return exam;
+          const counts = summary?.exams?.find((e) => e.id === exam.id);
+          if (counts)
+            return {
+              ...exam,
+              ...counts,
+              stage: counts.scanned
+                ? !counts.reviewCount &&
+                  counts.students > 0 &&
+                  counts.scanned >= counts.students
+                  ? 5
+                  : 4
+                : exam.stage,
+            };
           const scanned = reviews.filter(
               (r) => r.examId === exam.id && r.status !== "voided",
             ),
@@ -540,7 +659,12 @@ function WorkspaceData({ children }: { children: ReactNode }) {
         layout,
         mode,
         error,
-        loading: loading || !hydrated,
+        loading:
+          loading ||
+          !hydrated ||
+          (mode === "connected" &&
+            Boolean(layoutExamId) &&
+            layoutReady !== layoutExamId),
         branding,
         brandingError,
         canUploadLogo,
@@ -553,6 +677,37 @@ function WorkspaceData({ children }: { children: ReactNode }) {
         saveLayout,
         registerPrint,
         refreshReviews,
+        refreshRoster,
+        rosterSummary:
+          mode === "connected"
+            ? {
+                activeCount: summary?.activeCount ?? 0,
+                classrooms: summary?.classrooms ?? [],
+              }
+            : {
+                activeCount: students.filter((s) => s.active !== false).length,
+                classrooms: [
+                  ...new Set(
+                    students
+                      .filter((s) => s.active !== false)
+                      .map((s) => s.classroom_name),
+                  ),
+                ].map((name) => ({
+                  name,
+                  count: students.filter(
+                    (s) => s.active !== false && s.classroom_name === name,
+                  ).length,
+                })),
+              },
+        reviewCount:
+          mode === "connected"
+            ? (summary?.reviewCount ?? 0)
+            : reviews.filter((r) => r.status === "needs_review").length,
+        recentReviews:
+          mode === "connected"
+            ? (summary?.recentReviews ?? [])
+            : reviews.filter((r) => r.status === "needs_review").slice(0, 3),
+        reviewRevision,
         isCurrentWorkspace: () => mounted.current,
         notify: setToast,
         setLayout: (next) => {

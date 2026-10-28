@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { studentSchema } from "@/types/student";
 import { normalizeClassroom } from "@/lib/import/normalize-classroom";
+import { rosterCommand, rosterRpc } from "@/lib/import/roster-api";
 import {
   context,
   json,
@@ -8,9 +9,46 @@ import {
   requestBody,
   ApiError,
 } from "@/lib/supabase/api";
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { db, schoolId } = await context();
+    const params = new URL(request.url).searchParams;
+    const view = params.get("view");
+    if (view) {
+      const query = z
+        .object({
+          view: z.enum(["page", "export", "directory", "directory_options"]),
+          page: z.coerce.number().int().min(0).max(20000).default(0),
+          limit: z.coerce.number().int().min(1).max(2000).default(50),
+          status: z.enum(["active", "inactive", "all"]).default("active"),
+          query: z.string().max(100).default(""),
+          grade: z.string().max(10).optional(),
+          classroom: z.string().max(30).optional(),
+          directoryId: z.uuid().optional(),
+          examId: z.uuid().optional(),
+        })
+        .safeParse(Object.fromEntries(params));
+      if (!query.success)
+        throw new ApiError(
+          "INVALID_ROSTER_QUERY",
+          "ตัวกรองรายชื่อไม่ถูกต้อง",
+          422,
+        );
+      return json(
+        await rosterRpc(
+          db,
+          view === "page" || view === "export"
+            ? "get_student_roster"
+            : "get_roster_directory",
+          {
+            ...query.data,
+            school_id: schoolId,
+            export: view === "export",
+            view: view === "directory_options" ? "options" : "students",
+          },
+        ),
+      );
+    }
     const { data, error } = await db
       .from("students")
       .select(
@@ -52,12 +90,15 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { db, schoolId } = await context(true);
+    const raw = await requestBody(request);
+    if (raw && typeof raw === "object" && "action" in raw)
+      return json(await rosterCommand(db, schoolId, raw));
     const parsed = z
       .object({
         students: z.array(studentSchema).min(1).max(2000),
         filename: z.string().min(1).max(200),
       })
-      .safeParse(await requestBody(request));
+      .safeParse(raw);
     if (!parsed.success)
       throw new ApiError(
         "INVALID_IMPORT",

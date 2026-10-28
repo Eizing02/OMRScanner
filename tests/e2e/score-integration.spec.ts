@@ -197,8 +197,15 @@ async function fixtures(page: Page) {
   await page.route("**/api/exams", (route) =>
     route.fulfill({ json: { data: [exam] } }),
   );
-  await page.route("**/api/students", (route) =>
-    route.fulfill({ json: { data: demoStudents } }),
+  await page.route("**/api/students**", (route) =>
+    route.fulfill({
+      json: {
+        data:
+          route.request().method() === "POST"
+            ? { added: 0, updated: 0 }
+            : demoStudents,
+      },
+    }),
   );
   await page.route("**/api/settings", (route) =>
     route.fulfill({
@@ -218,9 +225,51 @@ async function fixtures(page: Page) {
   await page.route("**/api/omr-layouts", (route) =>
     route.fulfill({ json: { data: [] } }),
   );
-  await page.route("**/api/scan-records", (route) =>
-    route.fulfill({ json: { data: { reviews: confirmed, versions: [exam] } } }),
-  );
+  await page.route("**/api/scan-records**", (route) => {
+    const view = new URL(route.request().url()).searchParams.get("view");
+    const score = exam.answerKey.reduce((sum, item) => sum + item.points, 0);
+    return route.fulfill({
+      json: {
+        data:
+          view === "summary"
+            ? {
+                activeCount: demoStudents.length,
+                classrooms: [
+                  ...new Set(demoStudents.map((s) => s.classroom_name)),
+                ].map((name) => ({
+                  name,
+                  count: demoStudents.filter((s) => s.classroom_name === name)
+                    .length,
+                })),
+                reviewCount: 0,
+                recentReviews: [],
+                exams: [
+                  {
+                    id: examId,
+                    scanned: 2,
+                    students: demoStudents.length,
+                    reviewCount: 0,
+                  },
+                ],
+              }
+            : view === "results" || view === "queue"
+              ? {
+                  items: confirmed.map((r) => ({
+                    ...r,
+                    score,
+                    maxScore: score,
+                    percent: 100,
+                    passed: true,
+                  })),
+                  total: confirmed.length,
+                  counts: { needs_review: 0, verified: 2, voided: 0 },
+                  page: 0,
+                  limit: 20,
+                }
+              : { reviews: confirmed, versions: [exam] },
+      },
+    });
+  });
   return {
     pauseConnection() {
       connection = {

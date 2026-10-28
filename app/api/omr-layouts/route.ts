@@ -8,13 +8,18 @@ import {
 import { layoutSchema, validateLayout } from "@/lib/omr/generate-template";
 import { z } from "zod";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { db, schoolId } = await context();
-    const result = await db
+    const examId = new URL(request.url).searchParams.get("examId");
+    if (examId && !z.uuid().safeParse(examId).success)
+      throw new ApiError("INVALID_EXAM", "รหัสชุดสอบไม่ถูกต้อง", 422);
+    let query = db
       .from("omr_layouts")
       .select("exam_id,layout_json")
       .eq("school_id", schoolId);
+    if (examId) query = query.eq("exam_id", examId);
+    const result = await query;
     if (result.error)
       throw new ApiError(
         "LAYOUT_SETUP_REQUIRED",

@@ -58,9 +58,27 @@ async function fixtures(
   await page.route("**/api/omr-layouts", (route) =>
     route.fulfill({ json: { data: [], error: null } }),
   );
-  await page.route("**/api/scan-records", (route) =>
+  await page.route("**/api/scan-records**", (route) =>
     route.fulfill({
-      json: { data: { reviews: [], versions: [] }, error: null },
+      json: {
+        data:
+          new URL(route.request().url()).searchParams.get("view") === "summary"
+            ? {
+                activeCount: 1,
+                classrooms: [{ name: "ม.1/2", count: 1 }],
+                reviewCount: 0,
+                recentReviews: [],
+                exams: [],
+              }
+            : {
+                items: [],
+                total: 0,
+                counts: { needs_review: 0, verified: 0, voided: 0 },
+                reviews: [],
+                versions: [],
+              },
+        error: null,
+      },
     }),
   );
   await page.route("**/api/settings", (route) =>
@@ -82,27 +100,43 @@ async function fixtures(
       },
     }),
   );
-  await page.route("**/api/students", (route) =>
-    route.fulfill({
+  await page.route("**/api/students**", (route) => {
+    const student = {
+      id: "44444444-4444-4444-8444-444444444444",
+      student_code: "02074",
+      prefix: "เด็กชาย",
+      first_name:
+        route.request().headers()["x-workspace-id"] === schoolB
+          ? "นักเรียนบัญชีข"
+          : "นักเรียนบัญชีก",
+      last_name: "ตัวอย่าง",
+      classroom_name: "ม.1/2",
+      number: null,
+      active: true,
+      revision: 1,
+    };
+    const view = new URL(route.request().url()).searchParams.get("view");
+    return route.fulfill({
       json: {
-        data: [
-          {
-            id: "44444444-4444-4444-8444-444444444444",
-            student_code: "02074",
-            prefix: "เด็กชาย",
-            first_name:
-              route.request().headers()["x-workspace-id"] === schoolB
-                ? "นักเรียนบัญชีข"
-                : "นักเรียนบัญชีก",
-            last_name: "ตัวอย่าง",
-            classroom_name: "ม.1/2",
-            number: null,
-          },
-        ],
+        data:
+          route.request().method() === "POST"
+            ? { added: 0, updated: 0 }
+            : view === "directory_options"
+              ? { canCreate: false, directories: [], accounts: [] }
+              : view
+                ? {
+                    students: [student],
+                    total: 1,
+                    activeCount: 1,
+                    classrooms: [{ name: "ม.1/2", count: 1 }],
+                    page: 0,
+                    limit: 50,
+                  }
+                : [student],
         error: null,
       },
-    }),
-  );
+    });
+  });
 }
 
 test("auto capture locks QR first, stops the camera, supports retake and saves processed pixels only", async ({
@@ -312,25 +346,34 @@ test("a refreshed account remounts caches and scopes all data requests", async (
   let current = access();
   await fixtures(page, () => current);
   await page.goto("/students");
+  await expect(
+    page.getByRole("heading", { name: "นักเรียนและห้องเรียน", exact: true }),
+  ).toBeVisible({ timeout: 30000 });
   await expect(page.locator("thead th")).toHaveText([
+    "",
     "รหัสประจำตัว",
     "ชื่อ",
     "นามสกุล",
     "ระดับชั้น",
+    "จัดการนักเรียน",
   ]);
   await expect(page.locator("tbody td")).toHaveText([
+    "",
     "02074",
     "เด็กชายนักเรียนบัญชีก",
     "ตัวอย่าง",
     "ม.1/2",
+    "",
   ]);
   current = access(userB);
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(page.locator("tbody td")).toHaveText([
+    "",
     "02074",
     "เด็กชายนักเรียนบัญชีข",
     "ตัวอย่าง",
     "ม.1/2",
+    "",
   ]);
   await expect(
     page.getByRole("cell", { name: "เด็กชายนักเรียนบัญชีก", exact: true }),

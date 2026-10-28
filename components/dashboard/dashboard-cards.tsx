@@ -41,9 +41,9 @@ export function ExamRoute({ stage }: { stage: number }) {
   );
 }
 export function Dashboard() {
-  const { exams, reviews, getLayout } = useWorkspace();
+  const { exams, recentReviews, reviewCount, getLayout } = useWorkspace();
   const active = exams.filter((e) => !e.archived);
-  const pending = reviews.filter((r) => r.status === "needs_review");
+  const pending = recentReviews;
   const focus = active.find((e) => e.stage === 4) ?? active[0];
   return (
     <>
@@ -69,7 +69,7 @@ export function Dashboard() {
         </span>
         <span>
           <ClipboardCheck size={18} />
-          <strong>{pending.length}</strong>รายการรอตรวจสอบ
+          <strong>{reviewCount}</strong>รายการรอตรวจสอบ
         </span>
         <span>
           <FileCheck2 size={18} />
@@ -131,7 +131,7 @@ export function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <strong>{pending.length} รายการ</strong>
+                  <strong>{reviewCount} รายการ</strong>
                   <span>ต้องตรวจรอยฝนด้วยตา</span>
                 </div>
               </div>
@@ -169,7 +169,7 @@ export function Dashboard() {
         <section className="panel priority-panel">
           <div className="section-title">
             <h2>คิวที่ต้องตรวจ</h2>
-            <Badge tone="amber">{pending.length} รายการ</Badge>
+            <Badge tone="amber">{reviewCount} รายการ</Badge>
           </div>
           {pending.length ? (
             <div className="review-quick-list">
