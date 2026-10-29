@@ -99,6 +99,8 @@ test("create demo exam, fix with reason, verify, PDF download", async ({
     .getByRole("combobox", { name: "ชั้น / ห้อง", exact: true })
     .selectOption("ม.3/1");
   await page.getByRole("button", { name: "กำหนดเฉลย" }).click();
+  for (const group of await page.getByRole("group", { name: /^เฉลยข้อ / }).all())
+    await group.getByRole("button", { name: "ก", exact: true }).click();
   await page
     .getByRole("button", { name: "สร้างชุดสอบและออกแบบกระดาษ" })
     .click();

@@ -1,379 +1,385 @@
 ---
 name: ScanSob
-description: พื้นที่ทำงานครูไทยสีอ่อน อ่านชัด และตรวจย้อนกลับได้
+description: พื้นที่ทำงานครูไทยแบบสารบัญงาน กรมท่านำทาง โคบอลต์เลือก ทีลเสร็จ
 colors:
-  mint: "#defcf9"
-  sky: "#cadefc"
-  lavender: "#c3bef0"
-  lilac: "#cca8e9"
-  canvas: "#f6f8fc"
+  mint: "#ddf4f1"
+  sky: "#dbeafe"
+  lavender: "#c7ddfc"
+  lilac: "#b7cfeb"
+  canvas: "#eef3f8"
   surface: "#fff"
-  ink: "#29263f"
-  muted: "#5f5a73"
-  subtle: "#6b657d"
-  line: "#dedde9"
-  nav-text: "#3e455d"
-  blue: "#534095"
-  blue-light: "#eeebfb"
-  action-hover: "#44317f"
-  focus: "#6653a4"
-  control-line: "#8a829f"
-  teal: "#087c63"
-  teal-light: "#e8f5ef"
-  amber: "#855707"
-  amber-light: "#fff4db"
-  red: "#b33d40"
-  red-light: "#fdf0f0"
-  ghost-hover: "#e8edf5"
-  nav-hover: "#cae8eb"
-  nav-active-ink: "#30274f"
-  badge-neutral: "#f0f3f7"
-  badge-ink: "#556378"
-  notice-ink: "#3f4666"
-  work-inset: "#f7f9fc"
-  paper-canvas: "#edf0f8"
+  ink: "#16253b"
+  muted: "#52647b"
+  subtle: "#607088"
+  line: "#cdd8e5"
+  nav: "#10243a"
+  nav-text: "#d7e4f2"
+  blue: "#1d4ed8"
+  blue-light: "#e5eeff"
+  action-hover: "#163fba"
+  focus: "#2563eb"
+  control-line: "#7f92aa"
+  teal: "#087668"
+  teal-light: "#e4f4f0"
+  amber: "#865500"
+  amber-light: "#fff3d7"
+  red: "#b52e36"
+  red-light: "#fff0f1"
+  field: "#f4f8fd"
+  nav-hover: "#1d3b59"
+  nav-muted: "#b4c8dd"
 typography:
   headline:
-    fontFamily: "Noto Sans Thai, sans-serif"
-    fontSize: "27px"
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 27px
     fontWeight: 650
     lineHeight: 1.5
     letterSpacing: "-0.025em"
+  task-headline:
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 24px
+    fontWeight: 650
+    lineHeight: 1.5
+    letterSpacing: "-0.025em"
+  form-title:
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 19px
+    fontWeight: 600
+    lineHeight: 1.5
   title:
-    fontFamily: "Noto Sans Thai, sans-serif"
-    fontSize: "17px"
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 17px
     fontWeight: 600
     lineHeight: 1.6
   subtitle:
-    fontFamily: "Noto Sans Thai, sans-serif"
-    fontSize: "15px"
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 15px
     fontWeight: 600
     lineHeight: 1.65
   body:
-    fontFamily: "Noto Sans Thai, sans-serif"
-    fontSize: "14px"
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 14px
     fontWeight: 400
     lineHeight: 1.65
   label:
-    fontFamily: "Noto Sans Thai, sans-serif"
-    fontSize: "13px"
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 13px
     fontWeight: 550
     lineHeight: 1.65
   status:
-    fontFamily: "Noto Sans Thai, sans-serif"
-    fontSize: "11px"
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 11px
     fontWeight: 500
     lineHeight: 1.8
   score:
-    fontFamily: "Noto Sans Thai, sans-serif"
-    fontSize: "25px"
+    fontFamily: Noto Sans Thai, sans-serif
+    fontSize: 25px
     fontWeight: 600
     lineHeight: 1.4
 rounded:
-  badge: "5px"
-  icon: "6px"
-  field: "7px"
-  control: "8px"
-  panel: "12px"
-  floating: "14px"
-  circle: "50%"
+  badge: 5px
+  icon: 6px
+  field: 7px
+  control: 8px
+  panel: 12px
+  floating: 14px
+  circle: 50%
 spacing:
-  compact: "4px"
-  field-gap: "7px"
-  control-gap: "8px"
-  cluster: "12px"
-  mobile-gutter: "16px"
-  work-gap: "20px"
-  panel-padding: "22px"
-  section-gap: "24px"
-  shell-gutter: "28px"
+  compact: 4px
+  field-gap: 7px
+  control-gap: 8px
+  cluster: 12px
+  mobile-gutter: 16px
+  work-gap: 20px
+  panel-padding: 22px
+  section-gap: 24px
+  shell-gutter: 28px
 components:
   button-primary:
     backgroundColor: "{colors.blue}"
     textColor: "{colors.surface}"
     typography: "{typography.label}"
     rounded: "{rounded.control}"
-    padding: "9px 15px"
+    padding: 9px 15px
   button-primary-hover:
     backgroundColor: "{colors.action-hover}"
   button-secondary:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.field}"
     textColor: "{colors.ink}"
     typography: "{typography.label}"
     rounded: "{rounded.control}"
-    padding: "9px 15px"
+    padding: 9px 15px
   button-secondary-hover:
     backgroundColor: "{colors.blue-light}"
+    textColor: "{colors.blue}"
   button-ghost:
-    backgroundColor: "transparent"
+    backgroundColor: transparent
     textColor: "{colors.muted}"
     typography: "{typography.label}"
     rounded: "{rounded.control}"
-    padding: "9px 15px"
-  button-ghost-hover:
-    backgroundColor: "{colors.ghost-hover}"
+    padding: 9px 15px
   button-ghost-selected:
     backgroundColor: "{colors.blue-light}"
     textColor: "{colors.blue}"
+  button-danger:
+    backgroundColor: "{colors.red}"
+    textColor: "{colors.surface}"
+    typography: "{typography.label}"
+    rounded: "{rounded.control}"
+    padding: 9px 15px
   input:
-    backgroundColor: "{colors.surface}"
+    backgroundColor: "{colors.field}"
     textColor: "{colors.ink}"
     typography: "{typography.body}"
     rounded: "{rounded.field}"
-    padding: "10px 12px"
+    padding: 10px 12px
+  input-focus:
+    backgroundColor: "{colors.surface}"
+  input-error:
+    backgroundColor: "{colors.red-light}"
+    textColor: "{colors.ink}"
   nav-item:
-    backgroundColor: "transparent"
+    backgroundColor: transparent
     textColor: "{colors.nav-text}"
     rounded: "{rounded.field}"
-    padding: "11px 13px"
+    padding: 11px 13px
   nav-item-hover:
     backgroundColor: "{colors.nav-hover}"
   nav-item-active:
-    backgroundColor: "{colors.lavender}"
-    textColor: "{colors.nav-active-ink}"
-  badge-neutral:
-    backgroundColor: "{colors.badge-neutral}"
-    textColor: "{colors.badge-ink}"
-    typography: "{typography.status}"
-    rounded: "{rounded.badge}"
-    padding: "3px 9px"
+    backgroundColor: "{colors.blue}"
+    textColor: "{colors.surface}"
   badge-blue:
     backgroundColor: "{colors.blue-light}"
     textColor: "{colors.blue}"
+    typography: "{typography.status}"
+    rounded: "{rounded.badge}"
+    padding: 3px 9px
   badge-green:
     backgroundColor: "{colors.teal-light}"
     textColor: "{colors.teal}"
+    typography: "{typography.status}"
+    rounded: "{rounded.badge}"
+    padding: 3px 9px
   badge-amber:
     backgroundColor: "{colors.amber-light}"
     textColor: "{colors.amber}"
+    typography: "{typography.status}"
+    rounded: "{rounded.badge}"
+    padding: 3px 9px
   badge-red:
     backgroundColor: "{colors.red-light}"
     textColor: "{colors.red}"
+    typography: "{typography.status}"
+    rounded: "{rounded.badge}"
+    padding: 3px 9px
   panel:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.ink}"
     rounded: "{rounded.panel}"
     padding: "{spacing.panel-padding}"
-  notice:
-    backgroundColor: "{colors.blue-light}"
-    textColor: "{colors.notice-ink}"
-    rounded: "{rounded.control}"
-    padding: "12px 14px"
-  notice-warning:
-    backgroundColor: "{colors.amber-light}"
-    textColor: "#7c560f"
-  notice-success:
-    backgroundColor: "{colors.teal-light}"
-    textColor: "{colors.teal}"
-  notice-error:
-    backgroundColor: "{colors.red-light}"
-    textColor: "#a22f35"
-  workspace-tab:
-    backgroundColor: "transparent"
+  answer-choice:
+    backgroundColor: "{colors.surface}"
     textColor: "{colors.muted}"
-    padding: "8px 12px"
-    height: "44px"
+    rounded: "{rounded.icon}"
+    width: 44px
+    height: 44px
+  answer-choice-selected:
+    backgroundColor: "{colors.blue}"
+    textColor: "{colors.surface}"
+  workspace-tab:
+    backgroundColor: transparent
+    textColor: "{colors.muted}"
+    padding: 8px 12px
   workspace-tab-active:
     backgroundColor: "{colors.lavender}"
     textColor: "{colors.blue}"
-  shutter:
+  exam-action-footer:
+    backgroundColor: "{colors.field}"
+    textColor: "{colors.muted}"
+    padding: 16px 28px
+  dialog:
     backgroundColor: "{colors.surface}"
-    textColor: "#203853"
-    rounded: "{rounded.circle}"
-    size: "68px"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.floating}"
+    padding: 25px
+    width: min(560px, calc(100vw - 32px))
 ---
 
 # Design System: ScanSob
 
 ## Overview
 
-**Creative North Star: "ทะเบียนตรวจข้อสอบสีอ่อน"**
+**Creative North Star: "สารบัญงานครู"**
 
-“ทะเบียนตรวจข้อสอบสีอ่อน” ทำให้พื้นที่ทำงานครูเข้าถึงง่ายด้วยเมนูมิ้นต์ พื้นข้อมูลฟ้าอ่อน การเลือกลาเวนเดอร์ และรายละเอียดไลแลค หมึกพลัมเข้มรักษาความชัดของหัวเรื่อง ตาราง ช่องกรอก และปุ่มหลัก สีอ่อนเป็นพื้นรองรับงานเอกสารที่มีลำดับและสถานะชัดเจน ปุ่มและการสลับส่วนตอบสนองสั้น ๆ เพื่อให้รู้สึกเบาและเป็นมิตร โดยยังอ่านคะแนนและคำเตือนได้ทันที.
+“สารบัญงานครู” ใช้ลำดับอ่านแบบสารบัญบทเรียนไทยเพื่อให้ครูเห็นงานปัจจุบัน ส่วนข้อมูลที่กำลังแก้ และการกระทำถัดไปได้ทันที เมนูกรมท่าแยกการนำทางจากผืนงานสีเทาเย็น แผงขาวรองรับเนื้อหา และพื้นช่องกรอกที่ติดสีเล็กน้อยบอกว่าข้อมูลแก้ไขได้ โคบอลต์สื่อการเลือกและการกระทำหลัก ส่วนทีลสื่อขั้นตอนที่เสร็จพร้อมข้อความหรือเครื่องหมายประกอบ.
 
-ทิศทางนี้บันทึกการแทนโลกสีเดิมตามคำขอผู้ใช้เมื่อ 9 ตุลาคม 2026: พาเลต DEFCF9 / CADEFC / C3BEF0 / CCA8E9 ข้อความไทยกระชับ และการเคลื่อนไหวสั้นที่นุ่มนวล สัญญาทิศทางอยู่ใน .impeccable/surfaces/app-layout-tsx.md (assessment register, candidate 4, seed e0df4ce4). ค่าจริงสกัดจาก app/globals.css, components/layout/main-shell.tsx และองค์ประกอบ UI/กระดาษ ระบบยังใช้ Noto Sans Thai และไอคอนเส้น Lucide เดิม; วันที่ 10 ตุลาคม 2026 เพิ่มโลโก้ ScanSob ที่ผู้ใช้จัดให้ โดยไม่เปลี่ยนโลกสีหรือวาดตราใหม่ ที่มาและขนาดไฟล์อยู่ใน docs/APP_BRANDING.md.
+นี่คือโลกภาพแทนที่พาเลต pastel ตามการอนุมัติ 28 ตุลาคม 2026 และ PRODUCT.md โดยคงเส้นทางและรูปแบบการทำงานที่ครูคุ้นเคย ตัวอักษรไทยอ่านง่าย เส้นแบ่งบาง และการจัดกลุ่มข้อมูลทำหน้าที่สร้างลำดับ สารบัญเป็นหลักการอ่าน ไม่ใช่ภาพตกแต่งหนังสือ ไม่มีภาพ raster ใหม่หรือการตกแต่งสามมิติในระบบที่ส่งมอบ.
 
-หลักฐานรอบรีเฟรชใน .impeccable/review ครอบคลุม 9 หน้าบน desktop/phone และ Designer, Print, Scanner, Review บน iPad จำลองทั้งสองแนว พร้อมภาพ school-print-pdf.png ที่เรนเดอร์จาก jsPDF จริง การตรวจที่รายงานไม่พบ axe violations หรือ page overflow ในหน้าที่จับภาพ และผู้ตรวจให้ verdict ship โดยไม่มีข้อแก้ไข ขอบเขตนี้ไม่รับรองกล้องหรือเครื่องพิมพ์จริง การติดตั้ง SQL/การ deploy สด หรือผลสอบที่มีข้อมูลครบทุกสถานะ.
+ค่าด้านบนสกัดจาก :root และกฎที่ใช้จริงใน app/globals.css พร้อมองค์ประกอบ shared UI, main shell, exam form และ school directory; app/layout.tsx โหลด Noto Sans Thai และสีแถบเบราว์เซอร์ ภาพใน .impeccable/review ใช้ตรวจการแสดงผล ไม่ใช่หลักฐานรับรองกล้อง เครื่องพิมพ์ การติดตั้งฐานข้อมูล หรือความแม่นยำในการให้คะแนน.
 
 **Key Characteristics:**
 
-- เมนูมิ้นต์ พื้นข้อมูลฟ้าอ่อน การเลือกลาเวนเดอร์ และรายละเอียดไลแลค
-- หมึกพลัมและปุ่มหลักเข้มที่อ่านชัดบนพื้นสีอ่อน
-- สถานะเขียว อำพัน และแดงพร้อมคำภาษาไทยหรือไอคอน
-- Noto Sans Thai แบบ self-hosted และตัวเลข tabular ในข้อมูลที่ต้องเทียบ
-- แผงพื้นราบ ขอบบาง และเงาเฉพาะกระดาษหรือชั้นที่ลอย
-- พื้นที่งานพอดี viewport สลับส่วนบน phone/iPad และเคลื่อนไหวสั้นตามสถานะ
+- ลำดับหน้า ส่วน และช่องกรอกชัดเจนในพื้นที่ทำงานครู
+- กรมท่านำทาง โคบอลต์เลือก ทีลเสร็จ พร้อมพื้นงานสว่าง
+- Noto Sans Thai และตัวเลข tabular ในคะแนนหรือข้อมูลที่ต้องเทียบ
+- ช่องกรอกติดสี ขอบควบคุมชัด และสถานะ focus/error/disabled ครบ
+- พื้นที่งานเลื่อนภายในและแถวการกระทำคงอยู่เมื่อรายการยาว
+- ข้อความไทยกระชับ การตอบสนองสั้น และเคารพ reduced motion
 
 ## Colors
 
-พาเลตสีอ่อนรับหมึกพลัมเข้ม ค่าด้านบนเป็น source of truth จาก CSS; ชื่อ blue/blue-light ในโค้ดเดิมยังคงอยู่แต่ค่าใช้สีพลัม/ลาเวนเดอร์แล้ว แถบ tonalRamp ใน sidecar สังเคราะห์ใน OKLCH เพื่อแสดงเฉดในแผงเอกสารเท่านั้น ไม่เพิ่มสีให้แอป.
+พาเลตแยกชั้นงานและความหมายของสถานะอย่างชัดเจน ค่าจริงใน frontmatter เป็นข้อกำหนด; ชื่อ CSS เดิมไม่ใช่คำอธิบายพาเลตเดิม.
 
 ### Primary
 
-- **พลัมลงมือทำ** — blue ใช้กับปุ่มหลัก ลิงก์ การเลือก และ caret; action-hover ทำให้ปุ่มเข้มขึ้นเมื่อชี้; focus เป็นวงโฟกัสคีย์บอร์ด.
-- **ลาเวนเดอร์เลือกงาน** — lavender ใช้กับเมนูปัจจุบัน แท็บพื้นที่งาน และการเลือกข้อความ; blue-light รองรับปุ่มเครื่องมือที่เลือก badge ข้อมูล และ Notice.
+- **โคบอลต์การกระทำ** (blue) ใช้กับปุ่มหลัก หน้าปัจจุบัน คำตอบที่เลือก caret และลิงก์; action-hover ทำให้ hover เข้มขึ้น และ blue-light รองรับพื้นข้อมูลหรือสถานะชี้.
+- **วงโฟกัสโคบอลต์** (focus) แยก keyboard focus จากการเลือก ไม่ตัดวงเมื่อเลือกคำตอบหรือเปิด dialog.
 
 ### Secondary
 
-- **มิ้นต์นำทาง** — mint รองรับแถบเมนูหลักซึ่งมี nav-text เข้ม; nav-hover เป็นพื้นเมื่อชี้ และ nav-active-ink ใช้กับหน้าปัจจุบัน.
-- **ฟ้าข้อมูล** — sky รองรับบริบทชุดสอบ สรุปข้อมูล และ avatar-light; ใช้หมึกเข้มอยู่ด้านบน.
+- **ทีลเสร็จงาน** (teal / teal-light) ใช้กับขั้นตอนที่เสร็จ การบันทึกสำเร็จ และสถานะยืนยันที่มีข้อความประกอบ; ไม่ใช้สีนี้รับรองคะแนนจากการจับภาพเพียงอย่างเดียว.
 
 ### Tertiary
 
-- **ไลแลคจุดเล็ก** — lilac ใช้กับ avatar และรายละเอียดหมวดข้อมูลที่ไม่ต้องแข่งขันกับงานหลัก.
-- **เขียวน้ำทะเลตรวจแล้ว** — teal/teal-light บอกความสำเร็จหรือสถานะตรวจแล้ว.
-- **อำพันรอตรวจ** — amber/amber-light บอกคำเตือนและความไม่แน่ใจ.
-- **แดงต้องจัดการ** — red/red-light บอกข้อผิดพลาดหรือการลบถาวรที่ต้องยืนยัน.
+- **อำพันเตือน** (amber / amber-light) สำหรับสิ่งที่ต้องตรวจหรือคำเตือน.
+- **แดงเสี่ยงและผิดพลาด** (red / red-light) สำหรับ error การปฏิเสธ และปุ่มทำลายข้อมูลที่ต้องยืนยัน.
 
 ### Neutral
 
-- **ขาวเย็น / ขาวกระดาษ** — canvas เป็นพื้นรอบงาน; surface เป็นแผงและกระดาษ.
-- **หมึกพลัม / หมึกรอง** — ink สำหรับข้อความหลัก; muted สำหรับคำอธิบายและ placeholder; subtle สำหรับเครื่องช่วยรอง.
-- **เส้นแบ่ง / ขอบควบคุม** — line แบ่งส่วนงาน; control-line เป็นขอบช่องกรอกและปุ่มรองที่มองเห็นชัด.
-- **พื้นสถานะและข้อมูลย่อย** — badge-neutral/badge-ink, work-inset, paper-canvas และ ghost-hover แยกข้อมูลหรือ feedback ด้วยโทนพื้นแทนการยกเงา.
+- **กรมท่านำทาง** (nav) รองรับเมนู rail; nav-text และ nav-muted เป็นข้อความสว่าง ส่วน nav-hover เป็นพื้น hover ที่ยังอยู่ในชั้นนำทาง.
+- **ผืนงานเทาเย็น** (canvas), **แผงขาว** (surface), **พื้นแก้ไขติดสี** (field) แยกพื้นที่งาน แผง และช่องกรอก.
+- **หมึกกรมท่า** (ink) สำหรับข้อมูลหลัก; muted/subtle สำหรับข้อมูลรอง; line ใช้เส้นแบ่ง และ control-line ใช้ขอบช่องกรอกหรือปุ่มรองที่ต้องมองเห็นว่าใช้งานได้.
+- mint, sky, lavender และ lilac เป็น alias ที่ยังใช้เพื่อความเข้ากันได้ ปัจจุบันมีค่าเป็นสีทีล/ฟ้าอ่อนของโลกใหม่ เช่น lavender รองรับแท็บส่วนงานที่เลือก ไม่อนุญาตให้คืนสี pastel รุ่นเดิม.
 
-**The Readable Pastel Rule.** ใช้พาเลตสีอ่อนเป็นพื้น หมึก ink/muted และปุ่ม blue ที่เป็นพลัมเข้มใช้สำหรับข้อความและการกระทำสำคัญ สถานะต้องมีคำหรือไอคอนประกอบ; มิ้นต์ในเมนูไม่ได้หมายความว่าตรวจผ่าน.
+**The Task Color Rule.** ใช้โคบอลต์กับการเลือกหรือการกระทำ ทีลกับขั้นตอนที่เสร็จหรือผลที่ยืนยันแล้ว และอำพัน/แดงกับคำเตือนหรือความเสี่ยง สีต้องมีข้อความหรือไอคอนที่สื่อความหมายเดียวกัน การจับภาพสำเร็จไม่เท่ากับยืนยันคะแนน.
 
 ## Typography
 
-**Display Font / Body Font:** Noto Sans Thai พร้อม sans-serif fallback ใช้ทุกบทบาท ไม่มี display หรือ mono แยก. Self-host ผ่าน @fontsource/noto-sans-thai ใน app/layout.tsx โดยโหลดน้ำหนัก 400, 500, 600 และ 700.
+**Display and Body Font:** Noto Sans Thai, sans-serif. ฟอนต์ self-hosted โหลดน้ำหนักจริง 400/500/600/700 ผ่าน app/layout.tsx; ค่า 550/650 ใน CSS เป็นค่าที่เบราว์เซอร์จับคู่กับน้ำหนักที่มี ไม่ใช่ไฟล์ฟอนต์ variable ที่โหลดเพิ่ม.
 
-**Character:** รูปอักษรไทยตรง อ่านง่าย และเปิดระยะบรรทัดให้สระและวรรณยุกต์ น้ำหนักช่วยแยกหัวเรื่อง ป้าย และรายละเอียด; คะแนนและจำนวนที่ต้องเทียบใช้ tabular-nums.
+ลำดับตัวอักษรเน้นการสแกนงานภาษาไทย ใช้น้ำหนัก ขนาด และพื้นที่ว่างแยกหัวข้อโดยไม่พึ่งตัวพิมพ์ใหญ่ ไอคอนเส้น Lucide รองรับข้อความ ไม่ใช้ glyph แทนไอคอน.
 
 ### Hierarchy
 
-- **Headline** — หัวหน้าจอทั่วไป (27px, 650, line-height 1.5, letter-spacing −0.025em). ค่า 650 เป็นคำสั่ง CSS โดยไฟล์ฟอนต์โหลดน้ำหนักคงที่ตามรายการข้างต้น.
-- **Title** — ชื่อส่วนงาน (17px, 600, line-height 1.6).
-- **Subtitle** — หัวข้อย่อย (15px, 600, line-height 1.65).
-- **Body** — เนื้อหาหลัก (14px, 400, line-height 1.65); ขนาดฐานบน phone เป็น 13px.
-- **Label** — ปุ่มและป้ายการกระทำ (13px, 550, line-height 1.65).
-- **Status** — badge ข้อความสั้น (11px, 500, line-height 1.8).
-- **Score** — ตัวเลขคะแนนในแผงตรวจ (25px, 600, line-height 1.4).
+- **Headline** — หัวหน้าทั่วไป; **Task headline** — หัวพื้นที่ทำงานที่กระชับกว่า ตาม token แยกกัน.
+- **Form title** — หัวกลุ่มข้อมูลในตัวสร้างชุดสอบ; ลดเป็นขนาด title ที่หน้าจอไม่เกิน 560px.
+- **Title / Subtitle** — หัวส่วนและหัวข้อย่อย; **Body / Label** — เนื้อหา ป้าย และปุ่ม; **Status** — badge สั้น; **Score** — คะแนนที่เด่นในแผงตรวจ.
+- หัว task ลดเป็น 21px เมื่อไม่เกิน 900px และ 19px เมื่อไม่เกิน 640px. Body บน phone ใช้ 13px; ช่องกรอกใน main content/dialog ใช้ 16px ที่ไม่เกิน 640px เพื่ออ่านและแก้ข้อมูลได้สะดวกโดยไม่ปิด zoom.
+- ใช้ font-variant-numeric: tabular-nums กับคะแนน จำนวนข้อ และตัวเลขที่เทียบเป็นแถว; ขนาดบนกระดาษอ้างหน่วยกายภาพในแม่แบบแยกจาก px ของ UI.
 
-หัวเรื่อง task workspace ใช้ 24px, ลดเป็น 21px เมื่อไม่เกิน 900px และ 19px เมื่อไม่เกิน 640px. ช่องกรอกใน main content และ dialog บน phone ใช้ 16px เพื่ออ่านง่ายและหลีกเลี่ยง iOS auto-zoom; ไม่ปิด browser zoom. สเกลพิมพ์เป็นหน่วยกายภาพตามแม่แบบ และไม่เทียบ px ของหน้าจอโดยตรง.
-
-**The Thai Reading Rule.** ใช้ Noto Sans Thai และระยะบรรทัดที่เปิดไว้ในสเกลหลัก ข้อความสำคัญใช้ขนาด body หรือ label; ขนาด 8–10px ที่พบในรายละเอียดแน่นเป็นข้อจำกัดเฉพาะจุด ไม่เป็นมาตรฐานเนื้อหาหน้าจอใหม่.
+**The Thai Reading Rule.** ใช้ Noto Sans Thai กับระยะบรรทัดในสเกลหลัก ข้อความสำคัญใช้ขนาด body หรือ label; ข้อความประกอบขนาด 8–10px ที่ยังพบในบางจุดไม่เป็นมาตรฐานสำหรับหน้าจอใหม่.
 
 ## Layout
 
-โครงหลักเป็นเมนูแนวตั้งมิ้นต์ แถบบริบทขาว และผืนงานสูง 100dvh. เมนู desktop กว้าง 248px; ลดเป็น 224px เมื่อไม่เกิน 1300px และ 205px เมื่อไม่เกิน 1100px. แถบบริบทที่ใช้จริงสูง 60px. เนื้อหามี padding 22px 28px และกว้างได้ถึง 1800px. จังหวะช่องว่างใช้กลุ่ม 4/8/12/16/20/24px พร้อมค่าตามบริบท เช่น gap ช่องกรอก 7px และ padding แผง 22px.
+โครงงานสูง 100dvh และเก็บ overflow ที่ชั้นงาน แทนปล่อยทั้งหน้าโตตามรายการ. Rail desktop กว้าง 248px ลดเป็น 224px ที่ไม่เกิน 1300px และ 205px ที่ไม่เกิน 1100px; ต่ำกว่าเกณฑ์ 900px เปลี่ยนเป็น drawer 248px และมีเมนูด่วนด้านล่าง. Header ที่ใช้จริงสูง 60px; เหลือ 50px ที่ไม่เกิน 900px. เนื้อหากว้างสูงสุด 1800px, padding หลัก 22px 28px; ที่ไม่เกิน 900px ใช้ 14px 16px และเว้นเมนูล่าง 62px รวม safe-area.
 
-Designer, Print, Scanner, Review และ Results ใช้พื้นที่ viewport ที่เหลือ รายการ คิว ตาราง และตัวเลือกเลื่อนภายในแผงของตน แถบการกระทำไม่หายตามรายการยาว. Desktop ใช้กระดาษหรือภาพคู่กับเครื่องมือ/รายละเอียด; Print มีตัวเลือกด้านข้าง 300px. กระดาษรักษาสัดส่วน ไม่ย่อทั้งหน้าจอจนข้อความควบคุมเล็กลง.
+จังหวะช่องว่างใช้สเกลใน frontmatter; form ทั่วไปสองคอลัมน์ gap 22px. ตัวสร้างชุดสอบกว้างสูงสุด 1120px มีสองขั้นข้อมูล/เฉลยก่อนส่งต่อการออกแบบกระดาษ. เนื้อหาแต่ละขั้นเลื่อนภายในด้วย min-height: 0, overscroll-behavior: contain และ scrollbar-gutter: stable; แถวการกระทำท้ายฟอร์มไม่เลื่อนตามรายการ. ส่วนข้อมูลคั่นด้วยเส้นบาง ไม่เพิ่มการ์ดซ้อนทุกกลุ่ม.
 
 ### Responsive behavior
 
-- **ไม่เกิน 1200px:** Designer สลับส่วนตัวอย่างกับหัวกระดาษ/โลโก้; Review สลับภาพ คำตอบ และคิวด้วยปุ่มเลือกส่วน แทนการบีบคอลัมน์ desktop.
-- **ไม่เกิน 900px:** เมนูเป็น drawer 248px และมีเมนูด่วนด้านล่างสูง 62px พร้อม safe-area; header สูง 50px; content padding 14px 16px. Print สลับตัวอย่างกับตัวเลือก; งานตรวจแสดงส่วนที่เลือกเต็มพื้นที่.
-- **ไม่เกิน 640px:** ปุ่มเลือกส่วนแบ่งความกว้างเท่ากัน ช่องกรอกหลัก 16px; ปุ่มหลักของ task สูงอย่างน้อย 44px. ตัวกรอง Results เรียงแนวตั้งและตารางเลื่อนภายใน ไม่รับรองว่าทุกคอลัมน์จะเห็นพร้อมกัน.
-- **Scanner:** ภาพ กล้อง overlay และตัวจับมุมใช้ระนาบภาพเดียวกัน; viewport ใช้ความสูงที่เหลือของงาน โดยแถบกล้องและชัตเตอร์อยู่ในพื้นที่คงที่. ปุ่มควบคุมกล้องสูงอย่างน้อย 48px; corner handle มีพื้นที่ 48px.
-- **Review:** รายการทุกข้อเป็นค่าเริ่มต้นและใช้พื้นที่หลักที่เลื่อนภายใน ลดสรุปคะแนนซ้ำ; ปุ่มแก้/ประวัติบน phone อย่างน้อย 44px. Desktop มีปุ่มขยายรายการคำตอบ.
-- **หน้าสูงไม่เกิน 700px บนอุปกรณ์ไม่เกิน 900px:** ลดช่องว่างงานและซ่อนข้อความช่วยรองใน Designer เพื่อเก็บพื้นที่ให้กระดาษและการกระทำ.
+- **ไม่เกิน 1200px:** Designer และ Review ใช้ปุ่มเลือกส่วนแทนบีบทุกคอลัมน์ให้แคบ.
+- **ไม่เกิน 900px:** Print และเครื่องมืองานแสดงส่วนที่เลือกเต็มพื้นที่; เมนูล่างยังเข้าถึงได้. ตัวสร้างชุดสอบลด padding เนื้อหาเป็น 20px และ footer เป็น 12px 20px.
+- **ไม่เกิน 640px:** ปุ่มเลือกส่วนแบ่งความกว้างกัน ช่องกรอกหลักเป็น 16px ปุ่มงานหลักอย่างน้อย 44px; ตาราง/รายการเลื่อนภายใน.
+- **ไม่เกิน 560px:** ตัวสร้างชุดสอบเรียงช่องกรอกหนึ่งคอลัมน์, padding เนื้อหา 18px 16px, ข้อและคะแนนอยู่แถวแรก ตัวเลือก 44px อยู่แถวถัดไป; footer ตัดบรรทัดได้โดยไม่ซ่อนสถานะหรือปุ่มหลัก.
+- **จอเตี้ย:** มีเงื่อนไข height 700px/500px ร่วมกับ width 900px/1100px เพื่อเก็บ minimum usable pane. Phone landscape กล้องใช้ปุ่มข้างภาพ; เมื่อพื้นที่ไม่พอให้ส่วนงานเลื่อน ไม่บังคับหมุนเครื่องหรือซ่อนการกระทำ.
 
-แบบพิมพ์ school ใช้ A4 landscape 297 × 210mm; default เป็นสองใบซ้าย/ขวา แต่พรีวิวแสดงหนึ่งใบ. เมื่อ geometry หรือข้อความไม่พอ ขยายเป็นใบเต็ม A4 แทนการย่อ bubble; PDF จัดหน้าเองและพิมพ์ 100%.
+Designer, Print, Scanner, Review และ Results ใช้พื้นที่ viewport ที่เหลือร่วมกับ pane ภายใน. กระดาษและภาพรักษาสัดส่วนโดยเครื่องมือยังอ่านได้; ต้นแบบงานพิมพ์ไม่ใช่เหตุให้ย่อ UI ทั้งหน้า.
 
 ## Elevation & Depth
 
-แผงข้อมูลใช้พื้นและเส้นบาง ไม่มีเงาในสถานะพัก เงาอ่อนแยกกระดาษจากผืนงาน และเงาเฉพาะบทบาทแยกเมนู กล่องโต้ตอบ และข้อความแจ้งผลจากงานข้างหลัง.
+แผงข้อมูลพื้นราบ ใช้สีและเส้นแบ่งแสดงชั้นงาน เงาแยกวัตถุกระดาษและชั้นลอยตามหน้าที่ ไม่ใส่เงาให้ทุกแผง.
 
 ### Shadow Vocabulary
 
-- **เมนูที่ลอย:** 0 8px 24px #18263d14.
+- **เมนูลอย:** 0 8px 24px #18263d14.
 - **กระดาษบน Designer:** 0 7px 22px #233b5a20.
 - **กระดาษก่อนพิมพ์:** 0 7px 24px #233b5a1f.
 - **กระดาษใน Review:** 0 4px 18px #243c5820.
-- **กล่องโต้ตอบ:** 0 20px 70px #10213740; overlay #10213780.
-- **ข้อความแจ้งผล:** 0 7px 22px #152c3e30.
+- **Dialog:** 0 20px 70px #10213740 พร้อม overlay #10213780.
+- **Toast:** 0 7px 22px #152c3e30.
 
-สีในเงาเป็นค่า CSS ที่ยังใช้จริง ไม่ใช่สีข้อความหรือ accent เพิ่ม.
+Dialog ฐานใช้ overlay/content ที่ z-index 100/101. การยืนยันหรือถังขยะที่เปิดทับ directory dialog ใช้ layer="stacked" ให้ overlay/content เป็น 110/111; overlay ชั้นใหม่ต้องปิดทับเนื้อหาของ dialog เดิมทั้งหมด. Toast อยู่ชั้น 200. ค่าชั้นคือพฤติกรรมร่วมของ Modal ไม่ใช่การวาง popup อิสระบนแต่ละหน้า.
 
-**The Flat Seam Rule.** แผงข้อมูลพื้นราบใช้เส้นแบ่งและสีพื้นเพื่อแสดงขอบเขต เงาใช้กับกระดาษตัวอย่าง เมนูที่ลอย กล่องโต้ตอบ และข้อความแจ้งผลตามบทบาทที่บันทึกไว้.
+**The Flat Seam Rule.** แผงข้อมูลพื้นราบแบ่งส่วนด้วยเส้นและช่องว่าง เงามีหน้าที่แยกกระดาษ เมนูลอย กล่องโต้ตอบ และข้อความแจ้งผลจากงานข้างหลัง.
 
 ## Shapes
 
-มุมโค้งแบ่งตามหน้าที่: badge 5px, ปุ่มไอคอน 6px, ช่องกรอกและเมนู 7px, ปุ่มและ Notice 8px, แผง 12px และ dialog/กล้อง 14px. เส้นขอบทั่วไป 1px; เส้นเลือกแท็บ 2px. กระดาษเป็นสี่เหลี่ยมตามวัตถุจริง. วงกลมใช้กับ avatar จุดขั้นตอน ชัตเตอร์ และตัวจับมุม.
+มุมโค้งแบ่งตามหน้าที่ใน frontmatter: badge กะทัดรัด ปุ่มไอคอน/ตัวเลือกเฉลย ช่องกรอก/เมนู ปุ่ม/Notice แผง และ dialog. เส้นขอบทั่วไป 1px; เส้นล่างแท็บส่วนงาน 2px. วงกลมใช้กับ avatar จุดขั้นตอน ชัตเตอร์ และตัวจับมุม. กระดาษเป็นสี่เหลี่ยมตามวัตถุจริง ไม่มีการบิดหรือใส่มุมตกแต่งลงใน geometry.
 
 ## Components
 
-### App identity
-
-ใช้ภาพ ScanSob ฉบับเต็ม ไม่ครอป ไม่เปลี่ยนสี และไม่หมุน ใน `AppLogo` ร่วมกันทั้งเมนูหลัก หน้าเข้าสู่ระบบ และหน้ารอสิทธิ์ กรอบ compact 56×56px; large 112×112px ลดเป็น 88×88px บน phone และหน้ารอสิทธิ์ รักษาสัดส่วนด้วย object-fit: contain บนพื้นขาว เมนูมีชื่อ ScanSob อ่านชัดแยกจากภาพขนาดเล็ก รูปมี width/height ที่แน่นอนและโหลด eager เพื่อไม่ให้แบรนด์กระโดดหลังโหลด.
-
-ชื่อแท็บและชื่อเมื่อติดตั้งเป็น ScanSob ไอคอน browser 32px, Apple 180px และ manifest 192/512px พร้อม maskable 512px ที่ภาพทั้งหมดอยู่ในวง safe zone กลาง 80% ไม่ใช้ไอคอนแอปแทนตราโรงเรียนบน OMR การติดตั้งเป็นทางเข้าเว็บแบบ standalone และยังใช้อินเทอร์เน็ต/Google approval/RLS ตามเดิม ไม่เพิ่ม offline cache ของข้อมูลนักเรียน.
-
 ### Buttons
 
-ปุ่มเป็นมิตรและตรงงาน ใช้มุม 8px, padding 9px 15px, gap 8px และความสูงขั้นต่ำ 42px. ปุ่มหลักพลัมเข้มมีข้อความขาว; ปุ่มรองขาวมีขอบ control-line; ghost ใช้ muted บนพื้นใส และเลือกด้วย blue-light/blue. ชี้ปุ่มรองเป็นลาเวนเดอร์อ่อน; ชี้ ghost เป็น ghost-hover.
+การกระทำตรงงาน ใช้ Noto Sans Thai, มุม control, padding 9px 15px, gap 8px และ min-height 42px. ปุ่มหลัก blue/ขาว; hover action-hover. ปุ่มรอง field พร้อมขอบ control-line; hover เป็น blue-light พร้อมขอบ/ข้อความ blue. Ghost ใช้พื้นใสและ muted, hover #e8edf5; selected ใช้ blue-light/blue.
 
-Feedback พื้น สี และขอบใช้ 130ms; กดปุ่มที่ไม่ disabled ย่อเป็น scale(0.98) ด้วย ease-out แล้วกลับทันที. วงโฟกัสทั่วไป 3px สี focus เว้น 3px; disabled opacity 0.46 พร้อม cursor not-allowed. ปุ่มไอคอน desktop 36px; งานแก้คำตอบ phone 44px.
+ปุ่มลบแบบเต็มใช้ red/ขาวและ hover brightness(0.9). ทางเข้าการลบแบบ quiet ใช้พื้น surface ขอบ/ข้อความ red และ hover red-light. ปุ่มทั่วไป focus-visible เป็นเส้น focus 3px เว้น 3px; disabled opacity 0.46 และ cursor not-allowed. ปุ่มที่กดได้มี scale(0.98) ชั่วครู่; ปิด transform นี้เมื่อ reduced motion. ปุ่มไอคอนทั่วไป 36px ส่วนควบคุมงานบน phone ใช้เกณฑ์ของ pane ตนเองอย่างน้อย 44px.
 
 ### Chips
 
-Badge มุม 5px, padding 3px 9px, status type และข้อความไทยสั้น. API neutral/blue/green/amber/red เดิมคงอยู่; blue หมายถึงข้อมูลพลัมอ่อนในโลกสีนี้. Badge ไม่เป็นปุ่มโดยอัตโนมัติ และสีเขียวสงวนให้ความสำเร็จ/ตรวจแล้ว.
+Badge neutral/blue/green/amber/red ใช้ข้อความสั้น มุม badge, padding 3px 9px และ status type. Neutral เป็นพื้น #f0f3f7/ข้อความ #556378; variant อื่นใช้คู่สีสถานะ. Badge ไม่เป็นปุ่มโดยอัตโนมัติ และคำว่า green ใน API ใช้ teal ปัจจุบัน.
 
 ### Cards / Containers
 
-แผงพื้น surface ขอบ line 1px มุม 12px padding 22px; phone 17px. แผงตารางไม่มี padding รอบนอกในบริเวณ toolbar/table ที่ต้องใช้พื้นที่ร่วมกัน. ส่วนย่อยใช้เส้นแบ่งตามจริง ไม่มีเงาเพิ่มทุกแผง.
+แผง surface, ขอบ line 1px, มุม panel, padding 22px และ 17px บน phone. แผงตารางหรือ task form ที่มี toolbar/footer ใช้ขอบนอกเดียว แล้วจัด padding และ scroll ให้พื้นที่ลูก. ตัวสร้างชุดสอบใช้ส่วนอ่านลำดับกับเส้นแบ่ง ไม่เพิ่มเงารอบกลุ่มข้อมูล.
 
 ### Inputs / Fields
 
-ช่องกรอกพื้นขาว ขอบ control-line 1px มุม 7px, padding 10px 12px และความสูงขั้นต่ำ 43px. Label แยกบรรทัดเว้น 7px; caret พลัมและ placeholder muted. วงโฟกัสทั่วไป 3px; search wrapper ใช้ focus-within 2px เว้น 2px. Error มีคำไทยสี red หรือ Notice error; ไม่ใช้ขอบสีเพียงอย่างเดียว.
+พื้น field, ขอบ control-line 1px, มุม field, padding 10px 12px และ min-height 43px; ใน exam form อย่างน้อย 44px. Label แยกบรรทัด gap 7px. Placeholder ใช้ muted; focus เปลี่ยนเป็น surface ขอบ blue และ outline focus 2px เว้น 1px. aria-invalid="true" ใช้ขอบ red และพื้น red-light พร้อมข้อความไทยสี red. Disabled ใช้พื้น #e5ecf4/ข้อความ muted และ cursor not-allowed.
+
+ช่องตัวเลขอาจว่างระหว่างแก้ไข แล้วตรวจช่วงค่าก่อนข้ามขั้นหรือบันทึก ไม่เติมค่าเริ่มต้นทันทีขณะลบ. Error ใน setup ส่ง focus ไปช่องแรกที่ aria-invalid เพื่อให้แก้ตรงจุด.
 
 ### Navigation and workspace selection
 
-เมนูอยู่บน mint ใช้ nav-text และไอคอนเส้นเข้ม; สูงอย่างน้อย 44px, padding 11px 13px, gap 12px, มุม 7px, type 12px. ชี้เป็น nav-hover; หน้าปัจจุบันเป็น lavender/nav-active-ink พร้อม aria-current และน้ำหนัก 650. ไอคอนหน้าที่เลือกยืนยันสั้น ๆ จาก scale(0.88) เป็น 1 ใน 220ms.
+เมนูบน nav ใช้ nav-text พร้อมไอคอนเส้นสีสว่าง, min-height 44px, padding 11px 13px, gap 12px, มุม field และ type 13px. Hover ใช้ nav-hover; หน้าปัจจุบันใช้ blue/ขาว น้ำหนัก 650 พร้อม aria-current. ค่าฟอนต์ 13px มาจากกฎล่าสุดที่ทับขนาดเล็กของ rail เดิม.
 
-ปุ่มเลือกส่วนงานสูงอย่างน้อย 44px ใช้ aria-pressed ใน role group ตาม implementation. ส่วนปัจจุบันมีพื้น lavender ข้อความ blue เส้นล่าง 2px และมุมบน 8px; ส่วนอื่น muted. Feedback เปลี่ยนพื้น 220ms และสี/ขอบ 130ms. Phone ใช้แต่ละปุ่มแบ่งความกว้างเท่ากัน.
+แท็บส่วนงาน min-height 44px, padding 8px 12px, type 13px. ส่วนปัจจุบันใช้ lavender/blue พร้อมเส้นล่าง blue 2px และมุมบน 8px; ส่วนอื่น muted. ใช้ role group/aria-pressed ตามองค์ประกอบจริง. เมนู phone แบบล่างแสดงไอคอนและคำไทยสั้น; drawer ยังคงเมนูเต็ม.
 
-### Notices, dialogs and concise Thai copy
+### Progressive exam form and answer choices
 
-Notice มุม 8px, padding 12px 14px, gap 9px, type 12px และ line-height 1.75 พร้อมไอคอน 18px. Error ใช้ role alert; ข้อความอื่น role status. Dialog มุม 14px, padding 25px, กว้าง min(560px, calc(100vw − 32px)), เลื่อนภายใน calc(100dvh − 60px) และมาถึงด้วย opacity/translate 5px ใน 220ms; overlay 150ms, toast 160ms.
+ขั้นปัจจุบันแสดงจุดโคบอลต์และข้อความ ส่วนเสร็จใช้ทีลพร้อมเครื่องหมายถูก; แต่ละขั้นมีชื่อที่อ่านตรงงาน. เฉลยทุกข้อเริ่ม null และปุ่มทุกตัวเลือกเป็นกลางจนกว่าครูเลือก; selected เป็น blue/ขาวและเครื่องหมายถูกมุมขวาบน. ปุ่มในตัวสร้างชุดสอบมีขนาด 44×44px, type 15px และ gap 5px desktop/8px phone. Hover ที่ยังไม่เลือกใช้ขอบ blue พื้น blue-light และข้อความ blue.
 
-คำไทยระบุงาน การกระทำ หรือการแก้ปัญหาตรง ๆ. คงคำเตือนยืนยันคะแนน การแทนที่ สิทธิ์อ่านอย่างเดียว และข้อมูลตัวอย่าง; ตัดคำอธิบายเทคนิคที่ไม่ช่วยตัดสินใจ. ข้อความช่วยอัปโหลดโลโก้ใน Settings และ Designer ใช้ตรงกัน: “รูปภาพขนาดไม่เกิน 5 MB”.
+แถวเฉลย desktop แบ่งข้อ/ตัวเลือก/คะแนนเป็น 42px 1fr 66px และกริดข้อใช้ auto-fit ขั้นต่ำ 390px ตามพื้นที่จริง; phone แยกตัวเลือกเป็นอีกแถว. แถบความคืบหน้าบอกจำนวนที่เลือกและช่วงคะแนน; ครบทุกข้อจึงใช้ทีล. ลดห้าตัวเลือกเป็นสี่ต้องล้าง E เป็นค่าว่าง พร้อมข้อความให้เลือกใหม่ ห้ามแทน A. ปุ่มบันทึกยัง disabled จนเฉลยและคะแนนครบและถูกต้อง.
 
-### Exam route and motion
+Footer ใช้ field กับเส้นบน line และ flex-shrink: 0; สถานะอยู่ใกล้ปุ่มหลักและตัดบรรทัดบน phone ได้. การเลื่อน 60 ข้อไม่ทำให้ทางบันทึกหลุดออกจากพื้นที่ทำงาน.
 
-เส้นทางชุดสอบเป็นจุด 27px เชื่อมด้วยเส้น 2px; phone 25px. ขั้นที่เสร็จมีเครื่องหมายถูก/teal ขั้นปัจจุบันเป็นอำพันพร้อมชื่อ ขั้นอนาคตสีเทา. ใช้กับลำดับงานจริง.
+### Notices, dialogs and destructive confirmation
 
-หน้าใหม่เข้าด้วย opacity 0.85 → 1 และ translateY(3px → 0) ใน 180ms; การเคลื่อนไหวหลักใช้ cubic-bezier(0.16, 1, 0.3, 1). Drawer เดิม 200ms และ loading spinner 800ms linear คงอยู่. เมื่อ prefers-reduced-motion: reduce ปิด spatial/entrance animation และ scroll เป็น auto; คงการเปลี่ยนสี/พื้น/ขอบ/opacity สั้น 80ms และ spinner ช้า 1.4s เพื่อสื่อว่างานยังทำอยู่ ไม่ใช้ global 0.01ms kill. ไม่เพิ่ม choreography ที่หน่วงงาน; กระดาษพิมพ์ไม่มี animation.
+Notice ใช้ icon 18px กับคำไทย, padding 12px 14px, gap 9px, มุม control, type 12px และ line-height 1.75. Error มี role alert; ข้อความอื่น role status. คำไทยระบุงานหรือการแก้ปัญหาตรง ๆ โดยรักษาคำเตือนสำคัญและสถานะอ่านอย่างเดียว.
 
-### Camera controls
+Dialog ใช้ Radix, มุม floating, padding 25px, width min(560px, calc(100vw - 32px)) และ max-height calc(100dvh - 60px) พร้อมเลื่อนภายใน. ใช้ layer ฐาน/stacked ตาม Elevation & Depth; คืน focus ไปจุดเรียกเมื่อกำหนด returnFocusRef. การย้ายโรงเรียนเข้าถังขยะแสดงชื่อ จำนวนผลกระทบ ระยะกู้คืน และช่องให้พิมพ์ชื่อโรงเรียนตรงทุกตัว; ปุ่มอันตราย disabled จนเงื่อนไขพร้อม ข้อมูลเตือนไม่ถูกแทนด้วยถ้อยคำทั่วไป.
 
-พื้นที่กล้องพื้น #101d2d กับข้อความสว่างและชัตเตอร์ขาว 68px ขอบ 4px วงนอก 2px. Corner handle 48px ครอบจุด 14px และวงโฟกัส #8ac8ff. กรอบ polygon เปลี่ยนสี 220ms; เมื่อ QR ล็อกแล้ว แถบสถานะยืนยันผ่านการเปลี่ยนพื้นใน 250ms. สถานะค้นหา/ยังไม่พร้อม/พร้อมจับภาพมีข้อความ ไอคอน และกรอบที่ต่างกัน; progress ความนิ่งไม่เป็นหลักฐานว่าคะแนนถูกต้อง.
+### Motion and camera controls
 
-Auto-capture เปิดเริ่มต้นและจำตัวเลือกใน browser. มีถ่ายใหม่/ใบถัดไป แยกการจับภาพจากการบันทึกและการยืนยันคะแนน; ไม่ยืนยันคะแนนเอง. ค่า heuristic ยังต้องทดสอบกล้องจริง.
+Feedback ใช้ motion-fast 130ms, motion-state 220ms และ ease-out ใน CSS. การเปลี่ยนหน้า opacity 0.85 → 1 กับ translateY 3px → 0 ใช้ 180ms; dialog 220ms, overlay 150ms, toast 160ms. ไม่มี choreography ที่หน่วงงานหรือ animation ของกระดาษ.
 
-รอบ 10 ตุลาคม: กรอบแสดงผล smooth แต่การจับภาพใช้มุมดิบ; เขียวเฉพาะหลังตรวจคุณภาพภาพจริงผ่าน ไม่ใช้ progress ความนิ่งแทนความชัด. Overlay ภายในอ้างแม่แบบที่ล็อกไว้ แสดงกรอบ QR/ID/คำตอบ/markers แบบเส้นประบาง ไม่แสดงตัวเลขทางเทคนิค. สีกรอบใช้ camera-adjust/searching/aligning/ready tokens; mint เส้น region และ dark shade แยกพื้นที่นอกกระดาษ. Idle ใช้พื้นที่ viewport เต็ม ไม่บีบข้อความตามสัดส่วนภาพที่ยังไม่มี.
+Reduced motion ปิด entrance/spatial animation และใช้ scroll-behavior auto; คง color/background/border/opacity ที่ 80ms linear. Spinner หลักช้าลงเป็น 1.4s เพื่อแสดงงานที่ค้าง; ไอคอน .spin ใน exam form หยุดหมุน. ไม่ถือว่าการลด motion เป็นเหตุให้ซ่อนสถานะ loading.
 
-Phone landscape จอสูง ≤500px ใช้หัว/บริบทในแถวเดียวและปุ่มกล้องอยู่ข้างภาพ. เมื่อจอไม่พอให้เลื่อนพื้นที่งานเพียงส่วนเดียวแทนซ่อนปุ่มหรือบีบรายการตรวจเป็นศูนย์; Review/Designer/Print มี minimum usable pane. Phone portrait/iPad/desktop คง compact one-viewport และเลื่อนรายการภายในตามเดิม. ไม่ปิด zoom หรือบังคับหมุนเครื่อง.
+กล้องใช้พื้นเข้ม #101d2d ข้อความสว่าง ชัตเตอร์ 68px และ corner handle พื้นที่ 48px ครอบจุด 14px. ค้นหา/ยังไม่พร้อม/พร้อมจับภาพใช้ข้อความ ไอคอน และเส้นกรอบด้วย. ค่าสี overlay กล้องที่ตัดกับภาพจริงเป็น scope เฉพาะ ไม่ใช่สี accent ใหม่ของแผงงาน. แยกการจับภาพ การอัปโหลด และการยืนยันคะแนน; ไม่ใช้ความนิ่งเป็นหลักฐานว่าคะแนนถูกต้อง.
 
-### School paper header and print identity
+### App identity and printed OMR boundary
 
-28 October 2026 extension: new work uses `school-v2` / geometryVersion 5. The school name stays on one line at up to 4.1mm (minimum 3.1mm before full-page expansion); the title is bold 4.2mm, populated subject/student/class/code fields bold 2.8/2.6mm. SVG/PDF share measured Noto Sans Thai advances; PDF embeds actual 700 weight with complete Thai/Latin/digit coverage. QR becomes 28mm with a four-module quiet zone; four existing corner marks and answer coordinates remain. Correct/incorrect fill examples sit under the ID field, outside answer sampling. Footer wraps at Thai word boundaries. The next paragraphs describe immutable historical school 4 and remain applicable when replaying that version.
+ใช้ภาพ ScanSob ฉบับเต็มใน AppLogo รักษาสัดส่วนด้วย object-fit: contain บนพื้นขาว; compact 56px, large 112px และ 88px บน phone/หน้ารอสิทธิ์. โลโก้แอปไม่แทนตราโรงเรียนบน OMR. ชื่อแท็บ/ติดตั้งคือ ScanSob; viewport themeColor ตรงกับ nav. ระบบยังเป็นเว็บออนไลน์และไม่มี raster ใหม่ในรอบนี้.
 
-Continuous capture adds a compact queue strip and an explicitly labelled checkbox. Camera stays live while serial uploads run; saved counts appear only after acknowledgement and scores say “รอตรวจ”. Errors expose retry/inspect actions. The batch-confirmation dialog uses 48px labelled selection rows, an internally scrolling list and a fixed action row; unavailable entries explain why. Existing palette, focus, motion and viewport rules remain in force.
-
-รูปแบบ school ใหม่เป็น geometryVersion 4; classic 2 และ compact 3 คงไว้สำหรับความเข้ากันได้. พรีวิว SVG และ jsPDF ใช้ resolveGeometry/printTexts ชุดเดียวกัน. กระดาษขาว หมึกดำ QR และ marker แยกจากสี UI.
-
-โลโก้ school อยู่ในกรอบ 20 × 20mm ทางซ้าย รักษาสัดส่วนและ orientation ของภาพต้นฉบับ; ขนาดกรอบไม่ย่อไฟล์ที่จัดเก็บ. หัวโรงเรียนขนาด 4.1mm แยกคำ “โรงเรียน” กับชื่อในบรรทัดถัดไปเมื่อใช้ prefix นี้; pitch 4.5mm. กล่องเขียนคะแนน 29 × 14mm ด้านขวาบนแสดงจุดแล้ว / คะแนนเต็ม โดยไม่มีคำ “คะแนน”; QR กว้าง 23mm อยู่ด้านล่างกล่องในพื้นที่สำรอง.
-
-ชื่อ–สกุลและวิชามีเส้นจุดรองรับข้อมูลที่พิมพ์; ระดับชั้น ห้อง และเลขที่แยกอ่านได้. รหัส 5 หลักคง leading zeroes; ใบรายชื่อเติมรหัสและ bubble ดำตามนักเรียนจริง ใบสำรองคงช่องเขียน/ฝนเอง. Layout lock และ QR identity ไม่เปลี่ยนย้อนหลังตามสีหน้าจอหรือโลโก้ล่าสุด. การตรวจ PDF ในรอบนี้เป็น visual evidence; การสอบเทียบพิมพ์และ OMR จริงยังแยกตรวจ.
+กระดาษยังเป็นพื้นขาว หมึกดำ และหน่วยกายภาพตามแม่แบบ. school-v2 / geometry 5 เป็นรุ่นพิมพ์ใหม่โดยคง reader รุ่น 2/3/4; A4 landscape สองใบซ้าย/ขวาเป็นค่าเริ่มต้นและขยายเป็นใบเต็มเมื่อ validator ต้องการ. สี UI ไม่เปลี่ยน bubble, marker, QR, student code, สัดส่วน หรือกฎให้คะแนน. รายละเอียด print layout อยู่ในเอกสาร geometry ที่เกี่ยวข้องและ snapshot รุ่นนั้น; ห้ามใช้ DESIGN.md เพื่อแก้รุ่นที่พิมพ์แล้ว.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- Do ใช้พาเลตสีอ่อนกับพื้น และหมึกหรือพลัมเข้มกับข้อความและการกระทำ.
-- Do ใช้สีสถานะพร้อมคำภาษาไทยและไอคอนที่บอกความหมายเดียวกัน.
-- Do ให้ปุ่ม แท็บ และกรอบกล้องตอบสนองสั้นโดยไม่หน่วงงาน; เคารพ prefers-reduced-motion.
-- Do ใช้เส้นบางและพื้นที่ว่างแยกส่วนข้อมูลก่อนเพิ่มเงา.
-- Do ให้กระดาษคงพื้นขาว หมึกดำ สัดส่วนกายภาพ และพิกัดตามรุ่นที่ล็อกไว้.
-- Do คงวงโฟกัสที่เห็นชัด ชัตเตอร์ 68px พื้นที่จับมุม 48px และการเลื่อนภายในรายการยาว.
+- Do ใช้บทบาทกรมท่า โคบอลต์ ทีล และพื้นช่องกรอกตาม token ปัจจุบัน.
+- Do ให้เฉลยเริ่มว่าง แสดงความคืบหน้า และใช้สีโคบอลต์พร้อมเครื่องหมายถูกเมื่อครูเลือก.
+- Do คงวงโฟกัสที่เห็นชัด ข้อความ error ภาษาไทย และสถานะ disabled ที่แยกได้.
+- Do ให้รายการยาวเลื่อนภายในโดยแถวการกระทำและเมนูยังเข้าถึงได้บน phone/iPad.
+- Do ใช้ stacked modal เมื่อต้องยืนยันเหนือ dialog เดิม พร้อมชื่อ ข้อมูลผลกระทบ และปุ่มยกเลิกที่ชัด.
+- Do รักษากระดาษขาว หมึกดำ สัดส่วนพิมพ์ และ geometry/QR ตามรุ่นที่ล็อกไว้.
+- Do ให้ feedback สั้นและเคารพ prefers-reduced-motion โดยไม่หน่วงการทำงาน.
 
 ### Don't:
 
-- Don't ใช้ข้อความสี pastel อ่อนบนพื้นขาว หรือใช้สีอย่างเดียวบอกสถานะ.
-- Don't ใช้มิ้นต์หรือลาเวนเดอร์สื่อว่าผลที่ยังรอตรวจได้รับการยืนยันแล้ว.
-- Don't เพิ่ม gradient, glassmorphism หรือ animation ที่รบกวนการอ่านและชะลอการทำงาน.
-- Don't ย่อทั้งหน้าหรือปิด browser zoom เพื่ออัดเครื่องมือ desktop ลงใน phone/iPad.
-- Don't เปลี่ยนพิกัด classic/compact หรือกระดาษที่พิมพ์แล้วเพื่อให้เข้ากับหัวกระดาษ school รุ่นใหม่.
-- Don't ยกระดับข้อความประกอบขนาด 8–10px หรือสีหมวดวิชาให้เป็นสเกลหลักของหน้าจอใหม่.
+- Don't คืนพาเลต pastel เดิมเพราะชื่อ alias mint/sky/lavender/lilac ยังอยู่ใน CSS.
+- Don't เลือก A แทนครูหรือแทนเฉลย E ที่ถูกเอาออกเมื่อเปลี่ยนเป็นสี่ตัวเลือก.
+- Don't ใช้สีอย่างเดียวบอกสถานะหรือทำให้ผลรอตรวจดูเป็นผลยืนยันแล้ว.
+- Don't เพิ่มภาพตกแต่งสามมิติ gradient หรือ glassmorphism ที่รบกวนงานอ่านและตรวจ.
+- Don't ย่อทั้งหน้าจอ ปิด browser zoom หรือบังคับให้เครื่องมือทุกคอลัมน์อยู่พร้อมกันบน phone.
+- Don't เปลี่ยนพิกัด OMR, marker, QR หรือกฎให้คะแนนเพื่อให้เข้ากับสีและการจัดหน้า UI.
+- Don't ยกระดับข้อความประกอบเล็กและสีหมวดวิชาเฉพาะจุดให้เป็นมาตรฐานระบบ.

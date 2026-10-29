@@ -41,6 +41,7 @@ export function Modal({
   children,
   description,
   returnFocusRef,
+  layer = "base",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,13 +49,15 @@ export function Modal({
   children: ReactNode;
   description?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  layer?: "base" | "stacked";
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="dialog-overlay" />
+        <Dialog.Overlay className="dialog-overlay" data-layer={layer} />
         <Dialog.Content
           className="dialog-content"
+          data-layer={layer}
           onCloseAutoFocus={
             returnFocusRef
               ? (event) => {

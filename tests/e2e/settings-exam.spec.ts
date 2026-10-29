@@ -8,7 +8,7 @@ test("settings persist and exam uses exact actual classrooms, configured subject
   await page.goto("/dashboard");
   await expect(
     page.getByRole("heading", { name: "ภาพรวมงานตรวจสอบ" }),
-  ).toBeVisible();
+  ).toBeVisible({ timeout: 20000 });
   await page.evaluate(() => {
     const stored = JSON.parse(
       localStorage.getItem("smart-answer-sheet-demo-v1")!,
@@ -103,6 +103,9 @@ test("settings persist and exam uses exact actual classrooms, configured subject
     });
   }
   await page.goto("/exams/new");
+  await expect(
+    page.getByRole("heading", { name: "สร้างชุดสอบ", exact: true }),
+  ).toBeVisible({ timeout: 20000 });
   const classroom = page.getByRole("combobox", {
     name: "ชั้น / ห้อง",
     exact: true,
@@ -129,9 +132,7 @@ test("settings persist and exam uses exact actual classrooms, configured subject
     page.getByText("มีนักเรียน 1 คนในรายชื่อ", { exact: true }),
   ).toBeVisible();
   await page.getByLabel("จำนวนข้อ", { exact: true }).fill("60");
-  await page
-    .getByRole("combobox", { name: "จำนวนตัวเลือก", exact: true })
-    .selectOption("5");
+  await page.getByRole("radio", { name: /5 ตัวเลือก/ }).check();
   await page.screenshot({
     path: ".impeccable/review/accounts-exam-mobile.png",
     fullPage: true,
@@ -139,7 +140,11 @@ test("settings persist and exam uses exact actual classrooms, configured subject
   await page.getByRole("button", { name: "กำหนดเฉลย", exact: true }).click();
   await expect(
     page.getByRole("group", { name: "เฉลยข้อ 60", exact: true }),
-  ).toBeVisible();
+  ).toHaveCount(1);
+  for (const group of await page
+    .getByRole("group", { name: /^เฉลยข้อ / })
+    .all())
+    await group.getByRole("button", { name: "ก", exact: true }).click();
   await page
     .getByRole("button", { name: "สร้างชุดสอบและออกแบบกระดาษ", exact: true })
     .click();

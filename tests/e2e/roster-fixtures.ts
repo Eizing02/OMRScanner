@@ -5,12 +5,26 @@ import { rosterCommandSchema, rosterRpcInput } from "@/types/roster";
 import { scoreRow } from "@/lib/grading/recalculate";
 import type { Exam } from "@/types/exam";
 import type { ReviewItem } from "@/types/result";
+import { readFile } from "node:fs/promises";
 
 export async function rosterBrowserFixture(
   page: Page,
   initialActor = teacherA,
+  lifecycle = false,
 ) {
   const f = await rosterFixture(true, true);
+  if (lifecycle) {
+    for (const file of [
+      "202610280017_print_v5.sql",
+      "202610280018_batch_confirmation.sql",
+      "202610280019_directory_lifecycle.sql",
+    ])
+      await f.db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
+    // PGlite has no pg_cron; emulate only the readiness metadata, never the scheduler.
+    await f.db.exec(
+      "create schema cron; create table cron.job(jobname text,active boolean); insert into cron.job values('scansob-school-directory-trash',true)",
+    );
+  }
   let actor = initialActor;
   const requests: { method: string; path: string; view: string | null }[] = [];
   await page.route("https://accounts-test.supabase.co/**", (r) =>

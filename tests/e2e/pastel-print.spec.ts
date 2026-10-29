@@ -75,20 +75,20 @@ for (const format of ["jpeg", "png"] as const)
     expect(pdf.includes("/DCTDecode")).toBe(false);
   });
 
-test("palette roles and reduced motion keep feedback without spatial movement", async ({
+test("navy cobalt teal roles and reduced motion keep feedback without spatial movement", async ({
   page,
 }) => {
   await page.goto("/dashboard");
   const tokens = await page.evaluate(() => {
     const styles = getComputedStyle(document.documentElement);
-    return ["--mint", "--sky", "--lavender", "--lilac"].map((name) =>
+    return ["--nav", "--blue", "--teal", "--canvas"].map((name) =>
       styles.getPropertyValue(name).trim(),
     );
   });
-  expect(tokens).toEqual(["#defcf9", "#cadefc", "#c3bef0", "#cca8e9"]);
+  expect(tokens).toEqual(["#10243a", "#1d4ed8", "#087668", "#eef3f8"]);
   await expect(page.locator(".sidebar")).toHaveCSS(
     "background-color",
-    "rgb(222, 252, 249)",
+    "rgb(16, 36, 58)",
   );
   await expect(page.locator(".nav-item.active svg").first()).toHaveCSS(
     "animation-name",

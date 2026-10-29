@@ -16,6 +16,8 @@ The owner approved one narrow sharing exception: explicit school-directory grant
 
 ## Project Overview
 
+Approved school-directory lifecycle and UI replacement (28 October 2026): owner-only school trash with exact-name confirmation, revision guards and idempotent request receipts; restore before 14 days, then bounded hourly PostgreSQL cleanup. Freeze authorized subscribed copies while trashed, detach copies on purge, preserve all teacher UUID/history/grades. SQL 019/020 require separate installation approval; do not expose the private purge function or add a service. New navy/cobalt/teal visual system supersedes pastels. Keep answer keys explicitly unselected until chosen; never substitute A when removing E. Netlify badge avoidance was canceled. See docs/SCHOOL_DIRECTORY_LIFECYCLE.md and DESIGN.md.
+
 This project is **Smart OMR & Exam Management System**, a Smart OMR MVP for Thai school teachers.
 
 It is a Thai school web application for teachers to manage students, create exams, generate OMR answer sheets, scan answer sheets, read QR codes, detect filled bubbles, grade exams, manually review results, and export Excel/PDF reports.

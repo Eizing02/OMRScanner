@@ -6,6 +6,8 @@ Approved: five-digit string upsert within a private teacher workspace; manual cr
 
 ## Behavior
 
+School removal added in the next local release: owner-only 14-day trash/restore, frozen authorized copies while trashed, then scheduled central-only purge with safe detachment. This requires prepared SQL 019/020 after 018; see [installation and operations](SCHOOL_DIRECTORY_LIFECYCLE.md). These files have not been installed in production in this task.
+
 - `/students`: manual add/edit, search, actual grade/class options, active/removed filter and server pages of 50. Selection supports one/page/all filtered rows with explicit exclusions. Bulk confirmation previews the exact rows. Removal archives; restore preserves UUID and historical references. Student code cannot be renamed in place.
 - `/students/import`: existing four-column and combined-name legacy formats remain supported. First validate/compare, then explicitly commit. Match code only in the current workspace. Preview add/update/unchanged/restore; a linked central record requires central editing or explicit detach. File absence never deletes. Missing optional number retains the current number; an explicitly mapped blank clears it. Plans expire after 20 minutes, require the creating actor/workspace, reject changed row/source revisions, apply atomically and replay a committed receipt safely.
 - Downloads: blank Excel input sheet with text-formatted codes and a separate synthetic example/instruction sheet; UTF-8 CSV; complete selected/filtered roster export. Excel is dynamically loaded. Never export only the visible page or turn a code into a number.

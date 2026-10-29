@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Plus, Pencil, Trash2, RotateCcw, Upload, School } from "lucide-react";
 import { useWorkspace } from "@/components/layout/workspace-provider";
 import { Modal, Notice, Badge } from "@/components/ui/primitives";
 import { WorkspaceTabs } from "@/components/ui/workspace-tabs";
 import type { DirectoryOptions, PersonInput, RosterPlan } from "@/types/roster";
+import type { DirectoryTrashPreview } from "@/types/roster";
 import type { Student } from "@/types/student";
 import { useRosterCommands } from "./use-roster";
 import { StudentForm } from "./student-form";
@@ -50,6 +51,18 @@ export function SchoolDirectory({
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(true),
     [tick, setTick] = useState(0);
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [trashPreview, setTrashPreview] = useState<
+    (DirectoryTrashPreview & { requestId: string }) | null
+  >(null);
+  const [confirmationName, setConfirmationName] = useState("");
+  const restoreRequests = useRef(new Map<string, string>());
+  const deadline = (value: string) =>
+    new Intl.DateTimeFormat("th-TH", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Asia/Bangkok",
+    }).format(new Date(value));
   const [create, setCreate] = useState(false),
     [name, setName] = useState(
       branding.school === "พื้นที่ส่วนตัว" ? "" : branding.school,
@@ -91,6 +104,11 @@ export function SchoolDirectory({
         setClasses(selected.selectedClasses);
         setYear(selected.academic_year);
         setTerm(selected.term);
+      } else {
+        setTarget("");
+        setClasses([]);
+        setPeople(null);
+        setPane("subscribe");
       }
       setTick((v) => v + 1);
     },
@@ -191,6 +209,59 @@ export function SchoolDirectory({
       onChanged();
     });
   }
+  async function previewTrash() {
+    if (!directory) return;
+    await run(async () => {
+      const preview = await command<DirectoryTrashPreview>({
+        action: "directory_lifecycle",
+        operation: "preview_trash",
+        directoryId: directory.id,
+      });
+      setConfirmationName("");
+      setTrashPreview({ ...preview, requestId: crypto.randomUUID() });
+    });
+  }
+  async function trashSchool() {
+    if (!trashPreview || confirmationName !== trashPreview.name) return;
+    await run(async () => {
+      await command({
+        action: "directory_lifecycle",
+        operation: "trash",
+        directoryId: trashPreview.id,
+        revision: trashPreview.revision,
+        requestId: trashPreview.requestId,
+        confirmationName,
+        consent: true,
+      });
+      setTrashPreview(null);
+      await reload();
+      onChanged();
+      notify("ย้ายโรงเรียนเข้าถังขยะแล้ว กู้คืนได้ภายใน 14 วัน");
+    });
+  }
+  async function restoreSchool(
+    item: NonNullable<DirectoryOptions["trash"]>[number],
+  ) {
+    await run(async () => {
+      const key = `${item.id}:${item.revision}`;
+      let requestId = restoreRequests.current.get(key);
+      if (!requestId) {
+        requestId = crypto.randomUUID();
+        restoreRequests.current.set(key, requestId);
+      }
+      await command({
+        action: "directory_lifecycle",
+        operation: "restore",
+        directoryId: item.id,
+        revision: item.revision,
+        requestId,
+        consent: true,
+      });
+      await reload(item.id);
+      onChanged();
+      notify("กู้คืนทะเบียนโรงเรียนแล้ว");
+    });
+  }
   const choose = (id: string) => {
     const d = options?.directories.find((d) => d.id === id);
     setTarget(id);
@@ -217,6 +288,28 @@ export function SchoolDirectory({
             <p role="status">กำลังโหลดทะเบียน…</p>
           ) : (
             <>
+              {options?.canCreate && (
+                <div className="directory-lifecycle-actions">
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setTrashOpen(true)}
+                    disabled={busy}
+                  >
+                    <Trash2 size={16} />
+                    ถังขยะ ({options.trash?.length ?? 0})
+                  </button>
+                  {directory && (
+                    <button
+                      className="btn btn-danger-quiet"
+                      onClick={() => void previewTrash()}
+                      disabled={busy}
+                    >
+                      <Trash2 size={16} />
+                      ย้ายโรงเรียนเข้าถังขยะ
+                    </button>
+                  )}
+                </div>
+              )}
               {options?.directories.length ? (
                 <label>
                   โรงเรียน
@@ -646,6 +739,101 @@ export function SchoolDirectory({
             </>
           )}
         </div>
+      </Modal>
+      <Modal
+        open={Boolean(trashPreview)}
+        onOpenChange={(open) => {
+          if (!open && !busy) setTrashPreview(null);
+        }}
+        title="ย้ายโรงเรียนเข้าถังขยะ"
+        layer="stacked"
+        description="กู้คืนได้ภายใน 14 วัน หลังจากนั้นทะเบียนกลางจะถูกลบถาวร"
+      >
+        {trashPreview && (
+          <>
+            <p>
+              <strong>{trashPreview.name}</strong>
+            </p>
+            <p>
+              {trashPreview.studentCount} รายชื่อ ·{" "}
+              {trashPreview.classroomCount} ห้อง ·{" "}
+              {trashPreview.subscribedWorkspaces} พื้นที่ที่ติดตาม
+            </p>
+            <Notice>
+              หยุดอัปเดตข้อมูลกลาง รายชื่อในพื้นที่ครูและคะแนนเก่ายังอยู่
+            </Notice>
+            {!trashPreview.cleanupReady && (
+              <Notice tone="warning">
+                ยังไม่เปิดงานลบอัตโนมัติ กรุณาตั้งค่างานตามเวลาก่อน
+              </Notice>
+            )}
+            <label>
+              พิมพ์ชื่อโรงเรียนเพื่อยืนยัน
+              <input
+                value={confirmationName}
+                maxLength={120}
+                onChange={(e) => setConfirmationName(e.target.value)}
+                autoComplete="off"
+              />
+            </label>
+            {error && <Notice tone="error">{error}</Notice>}
+            <div className="dialog-actions">
+              <button
+                className="btn btn-secondary"
+                disabled={busy}
+                onClick={() => setTrashPreview(null)}
+              >
+                ยกเลิก
+              </button>
+              <button
+                className="btn btn-danger"
+                disabled={
+                  busy ||
+                  !trashPreview.cleanupReady ||
+                  confirmationName !== trashPreview.name
+                }
+                onClick={() => void trashSchool()}
+              >
+                {busy ? "กำลังย้าย…" : "ย้ายเข้าถังขยะ"}
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+      <Modal
+        open={trashOpen}
+        onOpenChange={(open) => {
+          if (!busy) setTrashOpen(open);
+        }}
+        title="ถังขยะทะเบียนโรงเรียน"
+        layer="stacked"
+      >
+        {!options?.trash?.length ? (
+          <p className="muted">ไม่มีโรงเรียนในถังขยะ</p>
+        ) : (
+          <ul className="directory-trash-list">
+            {options.trash.map((item) => (
+              <li key={item.id}>
+                <div>
+                  <strong>{item.name}</strong>
+                  <span>ลบถาวรหลัง {deadline(item.purgeAfter)}</span>
+                  {!item.canRestore && (
+                    <small>พ้นกำหนดกู้คืนแล้ว รอรอบลบอัตโนมัติ</small>
+                  )}
+                </div>
+                <button
+                  className="btn btn-secondary"
+                  disabled={busy || !item.canRestore}
+                  onClick={() => void restoreSchool(item)}
+                >
+                  <RotateCcw size={16} />
+                  กู้คืน
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {error && <Notice tone="error">{error}</Notice>}
       </Modal>
       {editing && directory && (
         <StudentForm

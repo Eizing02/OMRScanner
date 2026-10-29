@@ -68,6 +68,48 @@ describe("student API migration compatibility", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+  it("validates owner lifecycle confirmations and scopes them to the authenticated workspace", async () => {
+    const body = {
+      action: "directory_lifecycle",
+      operation: "trash",
+      directoryId: "00000000-0000-4000-8000-000000000099",
+      revision: 2,
+      requestId: "00000000-0000-4000-8000-000000000098",
+      confirmationName: "โรงเรียนทดสอบ",
+      consent: true,
+      school_id: "forged-workspace",
+    };
+    for (const invalid of [
+      { ...body, consent: false },
+      { ...body, revision: undefined },
+      { ...body, requestId: "invalid" },
+      { ...body, confirmationName: "" },
+    ]) {
+      expect((await POST(command(invalid))).status).toBe(422);
+      expect(mock.rpc).not.toHaveBeenCalled();
+    }
+    mock.rpc.mockResolvedValue({ data: { id: body.directoryId }, error: null });
+    expect((await POST(command(body))).status).toBe(200);
+    expect(mock.rpc).toHaveBeenCalledWith("manage_directory_lifecycle", {
+      input: expect.objectContaining({
+        school_id: "school",
+        action: "trash",
+        requestId: body.requestId,
+      }),
+    });
+    expect(JSON.stringify(mock.rpc.mock.calls)).not.toContain(
+      "forged-workspace",
+    );
+    mock.rpc.mockResolvedValue({
+      data: null,
+      error: { message: "DIRECTORY_RESTORE_EXPIRED" },
+    });
+    const expired = await POST(command({ ...body, operation: "restore" }));
+    expect(expired.status).toBe(410);
+    expect(await expired.json()).toMatchObject({
+      error: { code: "DIRECTORY_RESTORE_EXPIRED" },
+    });
+  });
   it("scopes upsert previews to authenticated workspace and preserves omitted number semantics", async () => {
     mock.rpc.mockResolvedValue({ data: { planId: "plan" }, error: null });
     const response = await POST(

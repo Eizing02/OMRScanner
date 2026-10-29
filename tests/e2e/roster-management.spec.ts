@@ -6,6 +6,111 @@ import { rosterBrowserFixture } from "./roster-fixtures";
 import { owner, teacherA } from "../score-integration-fixture";
 test.use({ actionTimeout: 15000 });
 
+test("owner can trash and restore a school with explicit name confirmation and scheduler readiness", async ({
+  page,
+}) => {
+  const f = await rosterBrowserFixture(page, owner, true);
+  try {
+    const school = await f.rpc<{ id: string }>(
+      owner,
+      "manage_roster_directory",
+      { action: "create", name: "โรงเรียนทดสอบกู้คืน", year: 2569, term: 1 },
+    );
+    await page.goto("/students");
+    await page
+      .getByRole("button", { name: "ทะเบียนโรงเรียน", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "ย้ายโรงเรียนเข้าถังขยะ", exact: true })
+      .click();
+    const confirm = page.getByRole("dialog", {
+      name: "ย้ายโรงเรียนเข้าถังขยะ",
+      exact: true,
+    });
+    const trash = confirm.getByRole("button", {
+      name: "ย้ายเข้าถังขยะ",
+      exact: true,
+    });
+    await expect(trash).toBeDisabled();
+    await confirm
+      .getByLabel("พิมพ์ชื่อโรงเรียนเพื่อยืนยัน")
+      .fill("ผิดโรงเรียน");
+    await expect(trash).toBeDisabled();
+    await expect(
+      page.locator('.dialog-overlay[data-layer="stacked"]'),
+    ).toHaveCSS("z-index", "110");
+    await expect(confirm).toHaveCSS("z-index", "111");
+    for (const [name, width, height] of [
+      ["desktop", 1440, 1000],
+      ["phone", 390, 844],
+      ["ipad", 768, 1024],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await expect(confirm).toBeVisible();
+      expect(
+        (
+          await new AxeBuilder({ page })
+            .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+            .analyze()
+        ).violations,
+      ).toEqual([]);
+      await page.screenshot({
+        path: `.impeccable/review/school-trash-confirm-${name}.png`,
+        fullPage: true,
+        style: "nextjs-portal { display: none; }",
+      });
+    }
+    await confirm
+      .getByLabel("พิมพ์ชื่อโรงเรียนเพื่อยืนยัน")
+      .fill("โรงเรียนทดสอบกู้คืน");
+    await trash.click();
+    await expect(confirm).toBeHidden();
+    await page.getByRole("button", { name: "ถังขยะ (1)", exact: true }).click();
+    const bin = page.getByRole("dialog", {
+      name: "ถังขยะทะเบียนโรงเรียน",
+      exact: true,
+    });
+    await expect(bin).toContainText("โรงเรียนทดสอบกู้คืน");
+    for (const [name, width, height] of [
+      ["desktop", 1440, 1000],
+      ["phone", 390, 844],
+      ["ipad", 768, 1024],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await page.screenshot({
+        path: `.impeccable/review/school-trash-list-${name}.png`,
+        fullPage: true,
+        style: "nextjs-portal { display: none; }",
+      });
+    }
+    await bin.getByRole("button", { name: "กู้คืน", exact: true }).click();
+    await expect(bin).toContainText("ไม่มีโรงเรียนในถังขยะ");
+    await bin.getByRole("button", { name: "ปิดหน้าต่าง", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "ย้ายโรงเรียนเข้าถังขยะ", exact: true }),
+    ).toBeVisible();
+    expect(
+      (
+        await f.db.query(
+          "select deleted_at from roster_directories where id=$1",
+          [school.id],
+        )
+      ).rows[0],
+    ).toEqual({ deleted_at: null });
+    await f.db.exec("update cron.job set active=false");
+    await page
+      .getByRole("button", { name: "ย้ายโรงเรียนเข้าถังขยะ", exact: true })
+      .click();
+    await expect(confirm).toContainText("ยังไม่เปิดงานลบอัตโนมัติ");
+    await confirm
+      .getByLabel("พิมพ์ชื่อโรงเรียนเพื่อยืนยัน")
+      .fill("โรงเรียนทดสอบกู้คืน");
+    await expect(trash).toBeDisabled();
+  } finally {
+    await f.db.close();
+  }
+});
+
 async function capture(page: Page, surface: string) {
   for (const [name, width, height] of [
     ["desktop", 1440, 1000],

@@ -55,6 +55,24 @@ export type DirectoryOptions = {
   canCreate: boolean;
   directories: Directory[];
   accounts: { id: string; email: string; name: string }[];
+  cleanupReady?: boolean;
+  trash?: {
+    id: string;
+    name: string;
+    revision: number;
+    deletedAt: string;
+    purgeAfter: string;
+    canRestore: boolean;
+  }[];
+};
+export type DirectoryTrashPreview = {
+  id: string;
+  name: string;
+  revision: number;
+  studentCount: number;
+  classroomCount: number;
+  subscribedWorkspaces: number;
+  cleanupReady: boolean;
 };
 export type ReviewSummary = {
   id: string;
@@ -200,6 +218,31 @@ export const rosterCommandSchema = z.discriminatedUnion("action", [
     term: z.number().int().min(1).max(3).optional(),
   }),
   z.object({ action: z.literal("directory_from_workspace"), directoryId: id }),
+  z
+    .object({
+      action: z.literal("directory_lifecycle"),
+      operation: z.enum(["preview_trash", "trash", "restore"]),
+      directoryId: id,
+      revision: revision.optional(),
+      requestId: z.uuid().optional(),
+      confirmationName: z.string().max(120).optional(),
+      consent: z.boolean().optional(),
+    })
+    .superRefine((v, ctx) => {
+      if (
+        v.operation !== "preview_trash" &&
+        (!v.revision || !v.requestId || v.consent !== true)
+      )
+        ctx.addIssue({
+          code: "custom",
+          message: "ตรวจรายการและยืนยันก่อนทำต่อ",
+        });
+      if (v.operation === "trash" && !v.confirmationName)
+        ctx.addIssue({
+          code: "custom",
+          message: "พิมพ์ชื่อโรงเรียนเพื่อยืนยัน",
+        });
+    }),
   z.object({
     action: z.literal("preview_subscribe"),
     directoryId: id,
@@ -263,6 +306,10 @@ export function rosterRpcInput(
         directoryId: command.directoryId,
         fromWorkspace: true,
       };
+      break;
+    case "directory_lifecycle":
+      name = "manage_directory_lifecycle";
+      input.action = command.operation;
       break;
     case "preview_subscribe":
       name = "preview_directory_subscription";

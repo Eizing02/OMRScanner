@@ -4,6 +4,19 @@ import { ApiError } from "@/lib/supabase/api";
 import { rosterCommandSchema, rosterRpcInput } from "@/types/roster";
 
 const errors: Record<string, [string, number]> = {
+  DIRECTORY_NOT_FOUND: ["ไม่พบทะเบียนโรงเรียนนี้ อาจถูกลบแล้ว", 404],
+  DIRECTORY_TRASHED: ["ทะเบียนโรงเรียนอยู่ในถังขยะ กรุณากู้คืนก่อนแก้ไข", 409],
+  DIRECTORY_RESTORE_EXPIRED: ["พ้นกำหนดกู้คืน 14 วันแล้ว", 410],
+  DIRECTORY_CLEANUP_NOT_READY: [
+    "ยังไม่เปิดงานลบทะเบียนอัตโนมัติ กรุณาตั้งค่างานตามเวลาก่อน",
+    503,
+  ],
+  DIRECTORY_NAME_MISMATCH: ["ชื่อโรงเรียนไม่ตรง กรุณาตรวจอีกครั้ง", 422],
+  DIRECTORY_REQUEST_CONFLICT: [
+    "คำขอนี้ใช้กับรายการอื่นแล้ว กรุณาตรวจรายการใหม่",
+    409,
+  ],
+  DIRECTORY_CONSENT_REQUIRED: ["กรุณายืนยันการจัดการทะเบียนโรงเรียน", 422],
   FORBIDDEN: ["ไม่มีสิทธิ์จัดการรายชื่อในพื้นที่นี้", 403],
   DUPLICATE_CODE: ["รหัสนี้มีอยู่แล้ว หรือซ้ำภายในไฟล์", 409],
   STALE_ROSTER: ["รายชื่อเปลี่ยนแล้ว กรุณาโหลดและตรวจรายการใหม่", 409],
@@ -33,7 +46,7 @@ export function rosterError(message: string) {
   if (/does not exist|schema cache|could not find/i.test(message))
     return new ApiError(
       "ROSTER_SETUP_REQUIRED",
-      "ยังติดตั้งระบบรายชื่อไม่ครบ กรุณาตรวจ SQL 013–016",
+      "ยังติดตั้งระบบรายชื่อไม่ครบ กรุณาตรวจ SQL 013–016 และ 019–020 สำหรับถังขยะโรงเรียน",
       503,
     );
   return new ApiError("ROSTER_FAILED", "ทำรายการไม่สำเร็จ กรุณาลองใหม่", 503);

@@ -144,7 +144,7 @@ export function MainShell({ children }: { children: ReactNode }) {
   }
   return (
     <div
-      className={`app-shell ${path.startsWith("/students") || path === "/scan" || path.endsWith("/scan") || path === "/review" || path.endsWith("/review") || path.includes("omr-generate") || path.endsWith("/print") || path === "/export" || path.endsWith("/results") ? "task-shell" : ""}`}
+      className={`app-shell ${path === "/exams/new" || path.startsWith("/students") || path === "/scan" || path.endsWith("/scan") || path === "/review" || path.endsWith("/review") || path.includes("omr-generate") || path.endsWith("/print") || path === "/export" || path.endsWith("/results") ? "task-shell" : ""}`}
     >
       <a className="skip-link" href="#main">
         ข้ามไปเนื้อหาหลัก
