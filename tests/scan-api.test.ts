@@ -231,6 +231,18 @@ describe("scan HTTP boundary with real compressed QR/OMR pixels", () => {
     expect((await POST(binaryPost(raw))).status).toBe(403);
     expect(mock.upload).not.toHaveBeenCalled();
   });
+  it("accepts public-origin binary scans through the immutable Netlify deployment URL", async () => {
+    vi.stubEnv("SITE_ID", "00000000-0000-4000-8000-000000000001");
+    vi.stubEnv("SITE_NAME", "scansob");
+    vi.stubEnv("URL", "https://scansob.netlify.app");
+    try {
+      const raw = await sharp(Buffer.from(single.split(",")[1], "base64")).jpeg({ quality: 85 }).toBuffer();
+      const request = binaryPost(raw, {}, "https://scansob.netlify.app");
+      const response = await POST(new Request("https://6ae3351c95c208097f868f58--scansob.netlify.app/api/scan-records", request));
+      expect(response.status).toBe(201);
+      expect(Buffer.from(mock.upload.mock.calls[0][1])).toEqual(raw);
+    } finally { vi.unstubAllEnvs(); }
+  });
   it("rejects an upside-down sheet BEFORE reading student IDs or saving scores", async () => {
     const raw = await sharp(Buffer.from(single.split(",")[1], "base64"))
       .rotate(180)

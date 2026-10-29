@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeNextPath } from "@/lib/supabase/redirect";
+import { publicRequestOrigin } from "@/lib/supabase/request-origin";
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const destination = new URL(safeNextPath(url.searchParams.get("next")), url.origin);
+  const origin = publicRequestOrigin(request);
+  const destination = new URL(safeNextPath(url.searchParams.get("next")), origin);
   const code = url.searchParams.get("code");
   if (code) {
     try {
@@ -16,7 +18,7 @@ export async function GET(request: Request) {
       }
     } catch { /* Recover with a fresh OAuth attempt, never print tokens/errors. */ }
   }
-  const response = NextResponse.redirect(new URL("/login?error=oauth", url.origin));
+  const response = NextResponse.redirect(new URL("/login?error=oauth", origin));
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }

@@ -4,6 +4,7 @@ import { createClient } from "./server";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { accessContextSchema } from "@/types/access";
+import { isRequestOriginAllowed } from "./request-origin";
 export class ApiError extends Error {
   constructor(
     public code: string,
@@ -115,8 +116,7 @@ export async function context(write = false) {
   };
 }
 export async function requestBody(request: Request, limit = 1024 * 1024) {
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin)
+  if (!isRequestOriginAllowed(request))
     throw new ApiError("ORIGIN_DENIED", "แหล่งที่มาของคำขอไม่ถูกต้อง", 403);
   if (!request.headers.get("content-type")?.includes("application/json"))
     throw new ApiError("INVALID_CONTENT_TYPE", "คำขอต้องเป็น JSON", 415);

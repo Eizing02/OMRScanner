@@ -2,12 +2,12 @@ import { context, failure, json, ApiError } from "@/lib/supabase/api";
 import { cleanupOldLogos, readBranding, LOGO_BUCKET } from "@/lib/supabase/school-logo";
 import { inspectLogo, MAX_LOGO_BYTES } from "@/lib/omr/logo-image";
 import { z } from "zod";
+import { isRequestOriginAllowed } from "@/lib/supabase/request-origin";
 export const runtime = "nodejs";
 export async function POST(request: Request) {
   try {
     const { db, schoolId } = await context(true);
-    const origin = request.headers.get("origin");
-    if (origin && origin !== new URL(request.url).origin) throw new ApiError("ORIGIN_DENIED", "แหล่งที่มาของคำขอไม่ถูกต้อง", 403);
+    if (!isRequestOriginAllowed(request)) throw new ApiError("ORIGIN_DENIED", "แหล่งที่มาของคำขอไม่ถูกต้อง", 403);
     const contentType = request.headers.get("content-type");
     if (!contentType?.startsWith("multipart/form-data;")) throw new ApiError("INVALID_CONTENT_TYPE", "กรุณาส่งไฟล์ภาพ", 415);
     if (Number(request.headers.get("content-length")) > MAX_LOGO_BYTES + 65536)

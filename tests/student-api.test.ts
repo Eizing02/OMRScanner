@@ -62,6 +62,17 @@ const request = (students: unknown[]) =>
     body: JSON.stringify({ students, filename: "class.csv" }),
   });
 describe("student API migration compatibility", () => {
+  it("allows the initial public-site sync request through the Netlify deployment proxy", async () => {
+    vi.stubEnv("SITE_ID", "00000000-0000-4000-8000-000000000001");
+    vi.stubEnv("SITE_NAME", "scansob");
+    vi.stubEnv("URL", "https://scansob.netlify.app");
+    try {
+      mock.rpc.mockResolvedValue({ data: { added: 0, updated: 0 }, error: null });
+      const response = await POST(new Request("https://6ae3351c95c208097f868f58--scansob.netlify.app/api/students", { method: "POST", headers: { Origin: "https://scansob.netlify.app", "Content-Type": "application/json" }, body: JSON.stringify({ action: "sync" }) }));
+      expect(response.status).toBe(200);
+      expect(mock.rpc).toHaveBeenCalledWith("sync_student_directory", { input: expect.objectContaining({ school_id: "school" }) });
+    } finally { vi.unstubAllEnvs(); }
+  });
   const command = (body: unknown) =>
     new Request("http://localhost/api/students", {
       method: "POST",

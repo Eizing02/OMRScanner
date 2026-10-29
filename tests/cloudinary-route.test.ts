@@ -73,6 +73,17 @@ async function request(revision = mock.revision, origin = "http://localhost", fi
   return new Request("http://localhost/api/cloudinary", { method: "POST", headers: { origin }, body: form });
 }
 describe("compatibility logo API now uses private Supabase Storage, not Cloudinary", () => {
+  it("accepts a public Netlify-origin logo upload when the adapter URL uses the deployment host", async () => {
+    vi.stubEnv("SITE_ID", "00000000-0000-4000-8000-000000000001");
+    vi.stubEnv("SITE_NAME", "scansob");
+    vi.stubEnv("URL", "https://scansob.netlify.app");
+    try {
+      const original = await request(mock.revision, "https://scansob.netlify.app");
+      const response = await POST(new Request("https://6ae3351c95c208097f868f58--scansob.netlify.app/api/settings/logo", original));
+      expect(response.status).toBe(201);
+      expect(mock.upload).toHaveBeenCalledTimes(1);
+    } finally { vi.unstubAllEnvs(); }
+  });
   it("returns valid 401/403 JSON before uploads for anonymous or unapproved accounts", async () => {
     mock.user = false;
     expect((await GET()).status).toBe(401);

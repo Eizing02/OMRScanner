@@ -1,6 +1,7 @@
 import "server-only";
 import { ApiError, requestBody } from "@/lib/supabase/api";
 import { scanInputSchema, scanMetadataSchema } from "@/types/scan";
+import { isRequestOriginAllowed } from "@/lib/supabase/request-origin";
 
 export async function scanRequestBody(request: Request) {
   const type = request.headers.get("content-type") ?? "";
@@ -16,8 +17,7 @@ export async function scanRequestBody(request: Request) {
       );
     return parsed.data;
   }
-  const origin = request.headers.get("origin");
-  if (origin && origin !== new URL(request.url).origin)
+  if (!isRequestOriginAllowed(request))
     throw new ApiError("ORIGIN_DENIED", "แหล่งที่มาของคำขอไม่ถูกต้อง", 403);
   const limit = 2_050_000;
   if (Number(request.headers.get("content-length")) > limit)
