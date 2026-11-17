@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { demoExams, demoReviews, demoStudents } from "@/lib/demo";
+import type { SignedPairingAvailability } from "@/types/integration";
 
 const user = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const school = "11111111-1111-4111-8111-111111111111";
@@ -27,6 +28,8 @@ const confirmed = demoReviews.slice(0, 2).map((review, index) => ({
 async function fixtures(page: Page) {
   let readOnly = false;
   let recoveryFails = false;
+  let availability: SignedPairingAvailability = "ready";
+  let rejectRequest = false;
   let connection: null | Record<string, unknown> = null;
   let publication: {
     state: string;
@@ -56,6 +59,11 @@ async function fixtures(page: Page) {
     receiverReady: true,
     readOnly,
     connection,
+    signedPairing: {
+      destinationLabel: "โรงเรียนปลายทางทดสอบ",
+      workspaceLabel: "พื้นที่ครูทดสอบ",
+      availability,
+    },
     publication: {
       ...publication,
       preview: {
@@ -149,12 +157,19 @@ async function fixtures(page: Page) {
   );
   await page.route("**/api/integrations/mathquest", async (route) => {
     if (route.request().method() === "POST") {
+      const input = route.request().postDataJSON();
+      expect(input).toEqual({
+        method: "signed",
+        requestId: expect.any(String),
+        consent: true,
+      });
       connection = {
-        id: localConnection,
+        id: input.requestId,
         connectionId: null,
         destinationSchoolId: null,
-        destinationLabel: "",
+        destinationLabel: "โรงเรียนปลายทางทดสอบ",
         status: "pending_approval",
+        signedStage: "waiting",
         mode: "manual",
         enabled: false,
         revocationPending: false,
@@ -167,16 +182,17 @@ async function fixtures(page: Page) {
       const input = route.request().postDataJSON();
       if (input.action === "refresh")
         connection = {
-          id: localConnection,
-          connectionId: remoteConnection,
-          destinationSchoolId: destination,
+          id: connection?.id,
+          connectionId: rejectRequest ? null : remoteConnection,
+          destinationSchoolId: rejectRequest ? null : destination,
           destinationLabel: "โรงเรียนปลายทางทดสอบ",
-          status: "active",
+          status: rejectRequest ? "error" : "active",
+          signedStage: rejectRequest ? "rejected" : "active",
           mode: "manual",
-          enabled: true,
+          enabled: !rejectRequest,
           revocationPending: false,
           lastSyncAt: null,
-          lastError: null,
+          lastError: rejectRequest ? "CONNECTION_DENIED" : null,
         };
       else if (input.action === "mode")
         connection = {
@@ -195,7 +211,7 @@ async function fixtures(page: Page) {
             status: 503,
             json: {
               error: {
-                messageTh: "ติดต่อ MathQuest ไม่สำเร็จ กรุณาลองอีกครั้ง",
+                messageTh: "ติดต่อระบบเช็คชื่อไม่สำเร็จ กรุณาลองอีกครั้ง",
               },
             },
           });
@@ -206,6 +222,16 @@ async function fixtures(page: Page) {
           status: "revoked",
           recoveryPending: false,
           revocationPending: false,
+        };
+      } else if (
+        input.action === "revoke" &&
+        connection?.signedStage === "rejected"
+      ) {
+        expect(input.expectedRequestId).toBe(connection.id);
+        connection = {
+          ...connection,
+          status: "revoked",
+          signedStage: "cancelled",
         };
       } else
         connection = {
@@ -294,12 +320,18 @@ async function fixtures(page: Page) {
     });
   });
   return {
-    pauseConnection() {
+    setAvailability(value: SignedPairingAvailability) {
+      availability = value;
+    },
+    rejectNextRequest() {
+      rejectRequest = true;
+    },
+    pauseConnection(destinationLabel = "โรงเรียนปลายทางทดสอบ") {
       connection = {
         id: localConnection,
         connectionId: remoteConnection,
         destinationSchoolId: destination,
-        destinationLabel: "โรงเรียนปลายทางทดสอบ",
+        destinationLabel,
         status: "active",
         mode: "manual",
         enabled: false,
@@ -388,10 +420,26 @@ test("pairs explicitly, publishes confirmed scores and stays usable on desktop p
 }) => {
   const state = await fixtures(page);
   await page.goto("/settings");
-  const section = page.getByRole("region", { name: "เชื่อมต่อ MathQuest" });
-  await section.getByLabel("รหัสเชื่อมต่อ").fill("PAIR_1234");
-  await section.getByRole("checkbox").check();
-  await section.getByRole("button", { name: "ขอเชื่อมต่อ" }).click();
+  const section = page.getByRole("region", { name: "เชื่อมต่อระบบเช็คชื่อ" });
+  const requestButton = section.getByRole("button", {
+    name: "ขออนุมัติส่งคะแนน",
+  });
+  await expect(section.getByRole("textbox")).toHaveCount(0);
+  await expect(section.getByRole("checkbox")).toHaveCount(0);
+  for (const [name, width, height] of [
+    ["desktop", 1440, 1000],
+    ["phone", 390, 844],
+    ["ipad", 768, 1024],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await expect(requestButton).toBeVisible();
+    await accessibleAndContained(page);
+    await section.screenshot({
+      path: `.impeccable/review/integration-request-${name}.png`,
+    });
+  }
+  await requestButton.focus();
+  await page.keyboard.press("Enter");
   await expect(section).toContainText("รออนุมัติ");
   await section.getByRole("button", { name: "ตรวจสถานะ" }).click();
   await expect(section).toContainText("โรงเรียนปลายทางทดสอบ");
@@ -418,8 +466,8 @@ test("pairs explicitly, publishes confirmed scores and stays usable on desktop p
   }
 
   await page.goto("/export");
-  await page.getByRole("button", { name: "ส่งคะแนนไป MathQuest" }).click();
-  const dialog = page.getByRole("dialog", { name: "เผยแพร่คะแนนไป MathQuest" });
+  await page.getByRole("button", { name: "ส่งคะแนนไประบบเช็คชื่อ" }).click();
+  const dialog = page.getByRole("dialog", { name: "ส่งคะแนนไประบบเช็คชื่อ" });
   await expect(dialog).toContainText("ยืนยันแล้ว");
   await expect(dialog).toContainText("รอตรวจ");
   await expect(dialog).toContainText("ภาคเรียน");
@@ -432,7 +480,7 @@ test("pairs explicitly, publishes confirmed scores and stays usable on desktop p
   state.deliverPartial();
   await dialog.getByRole("button", { name: "ตรวจสถานะ" }).click();
   await expect(dialog).toContainText("ส่งบางส่วน");
-  await dialog.getByText("รหัสไม่พบใน MathQuest 1 คน").click();
+  await dialog.getByText("รหัสไม่พบในระบบเช็คชื่อ 1 คน").click();
   await expect(dialog).toContainText("04217");
   await dialog.getByRole("button", { name: "ถอนเผยแพร่" }).click();
   await expect(dialog).toContainText("นักเรียนจะไม่เห็นคะแนนชุดนี้");
@@ -458,8 +506,74 @@ test("read-only inspection cannot expose publication controls", async ({
   state.setReadOnly();
   await page.goto("/export");
   await expect(
-    page.getByRole("button", { name: "ส่งคะแนนไป MathQuest" }),
+    page.getByRole("button", { name: "ส่งคะแนนไประบบเช็คชื่อ" }),
   ).toHaveCount(0);
+});
+
+test("closed intake or an unavailable receiver never falls back to a code", async ({
+  page,
+}) => {
+  const state = await fixtures(page);
+  state.setAvailability("closed");
+  await page.goto("/settings");
+  const section = page.getByRole("region", { name: "เชื่อมต่อระบบเช็คชื่อ" });
+  const request = section.getByRole("button", { name: "ขออนุมัติส่งคะแนน" });
+  const refresh = section.getByRole("button", {
+    name: "ตรวจความพร้อมอีกครั้ง",
+  });
+  await expect(section).toContainText("ระบบเช็คชื่อยังไม่เปิดรับคำขอ");
+  await expect(section.getByRole("textbox")).toHaveCount(0);
+  await expect(request).toHaveCount(0);
+  state.setAvailability("unavailable");
+  await refresh.click();
+  await expect(section).toContainText("ตรวจความพร้อมของระบบเช็คชื่อไม่ได้");
+  await expect(request).toHaveCount(0);
+  state.setAvailability("ready");
+  await refresh.click();
+  await expect(request).toBeEnabled();
+});
+
+test("shows the attendance brand for a stored fallback without replacing school names", async ({
+  page,
+}) => {
+  const state = await fixtures(page);
+  state.pauseConnection("MathQuest");
+  await page.goto("/settings");
+  const settings = page.getByRole("region", { name: "เชื่อมต่อระบบเช็คชื่อ" });
+  await expect(
+    settings.getByText("ระบบเช็คชื่อ", { exact: true }),
+  ).toBeVisible();
+  await expect(settings).not.toContainText("MathQuest");
+  await page.goto("/export");
+  const open = page.getByRole("button", { name: "ส่งคะแนนไประบบเช็คชื่อ" });
+  const dialog = page.getByRole("dialog", { name: "ส่งคะแนนไประบบเช็คชื่อ" });
+  await open.click();
+  await expect(dialog.getByText("ระบบเช็คชื่อ", { exact: true })).toBeVisible();
+  await expect(dialog).not.toContainText("MathQuest");
+  state.pauseConnection("โรงเรียนปลายทางทดสอบ");
+  await dialog.getByRole("button", { name: "ตรวจสถานะ" }).click();
+  await expect(
+    dialog.getByText("โรงเรียนปลายทางทดสอบ", { exact: true }),
+  ).toBeVisible();
+});
+
+test("a rejected request can be closed and submitted again from settings", async ({
+  page,
+}) => {
+  const state = await fixtures(page);
+  state.rejectNextRequest();
+  await page.goto("/settings");
+  const section = page.getByRole("region", { name: "เชื่อมต่อระบบเช็คชื่อ" });
+  const request = section.getByRole("button", { name: "ขออนุมัติส่งคะแนน" });
+  await request.click();
+  await expect(section).toContainText("รออนุมัติ");
+  await section.getByRole("button", { name: "ตรวจสถานะ" }).click();
+  await expect(section.getByRole("status")).toHaveText("ปฏิเสธ");
+  await section.getByRole("button", { name: "ปิดคำขอ", exact: true }).click();
+  await page.getByRole("button", { name: "ยืนยันปิดคำขอ" }).click();
+  await expect(request).toBeFocused();
+  await request.click();
+  await expect(section).toContainText("รออนุมัติ");
 });
 
 test("a signed request recovers a lost response before polling status", async ({
@@ -473,10 +587,13 @@ test("a signed request recovers a lost response before polling status", async ({
     readOnly: false,
     connection: signed,
     publication: null,
-    signedPairing: {
-      destinationLabel: "โรงเรียนปลายทางทดสอบ",
-      workspaceLabel: "พื้นที่ครูทดสอบ",
-    },
+    signedPairing: signed
+      ? null
+      : {
+          destinationLabel: "โรงเรียนปลายทางทดสอบ",
+          workspaceLabel: "พื้นที่ครูทดสอบ",
+          availability: "ready",
+        },
   });
   await page.route("**/api/integrations/mathquest", async (route) => {
     const method = route.request().method();
@@ -502,7 +619,7 @@ test("a signed request recovers a lost response before polling status", async ({
       };
       return route.fulfill({
         status: 503,
-        json: { error: { messageTh: "ติดต่อ MathQuest ไม่สำเร็จ" } },
+        json: { error: { messageTh: "ติดต่อระบบเช็คชื่อไม่สำเร็จ" } },
       });
     }
     if (method === "PATCH") {
@@ -526,12 +643,14 @@ test("a signed request recovers a lost response before polling status", async ({
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/settings");
-  const section = page.getByRole("region", { name: "เชื่อมต่อ MathQuest" });
+  const section = page.getByRole("region", { name: "เชื่อมต่อระบบเช็คชื่อ" });
   await expect(section).toContainText("พื้นที่ครูทดสอบ");
   await expect(section.getByLabel("รหัสเชื่อมต่อ")).toHaveCount(0);
-  await section.getByRole("checkbox").check();
-  await section.getByRole("button", { name: "ส่งคำขอเชื่อมต่อ" }).click();
+  await section.getByRole("button", { name: "ขออนุมัติส่งคะแนน" }).click();
   await expect(section).toContainText("ยังยืนยันผลไม่ได้");
+  await expect(
+    section.getByRole("button", { name: "ขออนุมัติส่งคะแนน" }),
+  ).toHaveCount(0);
   await section.getByRole("button", { name: "ลองส่งคำขอเดิม" }).click();
   await expect(section).toContainText("รออนุมัติ");
   await accessibleAndContained(page);
@@ -540,7 +659,7 @@ test("a signed request recovers a lost response before polling status", async ({
     fullPage: true,
   });
   await section.getByRole("button", { name: "ตรวจสถานะ" }).click();
-  await expect(section).toContainText("เชื่อมแล้ว");
+  await expect(section).toContainText("เชื่อมต่อแล้ว");
   await expect(
     section.getByRole("combobox", { name: "การเผยแพร่" }),
   ).toHaveValue("manual");
@@ -552,7 +671,7 @@ test("recovers with explicit consent and honest retained-score states across sup
   const state = await fixtures(page);
   state.pauseConnection();
   await page.goto("/settings");
-  const section = page.getByRole("region", { name: "เชื่อมต่อ MathQuest" });
+  const section = page.getByRole("region", { name: "เชื่อมต่อระบบเช็คชื่อ" });
   for (const [name, width, height] of [
     ["desktop", 1440, 1000],
     ["phone", 390, 844],
@@ -570,7 +689,7 @@ test("recovers with explicit consent and honest retained-score states across sup
   }
   await section.getByRole("button", { name: "กู้คืนการเชื่อมต่อ" }).click();
   const dialog = page.getByRole("dialog", {
-    name: "กู้คืนการเชื่อมต่อ MathQuest",
+    name: "กู้คืนการเชื่อมต่อระบบเช็คชื่อ",
   });
   await expect(dialog).toContainText("คะแนนที่เคยเผยแพร่ยังไม่ถูกถอน");
   await expect(
@@ -582,19 +701,20 @@ test("recovers with explicit consent and honest retained-score states across sup
   ).toBeFocused();
   state.recoveryFails(true);
   await dialog.getByRole("button", { name: "ยืนยันกู้คืน" }).click();
-  await expect(dialog).toContainText("ติดต่อ MathQuest ไม่สำเร็จ");
+  await expect(dialog).toContainText("ติดต่อระบบเช็คชื่อไม่สำเร็จ");
   state.recoveryFails(false);
   await dialog.getByRole("button", { name: "ยืนยันกู้คืน" }).click();
   await expect(dialog).not.toBeVisible();
-  await expect(section.getByLabel("รหัสเชื่อมต่อ")).toBeVisible();
-  await expect(section.getByLabel("รหัสเชื่อมต่อ")).toBeFocused();
+  await expect(
+    section.getByRole("button", { name: "ขออนุมัติส่งคะแนน" }),
+  ).toBeFocused();
   state.publicationRecovery();
   await page.goto("/export");
   await page
-    .getByRole("button", { name: "ส่งคะแนนไป MathQuest", exact: true })
+    .getByRole("button", { name: "ส่งคะแนนไประบบเช็คชื่อ", exact: true })
     .click();
   const publication = page.getByRole("dialog", {
-    name: "เผยแพร่คะแนนไป MathQuest",
+    name: "ส่งคะแนนไประบบเช็คชื่อ",
   });
   await expect(publication).toContainText("ถอนคะแนนเดิมผ่านการเชื่อมต่อนี้");
   await expect(
@@ -627,7 +747,7 @@ test("recovers with explicit consent and honest retained-score states across sup
   }
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("button", { name: "ส่งคะแนนไป MathQuest", exact: true }),
+    page.getByRole("button", { name: "ส่งคะแนนไประบบเช็คชื่อ", exact: true }),
   ).toBeFocused();
 });
 
@@ -641,14 +761,14 @@ test("closed-term withdrawal confirms explicitly, retries transport only and exp
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/export");
   await page
-    .getByRole("button", { name: "ส่งคะแนนไป MathQuest", exact: true })
+    .getByRole("button", { name: "ส่งคะแนนไประบบเช็คชื่อ", exact: true })
     .click();
-  const dialog = page.getByRole("dialog", { name: "เผยแพร่คะแนนไป MathQuest" });
+  const dialog = page.getByRole("dialog", { name: "ส่งคะแนนไประบบเช็คชื่อ" });
   await expect(
     dialog.getByRole("button", { name: "เผยแพร่คะแนน", exact: true }),
   ).toBeDisabled();
   await dialog.getByRole("button", { name: "ถอนเผยแพร่", exact: true }).click();
-  await expect(dialog).toContainText("ถอนสำเร็จเมื่อ MathQuest ยืนยันแล้ว");
+  await expect(dialog).toContainText("ถอนสำเร็จเมื่อระบบเช็คชื่อยืนยันแล้ว");
   await accessibleAndContained(page);
   await dialog.screenshot({
     path: ".impeccable/review/integration-purge-confirm-phone.png",
@@ -692,6 +812,6 @@ test("closed-term withdrawal confirms explicitly, retries transport only and exp
   }
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("button", { name: "ส่งคะแนนไป MathQuest", exact: true }),
+    page.getByRole("button", { name: "ส่งคะแนนไประบบเช็คชื่อ", exact: true }),
   ).toBeFocused();
 });

@@ -15,9 +15,8 @@ import {
 } from "@/lib/integrations/mathquest/config";
 import { integrationRpc } from "@/lib/integrations/mathquest/publisher";
 import {
-  initiatePairing,
   initiateSignedPairing,
-  signedPairingAvailable,
+  signedPairingAvailability,
   verifiedPairingEmail,
   refreshPairing,
   revokePairing,
@@ -34,10 +33,15 @@ async function settingsOverview(ctx: Awaited<ReturnType<typeof context>>) {
   );
   if (
     overview.signedPairing &&
-    (!overview.connection || overview.connection.status === "revoked") &&
-    !(await signedPairingAvailable(ctx.schoolId, ctx.user))
+    (!overview.connection || overview.connection.status === "revoked")
   )
-    return { ...overview, signedPairing: null };
+    return {
+      ...overview,
+      signedPairing: {
+        ...overview.signedPairing,
+        availability: await signedPairingAvailability(ctx.schoolId, ctx.user),
+      },
+    };
   return overview;
 }
 export async function GET() {
@@ -58,7 +62,7 @@ export async function POST(request: Request) {
     if (!input.success)
       throw new ApiError(
         "INVALID_PAIRING",
-        "ตรวจรหัสเชื่อมต่อและยืนยันการส่งคะแนน",
+        "คำขออนุมัติไม่ถูกต้อง กรุณาโหลดหน้าตั้งค่าแล้วลองใหม่",
         422,
       );
     const school = await ctx.db
@@ -68,25 +72,14 @@ export async function POST(request: Request) {
       .single();
     if (school.error)
       throw new ApiError("READ_FAILED", "โหลดพื้นที่ทำงานไม่สำเร็จ", 503);
-    const db = integrationServiceClient();
-    if (input.data.method === "signed")
-      await initiateSignedPairing(
-        db,
-        ctx.schoolId,
-        ctx.user,
-        input.data.requestId,
-        school.data.name_th,
-        ctx.access.displayName,
-      );
-    else
-      await initiatePairing(
-        db,
-        ctx.schoolId,
-        ctx.user.id,
-        input.data.requestId,
-        input.data.code,
-        school.data.name_th,
-      );
+    await initiateSignedPairing(
+      integrationServiceClient(),
+      ctx.schoolId,
+      ctx.user,
+      input.data.requestId,
+      school.data.name_th,
+      ctx.access.displayName,
+    );
     return json(await settingsOverview(ctx), 202);
   } catch (error) {
     return failure(pairingFailure(error));

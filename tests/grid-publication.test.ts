@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   compileOmrTemplate,
@@ -9,34 +8,13 @@ import { createSetIdentity } from "@/lib/omr/qr";
 import { scoreEventSchema } from "@/lib/integrations/mathquest/contract";
 import { integrationOverviewSchema } from "@/types/integration";
 import { teacherA, teacherB } from "./score-integration-fixture";
-import { rosterFixture } from "./student-roster-fixture";
+import { signedPairingFixture } from "./student-roster-fixture";
 
 const grid = { ...defaultLayout, printStyle: "school-grid" as const };
-let fixture: Awaited<ReturnType<typeof rosterFixture>>;
+let fixture: Awaited<ReturnType<typeof signedPairingFixture>>;
 
 beforeAll(async () => {
-  fixture = await rosterFixture(true, true);
-  for (const file of [
-    "202610280017_print_v5.sql",
-    "202610280018_batch_confirmation.sql",
-    "202610280019_directory_lifecycle.sql",
-  ])
-    await fixture.db.exec(
-      await readFile(`supabase/migrations/${file}`, "utf8"),
-    );
-  // PGlite has no pg_cron. The production marker represents the separate scheduled task.
-  await fixture.db.exec(
-    "insert into private.app_installation(version) values('202610280020')",
-  );
-  for (const file of [
-    "202611170021_print_school_grid.sql",
-    "202611170022_score_publication_preview.sql",
-    "202611170023_portrait_a4.sql",
-    "202611170024_mathquest_signed_pairing.sql",
-  ])
-    await fixture.db.exec(
-      await readFile(`supabase/migrations/${file}`, "utf8"),
-    );
+  fixture = await signedPairingFixture();
   await fixture.connect();
 }, 60000);
 afterAll(async () => {
@@ -44,7 +22,7 @@ afterAll(async () => {
 });
 
 describe("school-grid print and verified score delivery", () => {
-  it("pins signed attempts, rejects stale IDs, and keeps wire secrets out of the overview", async () => {
+  it("pins signed attempts and activates in manual mode with an empty outbox", async () => {
     const id = crypto.randomUUID();
     const destination = crypto.randomUUID();
     const workspace = { school_id: fixture.schoolB, actor_id: teacherB };
@@ -112,6 +90,31 @@ describe("school-grid print and verified score delivery", () => {
       status: "pending_approval",
     });
     expect(JSON.stringify(status)).not.toContain("sealed-fixture");
+    await fixture.svc("mathquest_service_complete_pairing", {
+      ...scope,
+      status: "active",
+      signed_origin: "https://abcdefghijklmnopqrst.supabase.co",
+      signed_destination: destination,
+      destination_school_id: destination,
+      destination_label: "MathQuest",
+      connection_id: crypto.randomUUID(),
+      scope: "score:write",
+      token_secret: envelope,
+    });
+    const activated = await fixture.rpc(teacherB, "get_mathquest_status", {
+      school_id: fixture.schoolB,
+    });
+    expect(activated.connection).toMatchObject({
+      status: "active",
+      signedStage: "active",
+      mode: "manual",
+      destinationLabel: "MathQuest",
+    });
+    const { rows } = await fixture.db.query<{ total: number }>(
+      "select count(*)::int as total from public.score_sync_outbox where source_workspace_id=$1",
+      [fixture.schoolB],
+    );
+    expect(rows[0].total).toBe(0);
   }, 30000);
   it("registers a portrait full leaf and keeps the two-up QR identical", async () => {
     const portrait = { ...grid, printStyle: "school-grid-portrait" as const };

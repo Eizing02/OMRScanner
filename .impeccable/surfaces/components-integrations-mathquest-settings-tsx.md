@@ -13,9 +13,9 @@ Mode: Operate. Extend settings and the result action bar; preserve the establish
 
 THESIS: A teacher distinguishes confirming a score from allowing students to see it. Connection approval, publication and delivery are separate states.
 
-OWN-WORLD: Inherit DESIGN.md's mint/sky/lavender/lilac, dark ink, Noto Sans Thai, semantic badges, native fields and existing Radix confirmation dialogs. Ordinary classroom daylight and phone use require a light, readable surface.
+OWN-WORLD: Inherit DESIGN.md's navy navigation, cobalt actions, teal completion, dark ink, Noto Sans Thai, semantic badges and existing Radix confirmation dialogs. Ordinary classroom daylight and phone use require a light, readable surface.
 
-STORY: Connect the current personal workspace using a pairing code, wait for school approval, then choose manual publication or consent to future automatic confirmations. Review sent/pending/unmatched results and withdraw before deleting. No key is displayed.
+STORY: See the destination school, request permission with one button, and wait for the attendance administrator to approve or reject the request. Teacher-facing copy names the system ระบบเช็คชื่อ and shows the school separately. Approval grants manual publication by default. Future automatic publishing still needs separate consent. Review sent, pending and unmatched results and withdraw before deleting.
 
 FIRST VIEWPORT: Settings adds one compact section after account identity and before school defaults. Results retains its table and export action; an optional secondary MathQuest button opens a bounded dialog, with destination, confirmed count, truthful status and primary action. Unmatched IDs use a scrollable disclosure. Existing screens do not gain an extra tall panel.
 

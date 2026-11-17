@@ -76,36 +76,35 @@ export const publicationSummarySchema = z.object({
   lastError: z.string().nullable(),
   lastSyncAt: z.string().nullable(),
 });
+const signedPairingAvailabilitySchema = z.enum([
+  "ready",
+  "closed",
+  "unavailable",
+  "google_required",
+]);
+export type SignedPairingAvailability = z.infer<
+  typeof signedPairingAvailabilitySchema
+>;
 export const integrationOverviewSchema = z.object({
   enabled: z.boolean(),
   receiverReady: z.boolean(),
   readOnly: z.boolean(),
   signedPairing: z
-    .object({ destinationLabel: z.string(), workspaceLabel: z.string() })
+    .object({
+      destinationLabel: z.string(),
+      workspaceLabel: z.string(),
+      availability: signedPairingAvailabilitySchema,
+    })
     .nullish(),
   connection: integrationConnectionSchema.nullable(),
   publication: publicationSummarySchema.nullable(),
 });
 export type IntegrationOverview = z.infer<typeof integrationOverviewSchema>;
-const legacyPairingInputSchema = z.strictObject({
-  method: z.literal("code").optional(),
+export const pairingInputSchema = z.strictObject({
+  method: z.literal("signed"),
   requestId: z.uuid(),
-  code: z
-    .string()
-    .trim()
-    .min(8)
-    .max(128)
-    .regex(/^[A-Za-z0-9_-]+$/),
   consent: z.literal(true),
 });
-export const pairingInputSchema = z.union([
-  legacyPairingInputSchema,
-  z.strictObject({
-    method: z.literal("signed"),
-    requestId: z.uuid(),
-    consent: z.literal(true),
-  }),
-]);
 const expectedRequestId = z.uuid().optional();
 export const connectionCommandSchema = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("refresh"), expectedRequestId }),

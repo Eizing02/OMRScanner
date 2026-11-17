@@ -1,5 +1,7 @@
 # ScanSob → MathQuest score publication
 
+For new teacher onboarding, use [signed requests and MathQuest approval](MATHQUEST_SIGNED_PAIRING.md). The code-based profile below describes older connections. The score payload, outbox and runner still use this guide.
+
 Status: implemented locally behind disabled feature flags on 15 October 2026. Migration 010 has **not** been applied to production by this work. No real student data was sent. MathQuest remains a separate project and must implement/verify its receiver before either network flag is enabled.
 
 The user subsequently reported running migration 010 successfully. This is a user-reported installation; the live database has not been independently rechecked. Do not rerun 010 or the base schema when deploying this release. The integration remains disabled until receiver/configuration checks are complete.

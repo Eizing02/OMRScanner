@@ -27,7 +27,7 @@ export function useMathQuest(path: string) {
       const body = await response.json();
       if (!response.ok)
         throw new Error(
-          body.error?.messageTh ?? "โหลดสถานะ MathQuest ไม่สำเร็จ",
+          body.error?.messageTh ?? "โหลดสถานะระบบเช็คชื่อไม่สำเร็จ",
         );
       const result = integrationOverviewSchema.parse(body.data);
       if (mounted.current && isCurrentWorkspace()) {

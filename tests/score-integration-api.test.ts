@@ -30,6 +30,7 @@ import {
   PATCH as CONNECTION,
 } from "@/app/api/integrations/mathquest/route";
 const id = "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  previewFingerprint = "0".repeat(64),
   params = { params: Promise.resolve({ id }) };
 const request = (body: unknown) =>
   new Request(`http://localhost/api/exams/${id}/publication`, {
@@ -90,7 +91,12 @@ describe("publication HTTP tenant and feature boundaries", () => {
   it("derives workspace from session, commits a job and never calls a not-ready receiver", async () => {
     const requestId = crypto.randomUUID();
     const response = await POST(
-      request({ action: "publish", requestId, consent: true }),
+      request({
+        action: "publish",
+        requestId,
+        consent: true,
+        previewFingerprint,
+      }),
       params,
     );
     expect(response.status).toBe(202);
@@ -101,6 +107,7 @@ describe("publication HTTP tenant and feature boundaries", () => {
         request_id: requestId,
         action: "publish",
         consent: true,
+        preview_fingerprint: previewFingerprint,
       },
     });
     expect((await response.json()).data.publication.pending).toBe(1);
@@ -111,6 +118,7 @@ describe("publication HTTP tenant and feature boundaries", () => {
       action: "publish",
       requestId: crypto.randomUUID(),
       consent: true,
+      previewFingerprint,
     };
     for (const input of [
       { ...base, school_id: "spoof" },
@@ -163,6 +171,21 @@ describe("publication HTTP tenant and feature boundaries", () => {
     expect((await PAIR(request({}))).status).toBe(503);
     expect(mock.rpc).not.toHaveBeenCalled();
   });
+  it("refuses new code-based requests and requires explicit consent for signed requests", async () => {
+    vi.stubEnv("MATHQUEST_RECEIVER_VERIFIED", "true");
+    const requestId = crypto.randomUUID();
+    for (const input of [
+      { code: "PAIR_1234", requestId, consent: true },
+      { method: "code", code: "PAIR_1234", requestId, consent: true },
+      { method: "signed", code: "PAIR_1234", requestId, consent: true },
+      { method: "signed", requestId, consent: false },
+    ]) {
+      const response = await PAIR(request(input));
+      expect(response.status).toBe(422);
+      expect((await response.json()).error.code).toBe("INVALID_PAIRING");
+    }
+    expect(mock.rpc).not.toHaveBeenCalled();
+  });
   it("does not expose database messages, returns JSON for malformed input", async () => {
     mock.rpc.mockResolvedValue({
       error: { message: "secret-credential-and-personal-data" },
@@ -173,6 +196,7 @@ describe("publication HTTP tenant and feature boundaries", () => {
         action: "publish",
         requestId: crypto.randomUUID(),
         consent: true,
+        previewFingerprint,
       }),
       params,
     );

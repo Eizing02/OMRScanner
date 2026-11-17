@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 vi.mock("server-only", () => ({}));
 
 import {
-  initiatePairing,
+  initiateSignedPairing,
+  signedPairingAvailability,
   refreshPairing,
   revokePairing,
   recoverPairing,
@@ -74,14 +75,20 @@ describe("server-only MathQuest pairing adapter", () => {
       input: expect.objectContaining({ finish: true }),
     });
   });
-  it("keeps pairing and connection secrets out of browser/database responses", async () => {
-    let encryptedPairing: unknown,
-      completed: Record<string, unknown> | undefined;
+  it("activates an existing legacy request while keeping its token encrypted", async () => {
+    const challenge = "p".repeat(43);
+    const encryptedPairing = sealSecret(
+      challenge,
+      pairingBinding(workspace, requestId),
+    );
+    let completed: Record<string, unknown> | undefined;
     const db = fakeDb((name, input) => {
-      if (name === "mathquest_service_start_pairing") {
-        encryptedPairing = input.pairing_secret;
-        return { id: requestId, secret: encryptedPairing };
-      }
+      if (name === "mathquest_service_credentials")
+        return {
+          id: requestId,
+          status: "pending_approval",
+          secrets: { pairing_secret: encryptedPairing },
+        };
       if (name === "mathquest_service_complete_pairing") {
         completed = input;
         return null;
@@ -91,12 +98,11 @@ describe("server-only MathQuest pairing adapter", () => {
     const fetcher = vi.fn(async (_url: string, init: RequestInit) => {
       const request = JSON.parse(String(init.body));
       expect(request).toMatchObject({
-        action: "request",
+        action: "status",
         request_id: requestId,
         source_workspace_id: workspace,
-        pairing_code: "PAIR_1234",
+        request_secret: challenge,
       });
-      expect(request.request_secret).toMatch(/^[A-Za-z0-9_-]{43}$/);
       return new Response(
         JSON.stringify({
           schema_version: "1.0",
@@ -114,15 +120,8 @@ describe("server-only MathQuest pairing adapter", () => {
       );
     });
     vi.stubGlobal("fetch", fetcher);
-    await initiatePairing(
-      db,
-      workspace,
-      actor,
-      requestId,
-      "PAIR_1234",
-      "พื้นที่ครูจำลอง",
-    );
-    expect(JSON.stringify(encryptedPairing)).not.toContain("PAIR_1234");
+    await refreshPairing(db, workspace, actor, requestId);
+    expect(JSON.stringify(encryptedPairing)).not.toContain(challenge);
     expect(completed).toMatchObject({
       school_id: workspace,
       actor_id: actor,
@@ -135,6 +134,44 @@ describe("server-only MathQuest pairing adapter", () => {
       openSecret(completed!.token_secret, tokenBinding(workspace, requestId)),
     ).toBe(token);
   });
+
+  it.each(["rejected", "expired"])(
+    "closes a confirmed %s request so a new one can be created",
+    async (stage) => {
+      const db = fakeDb((name) =>
+        name === "mathquest_service_credentials"
+          ? {
+              id: requestId,
+              status: "error",
+              last_error_code: "CONNECTION_DENIED",
+              connection_id: null,
+              secrets: { pairing_secret: null, token_secret: null },
+              signed_attempt: { stage },
+            }
+          : null,
+      );
+      const fetcher = vi.fn();
+      vi.stubGlobal("fetch", fetcher);
+      await revokePairing(db, workspace, actor, requestId);
+      expect(fetcher).not.toHaveBeenCalled();
+      expect(db.rpc).toHaveBeenNthCalledWith(2, "mathquest_service_revoke", {
+        input: {
+          school_id: workspace,
+          actor_id: actor,
+          id: requestId,
+          finish: false,
+        },
+      });
+      expect(db.rpc).toHaveBeenNthCalledWith(3, "mathquest_service_revoke", {
+        input: {
+          school_id: workspace,
+          actor_id: actor,
+          id: requestId,
+          finish: true,
+        },
+      });
+    },
+  );
 
   it("polls a pending request with its bound secret and rejects a cross-workspace swap", async () => {
     const challenge = "p".repeat(43);
@@ -420,5 +457,228 @@ describe("server-only MathQuest pairing adapter", () => {
     expect(db.rpc).not.toHaveBeenCalledWith("mathquest_service_recover", {
       input: expect.objectContaining({ finish: true }),
     });
+  });
+});
+
+describe("signed pairing readiness", () => {
+  const email = "teacher@example.test";
+  const user: User = {
+    id: actor,
+    email,
+    app_metadata: {},
+    user_metadata: {},
+    aud: "authenticated",
+    created_at: "2026-11-17T01:00:00.000Z",
+    email_confirmed_at: "2026-11-17T01:00:00.000Z",
+    identities: [
+      {
+        id: actor,
+        user_id: actor,
+        identity_id: actor,
+        provider: "google",
+        identity_data: { email, email_verified: true },
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    vi.stubEnv("MATHQUEST_CODE_FREE_PAIRING_ENABLED", "true");
+    vi.stubEnv("MATHQUEST_CODE_FREE_PAIRING_RECEIVER_VERIFIED", "true");
+    vi.stubEnv("MATHQUEST_DESTINATION_SCHOOL_ID", destination);
+    vi.stubEnv("MATHQUEST_DESTINATION_LABEL", "โรงเรียนจำลอง");
+    vi.stubEnv("MATHQUEST_CODE_FREE_SIGNING_KEY_ID", "fixture");
+    vi.stubEnv(
+      "MATHQUEST_CODE_FREE_SIGNING_KEY",
+      Buffer.alloc(32, 1).toString("base64url"),
+    );
+  });
+
+  it.each([
+    [503, "SIGNED_PAIRING_DISABLED", "closed"],
+    [502, "UNAVAILABLE", "unavailable"],
+    [403, "UNAUTHORIZED", "unavailable"],
+  ] as const)(
+    "handles receiver status %s and code %s",
+    async (status, error, availability) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json({ error }, { status })),
+      );
+      await expect(signedPairingAvailability(workspace, user)).resolves.toBe(
+        availability,
+      );
+    },
+  );
+
+  it.each([destination, actor])(
+    "validates the prepare acknowledgment for school %s",
+    async (replySchool) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (_url: string, init: RequestInit) => {
+          const request = JSON.parse(String(init.body));
+          expect(request).toMatchObject({
+            action: "prepare_signed",
+            source_workspace_id: workspace,
+            sender_verified_email: email,
+          });
+          return Response.json({
+            schema_version: "1.0",
+            action: "prepare_signed",
+            request_id: request.request_id,
+            destination_school_id: replySchool,
+            pairing_window_id: requestId,
+          });
+        }),
+      );
+      await expect(signedPairingAvailability(workspace, user)).resolves.toBe(
+        replySchool === destination ? "ready" : "unavailable",
+      );
+    },
+  );
+
+  it("does not contact the receiver without a verified Google identity", async () => {
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      signedPairingAvailability(workspace, { ...user, identities: [] }),
+    ).resolves.toBe("google_required");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("replays the frozen submission before status and can revoke during an intake pause", async () => {
+    vi.stubEnv("MATHQUEST_CODE_FREE_PAIRING_ENABLED", "false");
+    vi.stubEnv("MATHQUEST_CODE_FREE_PAIRING_RECEIVER_VERIFIED", "false");
+    vi.stubEnv("MATHQUEST_DESTINATION_LABEL", "");
+    const challenge = "p".repeat(43);
+    const window = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+    const origin = "https://aaaaaaaaaaaaaaaaaaaa.supabase.co";
+    const body = JSON.stringify({
+      schema_version: "1.0",
+      action: "request_signed",
+      request_id: requestId,
+      source_workspace_id: workspace,
+      destination_school_id: destination,
+      sender_auth_id: actor,
+      sender_verified_email: email,
+      workspace_label: "พื้นที่จำลอง",
+      requested_at: new Date().toISOString(),
+      request_secret: challenge,
+      pairing_window_id: window,
+    });
+    const signed = {
+      stage: "submit",
+      window_id: window,
+      receiver_origin: origin,
+      destination_school_id: destination,
+      wire_secret: sealSecret(
+        body,
+        `scansob:mathquest:signed-wire:${workspace}:${requestId}`,
+      ),
+    };
+    let active = false;
+    let tokenSecret: unknown;
+    const db = fakeDb((name, input) => {
+      if (name === "mathquest_service_credentials") {
+        expect(input.expected_request_id).toBe(requestId);
+        return {
+          id: requestId,
+          status: active ? "active" : "pending_approval",
+          connection_id: active ? remoteConnection : null,
+          signed_attempt: signed,
+          secrets: {
+            pairing_secret: active
+              ? null
+              : sealSecret(challenge, pairingBinding(workspace, requestId)),
+            token_secret: tokenSecret,
+          },
+        };
+      }
+      if (name === "mathquest_service_complete_pairing") {
+        expect(input.signed_origin).toBe(origin);
+        expect(input.signed_destination).toBe(destination);
+        active = input.status === "active";
+        tokenSecret = input.token_secret;
+        signed.stage = active ? "active" : "waiting";
+      }
+      return null;
+    });
+    const actions: string[] = [];
+    const fetcher = vi.fn(async (_url: string, init: RequestInit) => {
+      const payload = JSON.parse(String(init.body));
+      actions.push(payload.action);
+      expect(payload.request_id).toBe(requestId);
+      expect(payload.source_workspace_id).toBe(workspace);
+      const reply = { schema_version: "1.0", request_id: requestId };
+      if (payload.action === "request_signed") {
+        expect(init.body).toBe(body);
+        expect(payload.pairing_window_id).toBe(window);
+        expect(
+          new Headers(init.headers).get("X-ScanSob-Signature"),
+        ).toBeTruthy();
+        return Response.json({ ...reply, status: "pending_approval" });
+      }
+      if (payload.action === "status") {
+        expect(payload.request_secret).toBe(challenge);
+        return Response.json({
+          ...reply,
+          status: "active",
+          connection: {
+            id: remoteConnection,
+            destination_school_id: destination,
+            destination_label: "MathQuest",
+            scope: "score:write",
+            token,
+          },
+        });
+      }
+      expect(payload.action).toBe("revoke");
+      expect(new Headers(init.headers).get("authorization")).toBe(
+        `Bearer ${token}`,
+      );
+      return Response.json({ ...reply, status: "revoked" });
+    });
+    vi.stubGlobal("fetch", fetcher);
+    await refreshPairing(db, workspace, actor, requestId, email);
+    await refreshPairing(db, workspace, actor, requestId, email);
+    await revokePairing(db, workspace, actor, requestId);
+    expect(actions).toEqual(["request_signed", "status", "revoke"]);
+    expect(db.rpc).not.toHaveBeenCalledWith(
+      "mathquest_service_start_signed_pairing",
+      expect.anything(),
+    );
+    expect(db.rpc).toHaveBeenLastCalledWith("mathquest_service_revoke", {
+      input: {
+        school_id: workspace,
+        actor_id: actor,
+        id: requestId,
+        finish: true,
+      },
+    });
+  });
+
+  it("does not start or prepare an unpublished draft during an intake pause", async () => {
+    vi.stubEnv("MATHQUEST_CODE_FREE_PAIRING_ENABLED", "false");
+    const db = fakeDb(() => ({
+      id: requestId,
+      status: "pending_approval",
+      signed_attempt: { stage: "prepare" },
+      secrets: {
+        pairing_secret: sealSecret(
+          "p".repeat(43),
+          pairingBinding(workspace, requestId),
+        ),
+      },
+    }));
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    await expect(
+      initiateSignedPairing(db, workspace, user, requestId, "พื้นที่จำลอง"),
+    ).rejects.toMatchObject({ code: "SIGNED_PAIRING_DISABLED" });
+    await expect(
+      refreshPairing(db, workspace, actor, requestId, email),
+    ).rejects.toMatchObject({ code: "SIGNED_PAIRING_DISABLED" });
+    expect(db.rpc).toHaveBeenCalledTimes(1);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

@@ -39,6 +39,7 @@ export async function integrationOverview(
           signedPairing: {
             destinationLabel: signed.label,
             workspaceLabel: workspace.data.name_th,
+            availability: "unavailable",
           },
         }
       : {}),

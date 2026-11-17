@@ -14,7 +14,7 @@ function lifecycleError(message: string) {
     EXAM_NOT_FOUND: ["ไม่พบชุดสอบ กรุณาโหลดรายการใหม่", 404],
     EXAM_DELETING: ["ชุดสอบนี้กำลังลบ กรุณาดำเนินการลบต่อให้เสร็จ", 409],
     PUBLICATION_WITHDRAW_REQUIRED: [
-      "ถอนคะแนนใน MathQuest ให้สำเร็จก่อนลบชุดสอบ",
+      "ถอนคะแนนในระบบเช็คชื่อให้สำเร็จก่อนลบชุดสอบ",
       409,
     ],
     DELETE_CONFIRMATION_REQUIRED: ["พิมพ์ชื่อชุดสอบให้ตรงก่อนลบถาวร", 422],

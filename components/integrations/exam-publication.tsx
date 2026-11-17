@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Link2, RefreshCw } from "lucide-react";
 import { Badge, Notice, Modal } from "@/components/ui/primitives";
 import { useMathQuest } from "./use-mathquest";
+import { attendanceDestinationLabel } from "./attendance-destination";
 
 const previewErrors: Record<string, string> = {
   SCORE_IDENTITY_REVIEW: "ตรวจรหัสนักเรียนเทียบกับข้อมูลตอนสอบก่อนส่ง",
@@ -108,7 +109,7 @@ export function ExamPublication({
         onClick={() => setOpen(true)}
       >
         <Link2 size={17} />
-        ส่งคะแนนไป MathQuest
+        ส่งคะแนนไประบบเช็คชื่อ
       </button>
       <Modal
         returnFocusRef={trigger}
@@ -120,22 +121,24 @@ export function ExamPublication({
             setWithdraw(false);
           }
         }}
-        title="เผยแพร่คะแนนไป MathQuest"
+        title="ส่งคะแนนไประบบเช็คชื่อ"
         description={title}
       >
         <div className="integration-publication" aria-busy={busy}>
           {error && <Notice tone="error">{error}</Notice>}
           {!state.receiverReady ? (
-            <Notice tone="warning">ปลายทางยังไม่พร้อมรับคะแนน</Notice>
+            <Notice tone="warning">ระบบเช็คชื่อยังไม่พร้อมรับคะแนน</Notice>
           ) : !conn || conn.status !== "active" ? (
             <p>
-              เชื่อมต่อโรงเรียนใน<Link href="/settings">หน้าตั้งค่า</Link>
-              ก่อนเผยแพร่คะแนน
+              เชื่อมต่อระบบเช็คชื่อใน<Link href="/settings">หน้าตั้งค่า</Link>
+              ก่อนส่งคะแนน
             </p>
           ) : (
             <>
               <div className="integration-summary" aria-live="polite">
-                <strong>{conn.destinationLabel}</strong>
+                <strong>
+                  {attendanceDestinationLabel(conn.destinationLabel)}
+                </strong>
                 <Badge tone={label === "ส่งแล้ว" ? "green" : "amber"}>
                   {label}
                 </Badge>
@@ -203,7 +206,7 @@ export function ExamPublication({
               {!!pub?.unmatched.length && (
                 <details className="integration-unmatched">
                   <summary>
-                    รหัสไม่พบใน MathQuest {pub.unmatched.length} คน
+                    รหัสไม่พบในระบบเช็คชื่อ {pub.unmatched.length} คน
                   </summary>
                   <ul>
                     {pub.unmatched.map((code) => (
@@ -228,13 +231,13 @@ export function ExamPublication({
               {pub?.lastError && (
                 <Notice tone="warning">
                   {pub.withdrawalBlocked
-                    ? "MathQuest ยังยืนยันการถอนคะแนนไม่ได้ กรุณาติดต่อผู้ดูแลปลายทาง"
+                    ? "ระบบเช็คชื่อยังยืนยันการถอนคะแนนไม่ได้ กรุณาติดต่อผู้ดูแลปลายทาง"
                     : pub.canRetryWithdrawal
                       ? "ส่งคำขอถอนไม่สำเร็จ ลองถอนอีกครั้งได้"
                       : pub.termClosed
                         ? pub.canWithdraw
                           ? "ภาคเรียนนี้ปิดรับคะแนน แต่ขอถอนคะแนนเดิมได้"
-                          : "MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว"
+                          : "ระบบเช็คชื่อปิดรับคะแนนภาคเรียนนี้แล้ว"
                         : pub.recoveryRequired
                           ? "ถอนคะแนนเดิมผ่านการเชื่อมต่อนี้ก่อนเผยแพร่อีกครั้ง คะแนนใน ScanSob ยังคงอยู่"
                           : "ส่งไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองใหม่"}
@@ -242,7 +245,7 @@ export function ExamPublication({
               )}
               {pub?.termClosed && !pub.lastError && (
                 <Notice tone="warning">
-                  MathQuest ปิดรับคะแนนภาคเรียนนี้แล้ว
+                  ระบบเช็คชื่อปิดรับคะแนนภาคเรียนนี้แล้ว
                   {pub.state === "withdraw_pending"
                     ? " กำลังรอยืนยันการถอน"
                     : pub.canWithdraw
@@ -254,8 +257,8 @@ export function ExamPublication({
                 <>
                   <Notice tone="warning">
                     {pub?.termClosed
-                      ? "ถอนสำเร็จเมื่อ MathQuest ยืนยันแล้ว คะแนนใน ScanSob ยังคงอยู่"
-                      : "เมื่อ MathQuest ยืนยันการถอน นักเรียนจะไม่เห็นคะแนนชุดนี้"}
+                      ? "ถอนสำเร็จเมื่อระบบเช็คชื่อยืนยันแล้ว คะแนนใน ScanSob ยังคงอยู่"
+                      : "เมื่อระบบเช็คชื่อยืนยันการถอน นักเรียนจะไม่เห็นคะแนนชุดนี้"}
                   </Notice>
                   <div className="integration-actions">
                     <button

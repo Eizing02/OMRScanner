@@ -3,9 +3,15 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { ApiError } from "@/lib/supabase/api";
+import type { SignedPairingAvailability } from "@/types/integration";
 import { integrationRpc } from "./publisher";
 import { receiverRequest, ReceiverError } from "./http";
-import { receiverOrigin, signedPairingConfig } from "./config";
+import {
+  receiverOrigin,
+  signedPairingConfig,
+  signedPairingCredentials,
+  signedPairingIntakeEnabled,
+} from "./config";
 import {
   signedDraftSchema,
   signedPairHeaders,
@@ -107,10 +113,14 @@ export function verifiedPairingEmail(user: User) {
   if (!verified) return undefined;
   return email;
 }
-export async function signedPairingAvailable(workspace: string, user: User) {
+export async function signedPairingAvailability(
+  workspace: string,
+  user: User,
+): Promise<SignedPairingAvailability> {
   const config = signedPairingConfig();
   const email = verifiedPairingEmail(user);
-  if (!config || !email) return false;
+  if (!config) return "unavailable";
+  if (!email) return "google_required";
   const id = crypto.randomUUID();
   try {
     const body = JSON.stringify(
@@ -129,15 +139,21 @@ export async function signedPairingAvailable(workspace: string, user: User) {
         signedHeaders: signedPairHeaders(body, config.keyId, config.key),
       }),
     );
-    return (
+    if (
       result.success &&
       result.data.request_id === id &&
       result.data.destination_school_id === config.destination
-    );
-  } catch {
-    // A capability probe never creates a remote request or exposes the allowlist.
-    return false;
+    )
+      return "ready";
+  } catch (error) {
+    if (
+      error instanceof ReceiverError &&
+      error.code === "SIGNED_PAIRING_DISABLED"
+    )
+      return "closed";
   }
+  // A probe never creates a remote request or exposes the receiver's error body.
+  return "unavailable";
 }
 export async function initiateSignedPairing(
   db: SupabaseClient,
@@ -149,7 +165,14 @@ export async function initiateSignedPairing(
 ) {
   const config = signedPairingConfig();
   if (!config)
-    throw new ReceiverError("SIGNED_PAIRING_DISABLED", false, 0, 503);
+    throw new ReceiverError(
+      signedPairingIntakeEnabled()
+        ? "SIGNED_PAIRING_CONFIG_UNAVAILABLE"
+        : "SIGNED_PAIRING_DISABLED",
+      false,
+      0,
+      503,
+    );
   const email = verifiedPairingEmail(user);
   if (!email)
     throw new ApiError(
@@ -207,9 +230,13 @@ async function signedSubmit(
 ) {
   if (attempt.stage === "preparing")
     throw new ReceiverError("SIGNED_PREPARE_UNCERTAIN", false);
-  const config = signedPairingConfig();
-  if (!config)
+  if (attempt.stage === "prepare" && !signedPairingIntakeEnabled())
     throw new ReceiverError("SIGNED_PAIRING_DISABLED", false, 0, 503);
+  // A frozen submission can already exist at the receiver. Retry its bytes even
+  // when new intake is paused, using only the pinned destination and signer.
+  const config = signedPairingCredentials();
+  if (!config)
+    throw new ReceiverError("SIGNED_PAIRING_CONFIG_UNAVAILABLE", false, 0, 503);
   if (
     config.destination !== attempt.destination_school_id ||
     receiverOrigin() !== attempt.receiver_origin
@@ -293,41 +320,6 @@ async function signedSubmit(
     );
   await completePair(db, workspace, actor, id, await request(body), attempt);
 }
-export async function initiatePairing(
-  db: SupabaseClient,
-  workspace: string,
-  actor: string,
-  requestId: string,
-  code: string,
-  workspaceLabel: string,
-) {
-  const started = await integrationRpc(db, "mathquest_service_start_pairing", {
-    school_id: workspace,
-    actor_id: actor,
-    request_id: requestId,
-    pairing_secret: sealSecret(
-      randomBytes(32).toString("base64url"),
-      pairingBinding(workspace, requestId),
-    ),
-  });
-  const secret = openSecret(
-    started.secret,
-    pairingBinding(workspace, requestId),
-  );
-  const response = await receiverRequest(
-    "pair-scansob-workspace",
-    JSON.stringify({
-      schema_version: "1.0",
-      action: "request",
-      request_id: requestId,
-      source_workspace_id: workspace,
-      workspace_label: workspaceLabel,
-      request_secret: secret,
-      pairing_code: code,
-    }),
-  );
-  await completePair(db, workspace, actor, requestId, response);
-}
 export async function refreshPairing(
   db: SupabaseClient,
   workspace: string,
@@ -400,40 +392,53 @@ export async function revokePairing(
   const challenge = row.secrets.pairing_secret
     ? openSecret(row.secrets.pairing_secret, pairingBinding(workspace, row.id))
     : undefined;
-  if ((row.status === "active" || row.connection_id) && !token)
-    throw new ReceiverError("INTEGRATION_SECRET_UNAVAILABLE", false);
-  let connectionId = row.connection_id;
-  if (!row.signed_attempt && !connectionId && !token && challenge) {
-    // A remote approval can commit before its token reaches ScanSob. Recover
-    // that token in memory; never activate the locally frozen request.
-    const value = parsePair(
-      row.id,
-      await receiverRequest(
-        "pair-scansob-workspace",
-        JSON.stringify({
-          schema_version: "1.0",
-          action: "status",
-          request_id: row.id,
-          source_workspace_id: workspace,
-          request_secret: challenge,
-        }),
-      ),
-    );
-    if (value.connection) {
-      token = value.connection.token;
-      connectionId = value.connection.id;
+  // A validated terminal reply has already cleared the challenge. Closing its
+  // local record frees the workspace for another request without a remote revoke.
+  const terminal =
+    row.status === "error" &&
+    row.last_error_code === "CONNECTION_DENIED" &&
+    !row.connection_id &&
+    !token &&
+    !challenge &&
+    (!row.signed_attempt ||
+      row.signed_attempt.stage === "rejected" ||
+      row.signed_attempt.stage === "expired");
+  if (!terminal) {
+    if ((row.status === "active" || row.connection_id) && !token)
+      throw new ReceiverError("INTEGRATION_SECRET_UNAVAILABLE", false);
+    let connectionId = row.connection_id;
+    if (!row.signed_attempt && !connectionId && !token && challenge) {
+      // A remote approval can commit before its token reaches ScanSob. Recover
+      // that token in memory; never activate the locally frozen request.
+      const value = parsePair(
+        row.id,
+        await receiverRequest(
+          "pair-scansob-workspace",
+          JSON.stringify({
+            schema_version: "1.0",
+            action: "status",
+            request_id: row.id,
+            source_workspace_id: workspace,
+            request_secret: challenge,
+          }),
+        ),
+      );
+      if (value.connection) {
+        token = value.connection.token;
+        connectionId = value.connection.id;
+      }
     }
+    if (!token && !challenge)
+      throw new ReceiverError("INTEGRATION_SECRET_UNAVAILABLE", false);
+    await remoteRevoke(
+      workspace,
+      row.id,
+      connectionId,
+      token,
+      challenge,
+      row.signed_attempt?.receiver_origin,
+    );
   }
-  if (!token && !challenge)
-    throw new ReceiverError("INTEGRATION_SECRET_UNAVAILABLE", false);
-  await remoteRevoke(
-    workspace,
-    row.id,
-    connectionId,
-    token,
-    challenge,
-    row.signed_attempt?.receiver_origin,
-  );
   await integrationRpc(db, "mathquest_service_revoke", {
     school_id: workspace,
     actor_id: actor,
@@ -515,27 +520,29 @@ export function pairingFailure(error: unknown) {
     return new ApiError(error.code, error.messageTh, error.status, 5);
   if (!(error instanceof ReceiverError)) return error;
   const message: Record<string, string> = {
-    CONNECTION_DENIED: "MathQuest ไม่อนุญาตคำขอนี้ กรุณาสอบถามผู้ดูแลปลายทาง",
-    SIGNED_PAIRING_DISABLED: "MathQuest ยังไม่เปิดรับคำขอแบบไม่ใช้รหัส",
+    CONNECTION_DENIED: "ระบบเช็คชื่อไม่อนุญาตคำขอนี้ กรุณาสอบถามผู้ดูแลปลายทาง",
+    SIGNED_PAIRING_DISABLED: "ระบบเช็คชื่อยังไม่เปิดรับคำขอ",
+    SIGNED_PAIRING_CONFIG_UNAVAILABLE:
+      "ตรวจความพร้อมของระบบเช็คชื่อไม่ได้ กรุณาติดต่อผู้ดูแลระบบ",
     SIGNED_PREPARE_UNCERTAIN:
       "ยังยืนยันรอบเปิดรับไม่ได้ กรุณายกเลิกคำขอนี้ก่อนส่งใหม่",
     PAIRING_WINDOW_CHANGED:
       "รอบเปิดรับเปลี่ยนแล้ว กรุณายกเลิกคำขอนี้ก่อนส่งใหม่",
     PAIRING_WORKSPACE_BUSY:
-      "MathQuest มีคำขอหรือการเชื่อมต่ออยู่แล้ว กรุณาตรวจที่ปลายทาง",
+      "ระบบเช็คชื่อมีคำขอหรือการเชื่อมต่ออยู่แล้ว กรุณาตรวจที่ปลายทาง",
     PAIRING_REQUEST_CHANGED: "คำขอเปลี่ยนแล้ว กรุณาโหลดสถานะล่าสุด",
     PAIRING_REQUEST_CONFLICT:
-      "คำขอไม่ตรงกับรายการที่ MathQuest รับไว้ กรุณาตรวจสถานะก่อน",
+      "คำขอไม่ตรงกับรายการที่ระบบเช็คชื่อรับไว้ กรุณาตรวจสถานะก่อน",
     PAIRING_DESTINATION_CHANGED: "ค่าปลายทางต่างจากคำขอเดิม กรุณาติดต่อผู้ดูแล",
     INTEGRATION_SECRET_UNAVAILABLE:
       "ข้อมูลเชื่อมต่อไม่พร้อม กรุณาติดต่อผู้ดูแลเพื่อกู้คืน",
-    INVALID_ACK: "MathQuest ตอบรับไม่ตรงกับคำขอ กรุณาตรวจสถานะ",
+    INVALID_ACK: "ระบบเช็คชื่อตอบรับไม่ตรงกับคำขอ กรุณาตรวจสถานะ",
   };
-  const transient = error.retryable || error.code === "SIGNED_PAIRING_DISABLED";
+  const transient = error.retryable || error.status === 503;
   return new ApiError(
     error.code,
     message[error.code] ??
-      "ติดต่อ MathQuest ไม่สำเร็จ กรุณาลองตรวจสถานะอีกครั้ง",
+      "ติดต่อระบบเช็คชื่อไม่สำเร็จ กรุณาลองตรวจสถานะอีกครั้ง",
     error.status === 429 ? 429 : transient ? 503 : 409,
     error.retryAfter,
   );
