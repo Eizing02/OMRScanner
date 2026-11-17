@@ -1,7 +1,10 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFile } from "node:fs/promises";
 import { createSetIdentity } from "@/lib/omr/qr";
-import { defaultLayout as currentLayout } from "@/lib/omr/generate-template";
+import {
+  defaultLayout as currentLayout,
+  type SheetLayout,
+} from "@/lib/omr/generate-template";
 const defaultLayout = {
   ...currentLayout,
   printStyle: "school" as const,
@@ -176,6 +179,7 @@ export async function integrationFixture(
       term?: number;
       year?: number;
     } = {},
+    printStyle: SheetLayout["printStyle"] = defaultLayout.printStyle,
   ) => {
     const config = {
       title: "แบบทดสอบจำลอง",
@@ -204,6 +208,7 @@ export async function integrationFixture(
       ).id;
     const identity = await createSetIdentity({
       ...defaultLayout,
+      printStyle,
       school: "พื้นที่ส่วนตัว",
       examId,
       examVersion: version,

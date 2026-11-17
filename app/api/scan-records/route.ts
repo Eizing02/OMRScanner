@@ -22,6 +22,7 @@ import {
   type Raster,
 } from "@/lib/omr/scan-qr";
 import { readOpticalMarks } from "@/lib/omr/detect-bubbles";
+import { isPortraitA4Template } from "@/lib/omr/school-grid";
 import { scanDatabaseError } from "@/lib/omr/scan-errors";
 import { rosterRpc } from "@/lib/import/roster-api";
 export const runtime = "nodejs";
@@ -218,10 +219,13 @@ export async function POST(request: Request) {
     if (!template) throw scanDatabaseError("QR_NOT_REGISTERED");
     mark("template");
     const full = template.layout_json.paperMode === "full";
-    if (full && input.paper !== "a4")
+    const portrait = isPortraitA4Template(template.layout_json);
+    if (full && input.paper !== (portrait ? "single" : "a4"))
       throw new ApiError(
         "PAPER_MODE",
-        "ชุดนี้ใช้ A4 เต็มแผ่น เลือก A4 ทั้งแผ่นแล้วปรับมุมใหม่",
+        portrait
+          ? "ชุดนี้ใช้ A4 แนวตั้ง เลือกกระดาษแนวตั้งแล้วปรับมุมใหม่"
+          : "ชุดนี้ใช้ A4 แนวนอน เลือก A4 แนวนอนทั้งแผ่นแล้วปรับมุมใหม่",
         422,
       );
     const sheets =

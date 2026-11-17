@@ -8,15 +8,18 @@ import {
 export const createSheetToken = () => `SAS:${crypto.randomUUID()}`;
 export async function createSetIdentity(layout: SheetLayout) {
   const parsed = layoutSchema.parse(layout);
+  const full = resolveGeometry(parsed).sheetsPerPage === 1;
   // A signed URL expires and the current school logo can change on reprint.
   // Neither is part of the answer geometry or the exam/key identity.
-  const locked = {
+  const locked: SheetLayout = {
     ...parsed,
     logo: null,
-    paperMode:
-      resolveGeometry(parsed).sheetsPerPage === 1
-        ? ("full" as const)
-        : ("auto" as const),
+    // Two-up sheets retain the existing geometry-6 identity.
+    printStyle:
+      !full && parsed.printStyle === "school-grid-portrait"
+        ? "school-grid"
+        : parsed.printStyle,
+    paperMode: full ? ("full" as const) : ("auto" as const),
   };
   const snapshot = { layout: locked, omr: compileOmrTemplate(locked) };
   const digest = await crypto.subtle.digest(

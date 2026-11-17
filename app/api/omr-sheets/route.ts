@@ -198,10 +198,10 @@ export async function POST(request: Request) {
       layoutHash: registered.layoutHash,
       omr: registered.omr,
       print: {
-        paperWidthMm: 297,
-        paperHeightMm: 210,
+        paperWidthMm: g.paperWidth,
+        paperHeightMm: g.paperHeight,
         sheetWidthMm: g.sheetWidth,
-        sheetHeightMm: 210,
+        sheetHeightMm: g.sheetHeight,
         sheetsPerPage: g.sheetsPerPage,
         pageCount: Math.ceil(registered.sheets.length / g.sheetsPerPage),
         scalePercent: 100,

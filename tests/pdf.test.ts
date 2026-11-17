@@ -42,6 +42,76 @@ beforeAll(() => {
   });
 });
 describe("print PDF actual output", () => {
+  it("exports each full school-grid sheet as portrait A4, including subsequent pages", async () => {
+    const result = await buildPrintPdf(
+      {
+        ...defaultLayout,
+        printStyle: "school-grid-portrait",
+        school: "โรงเรียนกุงแก้ววิทยาคาร",
+        logo: "/omr-assets/school-logo.png",
+        questionCount: 60,
+        choiceCount: 5,
+        totalScore: 60,
+      },
+      printStudents,
+    );
+    expect(result.manifest.print).toMatchObject({
+      paperWidthMm: 210,
+      paperHeightMm: 297,
+      sheetWidthMm: 210,
+      sheetHeightMm: 297,
+      sheetsPerPage: 1,
+      pageCount: 2,
+    });
+    expect(result.manifest.omr.geometryVersion).toBe(7);
+    for (const page of [1, 2]) {
+      result.pdf.setPage(page);
+      expect(result.pdf.internal.pageSize.getWidth()).toBeCloseTo(210, 1);
+      expect(result.pdf.internal.pageSize.getHeight()).toBeCloseTo(297, 1);
+    }
+    if (process.env.PRINT_QA_ARTIFACTS === "1") {
+      await mkdir("output/pdf", { recursive: true });
+      await writeFile(
+        "output/pdf/scansob-school-grid-60-portrait.pdf",
+        Buffer.from(result.pdf.output("arraybuffer")),
+      );
+    }
+  });
+  it("prints the school grid at 30/48/60 with the same circles as the registered geometry", async () => {
+    for (const [questionCount, choiceCount, perPage] of [
+      [30, 4, 2],
+      [48, 5, 2],
+      [60, 5, 1],
+    ] as const) {
+      const layout = {
+        ...defaultLayout,
+        printStyle: "school-grid" as const,
+        questionCount,
+        choiceCount,
+        totalScore: questionCount,
+        school: "โรงเรียนกุงแก้ววิทยาคาร",
+        logo: "/omr-assets/school-logo.png",
+      };
+      const result = await buildPrintPdf(layout, printStudents);
+      expect(result.manifest.print.sheetsPerPage).toBe(perPage);
+      expect(result.pdf.getNumberOfPages()).toBe(perPage === 2 ? 1 : 2);
+      expect(result.manifest.omr.geometryVersion).toBe(6);
+      expect(result.manifest.omr.centersMm.answers).toHaveLength(
+        questionCount * choiceCount,
+      );
+      expect(result.manifest.sheets.map((sheet) => sheet.studentCode)).toEqual([
+        "02074",
+        "00005",
+      ]);
+      if (process.env.PRINT_QA_ARTIFACTS === "1") {
+        await mkdir("output/pdf", { recursive: true });
+        await writeFile(
+          `output/pdf/scansob-school-grid-${questionCount}.pdf`,
+          Buffer.from(result.pdf.output("arraybuffer")),
+        );
+      }
+    }
+  });
   it("embeds the original school logo dimensions without downsampling", async () => {
     const result = await buildPrintPdf(
       { ...defaultLayout, logo: "/omr-assets/school-logo.png" },

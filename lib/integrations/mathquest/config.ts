@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { ApiError } from "@/lib/supabase/api";
+import { z } from "zod";
 export function integrationFlags() {
   return {
     enabled: process.env.SCORE_INTEGRATION_ENABLED === "true",
@@ -45,6 +46,31 @@ export function receiverOrigin() {
       503,
     );
   }
+}
+export function signedPairingConfig() {
+  if (
+    process.env.MATHQUEST_CODE_FREE_PAIRING_ENABLED !== "true" ||
+    process.env.MATHQUEST_CODE_FREE_PAIRING_RECEIVER_VERIFIED !== "true"
+  )
+    return null;
+  const config = z
+    .object({
+      destination: z.uuid(),
+      label: z.string().min(1).max(120),
+      keyId: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+      key: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+    })
+    .safeParse({
+      destination: process.env.MATHQUEST_DESTINATION_SCHOOL_ID?.toLowerCase(),
+      label: process.env.MATHQUEST_DESTINATION_LABEL?.trim(),
+      keyId: process.env.MATHQUEST_CODE_FREE_SIGNING_KEY_ID,
+      key: process.env.MATHQUEST_CODE_FREE_SIGNING_KEY,
+    });
+  if (!config.success) return null;
+  const key = Buffer.from(config.data.key, "base64url");
+  if (key.length !== 32 || key.toString("base64url") !== config.data.key)
+    return null;
+  return { ...config.data, key };
 }
 // Isolated integration-only credential. Never use the old/exposed service-role key.
 // Teacher publication commands still use their session and RLS.

@@ -116,6 +116,7 @@ Document detection in the browser and optical-mark recognition on the server are
 
 - Approved 28 October 2026: keep four existing corner markers; defer extra/coded markers. New print jobs use school-v2 / geometry 5 with one-line school name, bold populated identity, larger QR and fill examples outside answer fields; preserve geometry 2/3/4 reads. Cut half-sheets are the primary continuous-scanning format. Auto capture feeds a bounded in-memory serial upload queue, waits for paper removal before re-arming, retains failed jobs for retry and keeps every score pending. Teachers may preview/select ready results from the current page and confirm them together through revision-guarded authoritative review. SQL 017/018 are prepared locally; installation requires separate production approval. See docs/CONTINUOUS_SCAN_PRINT_V5.md.
 
+- Approved school-grid update: two-up landscape A4 uses geometry 6 with up to 48 questions per leaf. Full sheets use portrait A4 and geometry 7 with up to 60 questions. Expand to full portrait before registration when the exam or text exceeds the half-sheet layout. Read registered geometry 2–6 and retain four corner marks. See docs/SCHOOL_GRID_AND_SCORE_PUBLICATION.md for database rollout and physical scan acceptance.
 - In-browser paper detection from the camera feed: **show an outline on the four document corners and darken the area outside the detected paper**.
 - Clearly distinguish searching (neutral), detected but not ready (amber), and ready to capture (green), supported by text/icons rather than color alone.
 - Offer device-friendly prompts: move closer, improve lighting, hold steady, include all corners, turn off glare.
@@ -198,6 +199,8 @@ Offer recovery actions that preserve progress. Examples: retake image, adjust co
 **Current status (10 October 2026):** roster/exams/locked PDF/QR, private scan Storage, server ID/bubble reading, persisted provisional grading/review/confirmation and score reports exist. This upgrade adds Scanic/camera/binary-image optimization without changing historical QR/geometry or production schema. Local synthetic tests are not a physical accuracy certificate or live Google/Supabase end-to-end acceptance. See `docs/SCANNER_MAJOR_UPGRADE_IMPLEMENTATION.md` and `docs/SCANNER_PERFORMANCE_BENCHMARK.md` for measured results and remaining work.
 
 ### Optional MathQuest score publication (15 October 2026)
+
+- The results page previews the destination, locked exam metadata, confirmed results and pending review count before manual publication. The server binds the approved preview to the outgoing revision and checks historical scan identity against the student's exact five-digit code. A transport retry reuses the immutable event, while reconciling receiver issues requires a fresh reviewed publication.
 
 - ScanSob remains the grading source of truth. `confirmed` means teacher-confirmed in ScanSob; publication is a separate, explicit state.
 - An approved teacher may pair only the current private Workspace with a MathQuest destination using a short-lived code and manual destination approval. Tokens stay server-only and encrypted at rest.

@@ -378,7 +378,7 @@ export function ExamLibrary() {
                   <td>{exam.classroom}</td>
                   <td>
                     <span>เวอร์ชัน {exam.version}</span>
-                    <small>A4 แนวนอน · 2 ใบ</small>
+                    <small>2 ใบต่อแผ่น หรือเต็ม A4 แนวตั้ง</small>
                   </td>
                   <td>
                     {exam.deleting && <Badge tone="red">กำลังลบ</Badge>}

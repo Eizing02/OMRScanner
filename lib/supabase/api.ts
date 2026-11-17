@@ -10,6 +10,7 @@ export class ApiError extends Error {
     public code: string,
     public messageTh: string,
     public status: number,
+    public retryAfter?: number,
   ) {
     super(messageTh);
   }
@@ -30,7 +31,12 @@ export function failure(error: unknown) {
       },
       {
         status: error.status,
-        headers: { "Cache-Control": "private, no-store" },
+        headers: {
+          "Cache-Control": "private, no-store",
+          ...(error.retryAfter
+            ? { "Retry-After": String(error.retryAfter) }
+            : {}),
+        },
       },
     );
   if (error instanceof Error && error.message === "SUPABASE_NOT_CONFIGURED")

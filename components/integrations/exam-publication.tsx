@@ -4,6 +4,15 @@ import Link from "next/link";
 import { Link2, RefreshCw } from "lucide-react";
 import { Badge, Notice, Modal } from "@/components/ui/primitives";
 import { useMathQuest } from "./use-mathquest";
+
+const previewErrors: Record<string, string> = {
+  SCORE_IDENTITY_REVIEW: "ตรวจรหัสนักเรียนเทียบกับข้อมูลตอนสอบก่อนส่ง",
+  MIXED_EXAM_METADATA: "ผลสอบใช้ข้อมูลชุดสอบต่างรุ่น ตรวจข้อมูลชุดสอบก่อนส่ง",
+  ZERO_MAX_SCORE: "ตรวจคะแนนเต็มและคะแนนที่ยืนยันแล้วก่อนส่ง",
+  SYNC_LIMIT: "จำนวนผลสอบเกินขอบเขตของการส่งคะแนนหนึ่งชุด",
+  NO_CONFIRMED_RESULTS: "ยืนยันผลในศูนย์ตรวจสอบก่อนส่งคะแนน",
+};
+
 export function ExamPublication({
   examId,
   title,
@@ -11,15 +20,21 @@ export function ExamPublication({
   examId: string;
   title: string;
 }) {
-  const { state, loading, busy, error, readOnly, mode, mutate, refresh } =
-    useMathQuest(`/api/exams/${examId}/publication`);
   const [open, setOpen] = useState(false),
-    [consent, setConsent] = useState(false),
+    [consent, setConsent] = useState<string | null>(null),
     [withdraw, setWithdraw] = useState(false);
-  const prepared = useRef<{ action: string; id: string } | null>(null);
+  const { state, loading, busy, error, readOnly, mode, mutate, refresh } =
+    useMathQuest(`/api/exams/${examId}/publication${open ? "?preview=1" : ""}`);
+  const prepared = useRef<{
+    action: string;
+    id: string;
+    fingerprint: string | null;
+  } | null>(null);
   const trigger = useRef<HTMLButtonElement | null>(null);
   const pub = state?.publication,
     conn = state?.connection;
+  const preview = pub?.preview;
+  const fingerprint = preview?.fingerprint ?? null;
   const disabled =
     busy ||
     readOnly ||
@@ -28,18 +43,38 @@ export function ExamPublication({
     conn.revocationPending ||
     conn.status !== "active";
   const publicationBlocked = pub?.termClosed || pub?.recoveryRequired;
+  const canPublish =
+    !disabled &&
+    !publicationBlocked &&
+    conn?.enabled &&
+    Boolean(fingerprint) &&
+    pub?.state !== "withdraw_pending";
   async function command(action: "publish" | "withdraw" | "retry") {
-    if (prepared.current?.action !== action)
-      prepared.current = { action, id: crypto.randomUUID() };
+    const approval = action === "publish" ? fingerprint : null;
+    if (
+      action === "publish" &&
+      (!canPublish || !approval || consent !== approval)
+    )
+      return;
+    if (
+      prepared.current?.action !== action ||
+      prepared.current.fingerprint !== approval
+    )
+      prepared.current = {
+        action,
+        id: crypto.randomUUID(),
+        fingerprint: approval,
+      };
     if (
       await mutate("POST", {
         action,
         requestId: prepared.current.id,
         consent: true,
+        ...(approval ? { previewFingerprint: approval } : {}),
       })
     ) {
       prepared.current = null;
-      setConsent(false);
+      setConsent(null);
       setWithdraw(false);
     }
   }
@@ -58,10 +93,10 @@ export function ExamPublication({
               ? "ต้องถอนคะแนนเดิม"
               : pub?.lastError
                 ? "ส่งไม่สำเร็จ"
-                : pub?.unmatched.length || pub?.invalid.length
-                  ? "มีรหัสต้องตรวจ"
-                  : pub?.pending
-                    ? "รอส่ง"
+                : pub?.pending
+                  ? "รอส่ง"
+                  : pub?.unmatched.length || pub?.invalid.length
+                    ? "ส่งบางส่วน"
                     : pub?.revision && pub.delivered
                       ? "ส่งแล้ว"
                       : "ยังไม่เผยแพร่";
@@ -73,7 +108,7 @@ export function ExamPublication({
         onClick={() => setOpen(true)}
       >
         <Link2 size={17} />
-        MathQuest
+        ส่งคะแนนไป MathQuest
       </button>
       <Modal
         returnFocusRef={trigger}
@@ -81,7 +116,7 @@ export function ExamPublication({
         onOpenChange={(value) => {
           setOpen(value);
           if (!value) {
-            setConsent(false);
+            setConsent(null);
             setWithdraw(false);
           }
         }}
@@ -99,22 +134,67 @@ export function ExamPublication({
             </p>
           ) : (
             <>
-              <div className="integration-summary">
+              <div className="integration-summary" aria-live="polite">
                 <strong>{conn.destinationLabel}</strong>
                 <Badge tone={label === "ส่งแล้ว" ? "green" : "amber"}>
                   {label}
                 </Badge>
               </div>
+              {preview?.metadata && (
+                <p className="integration-exam-scope">
+                  {preview.metadata.title !== title && (
+                    <strong>
+                      {preview.metadata.title}
+                      <br />
+                    </strong>
+                  )}
+                  {preview.metadata.subject} · {preview.metadata.exam_type} ·{" "}
+                  {preview.metadata.classroom} · ภาคเรียน{" "}
+                  {preview.metadata.term}/{preview.metadata.academic_year}
+                </p>
+              )}
               <dl className="integration-counts">
                 <div>
                   <dt>ยืนยันแล้ว</dt>
-                  <dd>{pub?.confirmed ?? 0} คน</dd>
+                  <dd>{preview?.confirmedCount ?? pub?.confirmed ?? 0} คน</dd>
                 </div>
                 <div>
-                  <dt>ส่งสำเร็จ</dt>
+                  <dt>รอตรวจ</dt>
+                  <dd>
+                    {preview?.reviewCount ?? "—"}
+                    {preview ? " คน" : ""}
+                  </dd>
+                </div>
+                <div>
+                  <dt>รับแล้ว</dt>
                   <dd>{pub?.delivered ?? 0} คน</dd>
                 </div>
               </dl>
+              {preview?.blocked && !withdraw && (
+                <Notice tone="warning">
+                  {previewErrors[preview.blocked] ?? "ตรวจข้อมูลผลสอบก่อนส่ง"}
+                </Notice>
+              )}
+              {!preview && (
+                <Notice>โหลดรายการที่จะส่งด้วยปุ่มตรวจสถานะด้านล่าง</Notice>
+              )}
+              {!!preview?.identityIssueCount && (
+                <details className="integration-unmatched">
+                  <summary>
+                    รหัสต่างจากตอนสอบ {preview.identityIssueCount} รายการ
+                  </summary>
+                  <ul>
+                    {preview.identityIssues.map(
+                      ({ originalCode, currentCode }, index) => (
+                        <li key={index}>
+                          ตอนสอบ {originalCode ?? "ไม่มีหลักฐาน"} · ปัจจุบัน{" "}
+                          {currentCode ?? "ไม่พบรหัส"}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </details>
+              )}
               {!!pub?.pending &&
                 !pub.withdrawalBlocked &&
                 (!pub.termClosed || pub.state === "withdraw_pending") && (
@@ -122,12 +202,17 @@ export function ExamPublication({
                 )}
               {!!pub?.unmatched.length && (
                 <details className="integration-unmatched">
-                  <summary>รหัสไม่ตรง {pub.unmatched.length} คน</summary>
+                  <summary>
+                    รหัสไม่พบใน MathQuest {pub.unmatched.length} คน
+                  </summary>
                   <ul>
                     {pub.unmatched.map((code) => (
                       <li key={code}>{code}</li>
                     ))}
                   </ul>
+                  <p className="muted">
+                    ตรวจทะเบียนทั้งสองระบบ แล้วกดเผยแพร่คะแนนอีกครั้ง
+                  </p>
                 </details>
               )}
               {!!pub?.invalid.length && (
@@ -170,7 +255,7 @@ export function ExamPublication({
                   <Notice tone="warning">
                     {pub?.termClosed
                       ? "ถอนสำเร็จเมื่อ MathQuest ยืนยันแล้ว คะแนนใน ScanSob ยังคงอยู่"
-                      : "นักเรียนจะไม่เห็นคะแนนชุดนี้ใน MathQuest คะแนนใน ScanSob ยังคงอยู่"}
+                      : "เมื่อ MathQuest ยืนยันการถอน นักเรียนจะไม่เห็นคะแนนชุดนี้"}
                   </Notice>
                   <div className="integration-actions">
                     <button
@@ -194,28 +279,18 @@ export function ExamPublication({
                   <label className="checkbox-label">
                     <input
                       type="checkbox"
-                      checked={consent}
-                      onChange={(e) => setConsent(e.target.checked)}
-                      disabled={
-                        disabled ||
-                        publicationBlocked ||
-                        !conn.enabled ||
-                        !pub?.confirmed
+                      checked={Boolean(fingerprint && consent === fingerprint)}
+                      onChange={(e) =>
+                        setConsent(e.target.checked ? fingerprint : null)
                       }
+                      disabled={!canPublish}
                     />
-                    อนุญาตให้นักเรียนดูคะแนนที่ยืนยันแล้วใน MathQuest
+                    ยืนยันส่งผลสอบที่ตรวจแล้วไปยังโรงเรียนนี้
                   </label>
                   <div className="integration-actions">
                     <button
                       className="btn btn-primary"
-                      disabled={
-                        disabled ||
-                        publicationBlocked ||
-                        !conn.enabled ||
-                        !consent ||
-                        !pub?.confirmed ||
-                        pub.state === "withdraw_pending"
-                      }
+                      disabled={!canPublish || consent !== fingerprint}
                       onClick={() => void command("publish")}
                     >
                       {busy ? "กำลังทำรายการ…" : "เผยแพร่คะแนน"}
@@ -228,10 +303,7 @@ export function ExamPublication({
                           (publicationBlocked ||
                             pub?.withdrawalBlocked ||
                             !conn.enabled)) ||
-                        (!pub?.pending &&
-                          !pub?.unmatched.length &&
-                          !pub?.invalid.length &&
-                          !pub?.lastError)
+                        (!pub?.pending && !pub?.canRetryWithdrawal)
                       }
                       onClick={() => void command("retry")}
                     >
@@ -260,7 +332,10 @@ export function ExamPublication({
           <button
             className="btn btn-ghost"
             disabled={busy}
-            onClick={() => void refresh().catch(() => undefined)}
+            onClick={() => {
+              setConsent(null);
+              void refresh();
+            }}
           >
             <RefreshCw size={16} />
             ตรวจสถานะ

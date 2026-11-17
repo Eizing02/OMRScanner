@@ -10,6 +10,12 @@ import {
   type SheetLayout,
 } from "@/lib/omr/generate-template";
 import { createSetIdentity, qrDataUrl } from "@/lib/omr/qr";
+import {
+  gridDecorations,
+  gridExamples,
+  gridExampleY,
+  schoolGridPrint,
+} from "@/lib/omr/school-grid";
 import { choices, thaiChoices } from "@/types/exam";
 import type { Observation } from "@/types/result";
 import type { PrintStudent } from "@/types/print";
@@ -30,6 +36,9 @@ export function SheetContent({
   student?: PrintStudent;
 }) {
   const g = resolveGeometry(layout);
+  const grid = schoolGridPrint(layout)
+    ? gridDecorations(layout, g, student)
+    : null;
   return (
     <g
       className="sheet-ink"
@@ -48,7 +57,7 @@ export function SheetContent({
           x="10"
           y="10"
           width={g.sheetWidth - 20}
-          height="190"
+          height={g.sheetHeight - 20}
           fill="none"
           stroke="#8da3c6"
           strokeDasharray="2 1"
@@ -77,19 +86,73 @@ export function SheetContent({
           height={g.qr.width}
         />
       )}
-      {printTexts(layout, g, student).map((t, i) => (
-        <text
+      {grid?.lines.map((line, i) => (
+        <line
           key={i}
-          x={t.x}
-          y={t.y}
-          fontSize={t.size}
-          fontWeight={t.weight === "bold" ? 700 : 400}
-          textAnchor={t.align === "center" ? "middle" : "start"}
-        >
-          {t.value}
-        </text>
+          x1={line.x1}
+          y1={line.y1}
+          x2={line.x2}
+          y2={line.y2}
+          stroke="#222"
+          strokeDasharray={line.dashed ? "0.24 0.48" : undefined}
+          strokeWidth={line.dashed ? 0.16 : 0.2}
+        />
       ))}
-      {modernPrint(layout) &&
+      {[...printTexts(layout, g, student), ...(grid?.texts ?? [])].map(
+        (t, i) => (
+          <text
+            key={i}
+            x={t.x}
+            y={t.y}
+            fontSize={t.size}
+            fontWeight={t.weight === "bold" ? 700 : 400}
+            textAnchor={
+              t.align === "center"
+                ? "middle"
+                : t.align === "right"
+                  ? "end"
+                  : "start"
+            }
+          >
+            {t.value}
+          </text>
+        ),
+      )}
+      {grid &&
+        gridExamples.map(({ kind, label, x, labelX }) => (
+          <g key={kind} data-fill-example={kind}>
+            <circle
+              cx={x}
+              cy={gridExampleY}
+              r="1.8"
+              stroke="#222"
+              strokeWidth="0.2"
+              fill={
+                kind === "correct" || kind === "multiple" ? "black" : "none"
+              }
+            />
+            {kind === "partial" && (
+              <circle cx={x - 0.45} cy={gridExampleY} r="0.87" fill="black" />
+            )}
+            {kind === "multiple" && (
+              <circle cx={x + 4.5} cy={gridExampleY} r="1.8" fill="black" />
+            )}
+            {kind === "outside" && (
+              <ellipse
+                cx={x + 0.4}
+                cy={gridExampleY - 0.1}
+                rx="2.3"
+                ry="1.2"
+                fill="black"
+              />
+            )}
+            <text x={labelX} y={gridExampleY + 0.85} fontSize="2.4">
+              {label}
+            </text>
+          </g>
+        ))}
+      {!grid &&
+        modernPrint(layout) &&
         fillExamples(g).map((example) => (
           <g key={example.kind} data-fill-example={example.kind}>
             <circle
@@ -133,21 +196,25 @@ export function SheetContent({
         ))}
       {Array.from({ length: 5 }, (_, i) => (
         <g key={i}>
-          <rect
-            x={g.idStart.x + i * g.idStepX - 2}
-            y="75"
-            width="4"
-            height="4"
-            fill="none"
-            stroke="#222"
-            strokeWidth="0.2"
-          />
+          {!grid && (
+            <rect
+              x={g.idStart.x + i * g.idStepX - 2}
+              y="75"
+              width="4"
+              height="4"
+              fill="none"
+              stroke="#222"
+              strokeWidth="0.2"
+            />
+          )}
           {student && (
             <text
               x={g.idStart.x + i * g.idStepX}
-              y="78"
+              y={grid ? 40.9 : 78}
+              data-id-printed-digit={i}
               textAnchor="middle"
-              fontSize="2.6"
+              fontSize={grid ? 3 : 2.6}
+              fontWeight={grid ? 700 : undefined}
             >
               {student.student_code[i]}
             </text>
@@ -173,7 +240,7 @@ export function SheetContent({
                 x={b.x}
                 y={b.y + 0.85}
                 textAnchor="middle"
-                fontSize="2.2"
+                fontSize={grid ? 1.85 : 2.2}
                 fill="#333"
               >
                 {b.value}
@@ -194,9 +261,9 @@ export function SheetContent({
             {highlight === b.question && b.option === 0 && (
               <rect
                 x={b.x - 8}
-                y={b.y - 3}
+                y={b.y - (grid ? 2.25 : 3)}
                 width={(layout.choiceCount - 1) * g.answerStepX + 12}
-                height="6"
+                height={grid ? 4.5 : 6}
                 fill="#fef3c7"
                 stroke="#d89115"
                 strokeWidth="0.25"
@@ -216,13 +283,27 @@ export function SheetContent({
               x={b.x}
               y={b.y + 0.85}
               textAnchor="middle"
-              fontSize="2.2"
+              fontSize={grid ? 1.9 : 2.2}
               fill={fill ? "white" : "#333"}
             >
               {thaiChoices[b.option]}
             </text>
             {b.option === 0 && (
-              <text x={b.x - 7} y={b.y + 1} fontSize="2.7">
+              <text
+                x={
+                  grid
+                    ? grid.questionLeft +
+                      Math.floor((b.question - 1) / g.rows) *
+                        g.answerColumnWidth
+                    : b.x - 7
+                }
+                y={b.y + (grid ? 0.85 : 1)}
+                textAnchor={grid ? "middle" : undefined}
+                fontWeight={
+                  grid && (b.question - 1) % g.rows === 0 ? 700 : undefined
+                }
+                fontSize={grid ? 2.4 : 2.7}
+              >
                 {b.question}
               </text>
             )}
@@ -269,7 +350,7 @@ export function SheetPreview({
   }, [layout]);
   return (
     <svg
-      viewBox={`0 0 ${single ? g.sheetWidth : 297} 210`}
+      viewBox={`0 0 ${single ? g.sheetWidth : g.paperWidth} ${g.sheetHeight}`}
       className="sheet-preview"
       role="img"
       aria-label={

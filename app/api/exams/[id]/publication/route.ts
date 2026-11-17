@@ -21,12 +21,18 @@ async function examId(params: Params["params"]) {
     throw new ApiError("INVALID_EXAM", "รหัสชุดสอบไม่ถูกต้อง", 422);
   return result.data;
 }
-export async function GET(_request: Request, route: Params) {
+export async function GET(request: Request, route: Params) {
   try {
     const ctx = await context(),
       id = await examId(route.params);
     return json(
-      await integrationOverview(ctx.db, ctx.schoolId, ctx.readOnly, id),
+      await integrationOverview(
+        ctx.db,
+        ctx.schoolId,
+        ctx.readOnly,
+        id,
+        new URL(request.url).searchParams.get("preview") === "1",
+      ),
     );
   } catch (error) {
     return failure(error);
@@ -52,6 +58,10 @@ export async function POST(request: Request, route: Params) {
       request_id: input.data.requestId,
       action: input.data.action,
       consent: input.data.consent,
+      ...(input.data.action === "publish"
+        ? { preview_fingerprint: input.data.previewFingerprint }
+        : {}),
+      ...(input.data.action === "retry" ? { frozen_retry: true } : {}),
     });
     // Teacher-triggered retry is available even without a scheduler. Durable jobs
     // remain pending if dispatch/config/network fails; never report false delivery.
@@ -61,7 +71,7 @@ export async function POST(request: Request, route: Params) {
       /* The job is committed. GET/runner can recover without creating a new event. */
     }
     return json(
-      await integrationOverview(ctx.db, ctx.schoolId, false, id),
+      await integrationOverview(ctx.db, ctx.schoolId, false, id, true),
       202,
     );
   } catch (error) {

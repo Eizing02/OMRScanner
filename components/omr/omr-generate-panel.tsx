@@ -316,10 +316,10 @@ function DesignerEditor({ examId }: { examId: string }) {
             <div className="template-option">
               <Grid2X2 size={30} />
               <strong>จัดกระดาษอัตโนมัติ</strong>
-              <span>A4 แนวนอน · สูงสุด 60 ข้อ</span>
+              <span>A4 · สูงสุด 60 ข้อ</span>
               <Badge tone="blue">รุ่นอ้างอิง</Badge>
               <p className="small muted">
-                เริ่มจาก 2 ใบซ้าย–ขวา และขยายเป็น 1 ใบเต็ม A4 เมื่อพื้นที่ไม่พอ
+                เริ่มจาก 2 ใบซ้าย–ขวา และใช้ A4 แนวตั้งเต็มใบเมื่อพื้นที่ไม่พอ
               </p>
             </div>
           ) : (
@@ -383,7 +383,9 @@ function DesignerEditor({ examId }: { examId: string }) {
                 <Redo2 size={18} />
               </button>
               <i />
-              <span>A4 แนวนอน</span>
+              <span>
+                A4 {g.paperHeight > g.paperWidth ? "แนวตั้ง" : "แนวนอน"}
+              </span>
               <Badge>{g.sheetsPerPage} ใบ / A4</Badge>
             </div>
             <button
@@ -440,13 +442,13 @@ function DesignerEditor({ examId }: { examId: string }) {
                 }
               >
                 <option value="auto">จัดอัตโนมัติ</option>
-                <option value="full">เต็ม A4 · 1 ใบ</option>
+                <option value="full">เต็ม A4 แนวตั้ง · 1 ใบ</option>
               </select>
             </label>
           </div>
           <div className="sheet-layout-status" role="status" aria-live="polite">
             {g.autoExpanded
-              ? "พื้นที่ครึ่ง A4 ไม่พอ จึงปรับเป็น 1 ใบเต็ม A4 โดยไม่ย่อวงฝน"
+              ? "พื้นที่ครึ่ง A4 ไม่พอ จึงปรับเป็น 1 ใบเต็ม A4 แนวตั้ง"
               : `พรีวิว 1 ใบ · พิมพ์จริง ${g.sheetsPerPage} ใบต่อ A4 · ${g.columns} คอลัมน์`}
           </div>
           {structureChanged && (
@@ -629,6 +631,7 @@ function DesignerEditor({ examId }: { examId: string }) {
                 layoutForExam(
                   {
                     ...defaultLayout,
+                    printStyle: layout.printStyle,
                     school: branding.school,
                     logo: branding.image_url,
                   },

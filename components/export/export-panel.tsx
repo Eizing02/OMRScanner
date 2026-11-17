@@ -123,7 +123,18 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
   }
   return (
     <div className="task-workspace results-task">
-      <PageHeading title="ผลสอบและรายงาน" />
+      <PageHeading
+        title="ผลสอบและรายงาน"
+        actions={
+          selected && (
+            <ExamPublication
+              key={selected.id}
+              examId={selected.id}
+              title={selected.title}
+            />
+          )
+        }
+      />
       <div className="results-filters">
         <label>
           ชุดสอบ
@@ -240,13 +251,6 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
         </div>
       </section>
       <footer className="workspace-actionbar">
-        {selected && (
-          <ExamPublication
-            key={selected.id}
-            examId={selected.id}
-            title={selected.title}
-          />
-        )}
         <label>
           <span className="sr-only">รูปแบบรายงาน</span>
           <select

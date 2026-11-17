@@ -27,7 +27,7 @@ test("wide school and exam headings never intrude into score or QR regions", asy
     "",
   );
   const preview = page.getByRole("img", { name: "กระดาษคำตอบตัวอย่างหนึ่งใบ" });
-  await expect(preview).toHaveAttribute("viewBox", "0 0 297 210");
+  await expect(preview).toHaveAttribute("viewBox", "0 0 210 297");
   await page.evaluate(() => document.fonts.ready);
   await expect(preview.locator("[data-sheet-qr]")).toHaveCount(1);
   const headingRightEdges = await preview.locator("text").evaluateAll((texts) =>
@@ -69,7 +69,7 @@ test("live single-sheet layout, version-safe changes, matching keys and real PDF
   const firstQr = await preview.locator("[data-sheet-qr]").getAttribute("href");
   await page.getByLabel("จำนวนข้อ", { exact: true }).fill("60");
   await page.getByLabel("ตัวเลือก", { exact: true }).selectOption("5");
-  await expect(preview).toHaveAttribute("viewBox", "0 0 297 210");
+  await expect(preview).toHaveAttribute("viewBox", "0 0 210 297");
   await expect(preview.locator("[data-question]")).toHaveCount(300);
   await expect(
     page.getByRole("status").filter({ hasText: "พื้นที่ครึ่ง A4 ไม่พอ" }),
@@ -171,7 +171,8 @@ test("personalized print previews real roster names and five solid ID marks with
   await page.goto("/exams/demo-math/print");
   const preview = page.getByRole("img", { name: "กระดาษคำตอบตัวอย่างหนึ่งใบ" });
   await expect(page.getByLabel("รูปแบบ")).toHaveValue("roster");
-  await expect(preview).toContainText("รหัส …02074…");
+  const printedCode = preview.locator("[data-id-printed-digit]");
+  await expect(printedCode).toHaveText(["0", "2", "0", "7", "4"]);
   await expect(
     preview.locator('circle[data-id-digit][fill="#000"]'),
   ).toHaveCount(5);
@@ -179,7 +180,7 @@ test("personalized print previews real roster names and five solid ID marks with
   await expect(preview.locator("[data-sheet-qr]")).toHaveCount(1);
   const qr = await preview.locator("[data-sheet-qr]").getAttribute("href");
   await page.getByLabel("ตัวอย่างนักเรียน").selectOption("demo-student-1");
-  await expect(preview).toContainText("รหัส …04217…");
+  await expect(printedCode).toHaveText(["0", "4", "2", "1", "7"]);
   await expect(preview.locator("[data-sheet-qr]")).toHaveAttribute("href", qr!);
   await expect(page.getByText("2 แผ่น A4", { exact: true })).toBeVisible();
   const download = page.waitForEvent("download", (d) =>

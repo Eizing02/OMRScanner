@@ -16,6 +16,9 @@ import {
 import { integrationRpc } from "@/lib/integrations/mathquest/publisher";
 import {
   initiatePairing,
+  initiateSignedPairing,
+  signedPairingAvailable,
+  verifiedPairingEmail,
   refreshPairing,
   revokePairing,
   recoverPairing,
@@ -23,10 +26,24 @@ import {
 } from "@/lib/integrations/mathquest/pairing";
 import { integrationOverview } from "@/lib/integrations/mathquest/overview";
 export const runtime = "nodejs";
+async function settingsOverview(ctx: Awaited<ReturnType<typeof context>>) {
+  const overview = await integrationOverview(
+    ctx.db,
+    ctx.schoolId,
+    ctx.readOnly,
+  );
+  if (
+    overview.signedPairing &&
+    (!overview.connection || overview.connection.status === "revoked") &&
+    !(await signedPairingAvailable(ctx.schoolId, ctx.user))
+  )
+    return { ...overview, signedPairing: null };
+  return overview;
+}
 export async function GET() {
   try {
     const ctx = await context();
-    return json(await integrationOverview(ctx.db, ctx.schoolId, ctx.readOnly));
+    return json(await settingsOverview(ctx));
   } catch (error) {
     return failure(error);
   }
@@ -51,15 +68,26 @@ export async function POST(request: Request) {
       .single();
     if (school.error)
       throw new ApiError("READ_FAILED", "โหลดพื้นที่ทำงานไม่สำเร็จ", 503);
-    await initiatePairing(
-      integrationServiceClient(),
-      ctx.schoolId,
-      ctx.user.id,
-      input.data.requestId,
-      input.data.code,
-      school.data.name_th,
-    );
-    return json(await integrationOverview(ctx.db, ctx.schoolId, false), 202);
+    const db = integrationServiceClient();
+    if (input.data.method === "signed")
+      await initiateSignedPairing(
+        db,
+        ctx.schoolId,
+        ctx.user,
+        input.data.requestId,
+        school.data.name_th,
+        ctx.access.displayName,
+      );
+    else
+      await initiatePairing(
+        db,
+        ctx.schoolId,
+        ctx.user.id,
+        input.data.requestId,
+        input.data.code,
+        school.data.name_th,
+      );
+    return json(await settingsOverview(ctx), 202);
   } catch (error) {
     return failure(pairingFailure(error));
   }
@@ -86,12 +114,29 @@ export async function PATCH(request: Request) {
       requireIntegration(true);
       const db = integrationServiceClient();
       if (input.data.action === "refresh")
-        await refreshPairing(db, ctx.schoolId, ctx.user.id);
+        await refreshPairing(
+          db,
+          ctx.schoolId,
+          ctx.user.id,
+          input.data.expectedRequestId,
+          verifiedPairingEmail(ctx.user),
+        );
       else if (input.data.action === "recover")
-        await recoverPairing(db, ctx.schoolId, ctx.user.id);
-      else await revokePairing(db, ctx.schoolId, ctx.user.id);
+        await recoverPairing(
+          db,
+          ctx.schoolId,
+          ctx.user.id,
+          input.data.expectedRequestId,
+        );
+      else
+        await revokePairing(
+          db,
+          ctx.schoolId,
+          ctx.user.id,
+          input.data.expectedRequestId,
+        );
     }
-    return json(await integrationOverview(ctx.db, ctx.schoolId, false));
+    return json(await settingsOverview(ctx));
   } catch (error) {
     return failure(pairingFailure(error));
   }

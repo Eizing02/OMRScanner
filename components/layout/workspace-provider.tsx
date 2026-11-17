@@ -731,7 +731,7 @@ function WorkspaceData({ children }: { children: ReactNode }) {
                     logo: branding.image_url,
                   }),
               logo: branding.image_url,
-              printStyle: "school-v2",
+              printStyle: "school-grid-portrait",
             },
             exam,
           );

@@ -1,6 +1,7 @@
 import type { LockedScanTemplate, OpticalRead } from "@/types/scan";
 import type { Raster } from "./scan-qr";
 import { choices } from "@/types/exam";
+import { resolveGeometry } from "./generate-template";
 
 // Sample only the inner disk: exclude outlines. Ink printed in a blank bubble
 // is deliberately not treated as a mark until the marked-area threshold is met.
@@ -63,9 +64,9 @@ export function readOpticalMarks(
 ): OpticalRead {
   const omr = template.omr_json,
     layout = template.layout_json;
-  const mmWidth = layout.paperMode === "full" ? 297 : 148.5;
-  const sx = image.width / mmWidth,
-    sy = image.height / 210;
+  const g = resolveGeometry(layout);
+  const sx = image.width / g.sheetWidth,
+    sy = image.height / g.sheetHeight;
   if (Math.abs(sx / sy - 1) > 0.035)
     throw new Error(
       "สัดส่วนภาพไม่ตรงกับกระดาษ เลือก A4 ทั้งแผ่นหรือครึ่งแผ่นให้ถูกต้อง",
@@ -76,13 +77,15 @@ export function readOpticalMarks(
     fillPercentage(image, x * sx, y * sy, 1.8 * Math.min(sx, sy) * 0.76);
   // Registration markers are required evidence that this is the entire sheet,
   // not a QR crop or a page stretched to an arbitrary bounding rectangle.
-  for (const [x, y] of [
-    [7.5, 7.5],
-    [mmWidth - 7.5, 7.5],
-    [7.5, 202.5],
-    [mmWidth - 7.5, 202.5],
-  ]) {
-    if (fillPercentage(image, x * sx, y * sy, 0.65 * Math.min(sx, sy)) < 55)
+  for (const { x, y } of g.markers) {
+    if (
+      fillPercentage(
+        image,
+        (x + 1.5) * sx,
+        (y + 1.5) * sy,
+        0.65 * Math.min(sx, sy),
+      ) < 55
+    )
       throw new Error(
         "จุดจัดแนวไม่ครบ กรุณาปรับมุมให้รวมทั้งกระดาษและจุดดำทั้ง 4 มุม",
       );

@@ -58,6 +58,22 @@ async function fixtures(page: Page) {
     connection,
     publication: {
       ...publication,
+      preview: {
+        metadata: {
+          title: exam.title,
+          subject: exam.subject,
+          classroom: exam.classroom,
+          exam_type: exam.examType,
+          academic_year: exam.year,
+          term: exam.term,
+        },
+        confirmedCount: publication.confirmed,
+        reviewCount: 1,
+        identityIssueCount: 0,
+        identityIssues: [],
+        blocked: null,
+        fingerprint: publication.revision.toString(16).padStart(64, "0"),
+      },
       canWithdraw:
         connection?.status === "active" &&
         !connection.revocationPending &&
@@ -93,37 +109,44 @@ async function fixtures(page: Page) {
       },
     }),
   );
-  await page.route(`**/api/exams/${examId}/publication`, async (route) => {
-    if (route.request().method() === "POST") {
-      const input = route.request().postDataJSON();
-      if (input.action === "withdraw")
-        publication = {
-          ...publication,
-          state: "withdraw_pending",
-          revision: publication.revision + 1,
-          pending: 1,
-          lastError: null,
-        };
-      else if (
-        input.action === "retry" &&
-        publication.state === "withdraw_pending"
-      )
-        publication = { ...publication, lastError: null, pending: 1 };
-      else
-        publication = {
-          ...publication,
-          state: "active",
-          revision: publication.revision + 1,
-          pending: 1,
-          delivered: 0,
-          unmatched: [],
-          invalid: [],
-          lastError: null,
-        };
-      return route.fulfill({ status: 202, json: { data: overview() } });
-    }
-    return route.fulfill({ json: { data: overview() } });
-  });
+  await page.route(
+    (url) => url.pathname === `/api/exams/${examId}/publication`,
+    async (route) => {
+      if (route.request().method() === "POST") {
+        const input = route.request().postDataJSON();
+        if (input.action === "publish")
+          expect(input.previewFingerprint).toBe(
+            overview().publication.preview.fingerprint,
+          );
+        if (input.action === "withdraw")
+          publication = {
+            ...publication,
+            state: "withdraw_pending",
+            revision: publication.revision + 1,
+            pending: 1,
+            lastError: null,
+          };
+        else if (
+          input.action === "retry" &&
+          publication.state === "withdraw_pending"
+        )
+          publication = { ...publication, lastError: null, pending: 1 };
+        else
+          publication = {
+            ...publication,
+            state: "active",
+            revision: publication.revision + 1,
+            pending: 1,
+            delivered: 0,
+            unmatched: [],
+            invalid: [],
+            lastError: null,
+          };
+        return route.fulfill({ status: 202, json: { data: overview() } });
+      }
+      return route.fulfill({ json: { data: overview() } });
+    },
+  );
   await page.route("**/api/integrations/mathquest", async (route) => {
     if (route.request().method() === "POST") {
       connection = {
@@ -395,16 +418,21 @@ test("pairs explicitly, publishes confirmed scores and stays usable on desktop p
   }
 
   await page.goto("/export");
-  await page.getByRole("button", { name: "MathQuest" }).click();
+  await page.getByRole("button", { name: "ส่งคะแนนไป MathQuest" }).click();
   const dialog = page.getByRole("dialog", { name: "เผยแพร่คะแนนไป MathQuest" });
   await expect(dialog).toContainText("ยืนยันแล้ว");
+  await expect(dialog).toContainText("รอตรวจ");
+  await expect(dialog).toContainText("ภาคเรียน");
   await dialog.getByRole("checkbox").check();
+  await page.screenshot({
+    path: ".impeccable/review/integration-score-preview-ipad.png",
+  });
   await dialog.getByRole("button", { name: "เผยแพร่คะแนน" }).click();
   await expect(dialog).toContainText("รอส่ง");
   state.deliverPartial();
   await dialog.getByRole("button", { name: "ตรวจสถานะ" }).click();
-  await expect(dialog).toContainText("มีรหัสต้องตรวจ");
-  await dialog.getByText("รหัสไม่ตรง 1 คน").click();
+  await expect(dialog).toContainText("ส่งบางส่วน");
+  await dialog.getByText("รหัสไม่พบใน MathQuest 1 คน").click();
   await expect(dialog).toContainText("04217");
   await dialog.getByRole("button", { name: "ถอนเผยแพร่" }).click();
   await expect(dialog).toContainText("นักเรียนจะไม่เห็นคะแนนชุดนี้");
@@ -429,7 +457,93 @@ test("read-only inspection cannot expose publication controls", async ({
   const state = await fixtures(page);
   state.setReadOnly();
   await page.goto("/export");
-  await expect(page.getByRole("button", { name: "MathQuest" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "ส่งคะแนนไป MathQuest" }),
+  ).toHaveCount(0);
+});
+
+test("a signed request recovers a lost response before polling status", async ({
+  page,
+}) => {
+  await fixtures(page);
+  let signed: Record<string, unknown> | null = null;
+  const send = () => ({
+    enabled: true,
+    receiverReady: true,
+    readOnly: false,
+    connection: signed,
+    publication: null,
+    signedPairing: {
+      destinationLabel: "โรงเรียนปลายทางทดสอบ",
+      workspaceLabel: "พื้นที่ครูทดสอบ",
+    },
+  });
+  await page.route("**/api/integrations/mathquest", async (route) => {
+    const method = route.request().method();
+    if (method === "POST") {
+      const request = route.request().postDataJSON();
+      expect(request).toEqual({
+        method: "signed",
+        requestId: expect.any(String),
+        consent: true,
+      });
+      signed = {
+        id: request.requestId,
+        connectionId: null,
+        destinationSchoolId: null,
+        destinationLabel: "โรงเรียนปลายทางทดสอบ",
+        status: "pending_approval",
+        signedStage: "submit",
+        mode: "manual",
+        enabled: false,
+        revocationPending: false,
+        lastSyncAt: null,
+        lastError: null,
+      };
+      return route.fulfill({
+        status: 503,
+        json: { error: { messageTh: "ติดต่อ MathQuest ไม่สำเร็จ" } },
+      });
+    }
+    if (method === "PATCH") {
+      expect(route.request().postDataJSON()).toEqual({
+        action: "refresh",
+        expectedRequestId: signed?.id,
+      });
+      signed =
+        signed?.signedStage === "submit"
+          ? { ...signed, signedStage: "waiting" }
+          : {
+              ...signed,
+              signedStage: "active",
+              status: "active",
+              enabled: true,
+              connectionId: remoteConnection,
+              destinationSchoolId: destination,
+            };
+    }
+    return route.fulfill({ json: { data: send() } });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/settings");
+  const section = page.getByRole("region", { name: "เชื่อมต่อ MathQuest" });
+  await expect(section).toContainText("พื้นที่ครูทดสอบ");
+  await expect(section.getByLabel("รหัสเชื่อมต่อ")).toHaveCount(0);
+  await section.getByRole("checkbox").check();
+  await section.getByRole("button", { name: "ส่งคำขอเชื่อมต่อ" }).click();
+  await expect(section).toContainText("ยังยืนยันผลไม่ได้");
+  await section.getByRole("button", { name: "ลองส่งคำขอเดิม" }).click();
+  await expect(section).toContainText("รออนุมัติ");
+  await accessibleAndContained(page);
+  await page.screenshot({
+    path: ".impeccable/review/integration-signed-phone.png",
+    fullPage: true,
+  });
+  await section.getByRole("button", { name: "ตรวจสถานะ" }).click();
+  await expect(section).toContainText("เชื่อมแล้ว");
+  await expect(
+    section.getByRole("combobox", { name: "การเผยแพร่" }),
+  ).toHaveValue("manual");
 });
 
 test("recovers with explicit consent and honest retained-score states across supported viewports", async ({
@@ -476,7 +590,9 @@ test("recovers with explicit consent and honest retained-score states across sup
   await expect(section.getByLabel("รหัสเชื่อมต่อ")).toBeFocused();
   state.publicationRecovery();
   await page.goto("/export");
-  await page.getByRole("button", { name: "MathQuest", exact: true }).click();
+  await page
+    .getByRole("button", { name: "ส่งคะแนนไป MathQuest", exact: true })
+    .click();
   const publication = page.getByRole("dialog", {
     name: "เผยแพร่คะแนนไป MathQuest",
   });
@@ -511,7 +627,7 @@ test("recovers with explicit consent and honest retained-score states across sup
   }
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("button", { name: "MathQuest", exact: true }),
+    page.getByRole("button", { name: "ส่งคะแนนไป MathQuest", exact: true }),
   ).toBeFocused();
 });
 
@@ -524,7 +640,9 @@ test("closed-term withdrawal confirms explicitly, retries transport only and exp
   state.closeTerm();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/export");
-  await page.getByRole("button", { name: "MathQuest", exact: true }).click();
+  await page
+    .getByRole("button", { name: "ส่งคะแนนไป MathQuest", exact: true })
+    .click();
   const dialog = page.getByRole("dialog", { name: "เผยแพร่คะแนนไป MathQuest" });
   await expect(
     dialog.getByRole("button", { name: "เผยแพร่คะแนน", exact: true }),
@@ -574,6 +692,6 @@ test("closed-term withdrawal confirms explicitly, retries transport only and exp
   }
   await page.keyboard.press("Escape");
   await expect(
-    page.getByRole("button", { name: "MathQuest", exact: true }),
+    page.getByRole("button", { name: "ส่งคะแนนไป MathQuest", exact: true }),
   ).toBeFocused();
 });

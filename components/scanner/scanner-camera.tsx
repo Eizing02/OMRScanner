@@ -22,6 +22,7 @@ import {
   type Quad,
 } from "@/lib/omr/camera-geometry";
 import { readSetQr } from "@/lib/omr/scan-qr";
+import { isPortraitA4Template } from "@/lib/omr/school-grid";
 import { warpCanvas } from "@/lib/omr/perspective-canvas";
 import { compressScanBlob, retainCaptureBlob } from "@/lib/omr/compress-image";
 import { startCameraLoop } from "@/lib/omr/camera-loop";
@@ -426,8 +427,9 @@ export function Scanner({ examId }: { examId?: string }) {
       templateRef.current = body.data;
       setError("");
       if (body.data.layout_json.paperMode === "full") {
-        setSingle(false);
-        singleRef.current = false;
+        const portrait = isPortraitA4Template(body.data.layout_json);
+        setSingle(portrait);
+        singleRef.current = portrait;
         stable.current = 0;
       }
     } catch (e) {
@@ -529,6 +531,7 @@ export function Scanner({ examId }: { examId?: string }) {
           canvas.width,
           canvas.height,
           singleRef.current,
+          isPortraitA4Template(locked.layout_json),
         );
         if (geometry) throw new Error(geometry);
         const processed = await detector.current!.warp(
@@ -736,6 +739,10 @@ export function Scanner({ examId }: { examId?: string }) {
               v.videoWidth,
               v.videoHeight,
               singleRef.current,
+              Boolean(
+                templateRef.current &&
+                isPortraitA4Template(templateRef.current.layout_json),
+              ),
             );
             stable.current = advanceCaptureStability(
               stable.current,
@@ -1009,8 +1016,12 @@ export function Scanner({ examId }: { examId?: string }) {
               setStatus("searching");
             }}
           >
-            <option value="a4">A4 ทั้งแผ่น</option>
-            <option value="single">ครึ่ง A4 ที่ตัดแล้ว</option>
+            <option value="a4">A4 แนวนอนทั้งแผ่น</option>
+            <option value="single">
+              {template && isPortraitA4Template(template.layout_json)
+                ? "A4 แนวตั้งเต็มแผ่น"
+                : "ใบแนวตั้ง · ครึ่ง A4 หรือเต็ม A4"}
+            </option>
           </select>
         </label>
         <label className="scan-continuous-toggle">

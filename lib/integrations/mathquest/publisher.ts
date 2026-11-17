@@ -29,6 +29,7 @@ const jobSchema = z.object({
   payload_hash: z.string().regex(/^[a-f0-9]{64}$/),
   attempt_count: z.number().int().positive(),
   token_secret: z.unknown(),
+  receiver_origin: z.string().nullish(),
 });
 export function retrySeconds(
   attempt: number,
@@ -93,6 +94,7 @@ export async function dispatchScores(
         "ingest-scansob-results",
         job.payload_text,
         token,
+        { expectedOrigin: job.receiver_origin ?? undefined },
       );
       let ack;
       try {

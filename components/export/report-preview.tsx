@@ -111,8 +111,9 @@ export function PrintPreview({ examId }: { examId: string }) {
   const selected = roster.filter(
     (s) => selectedIds === null || selectedIds.includes(s.id),
   );
+  const configuredLayout = getLayout(exam);
   const layout = resolvePrintLayout(
-      getLayout(exam),
+      configuredLayout,
       personalized ? selected : [],
     ),
     g = resolveGeometry(layout);
@@ -317,8 +318,10 @@ export function PrintPreview({ examId }: { examId: string }) {
             <span>กระดาษที่ใช้</span>
             <strong>{Math.ceil(printCount / g.sheetsPerPage)} แผ่น A4</strong>
           </div>
-          {g.autoExpanded && (
-            <Notice>ใช้ A4 เต็มใบเพื่อให้วงฝนมีขนาดเท่าเดิม</Notice>
+          {(g.autoExpanded ||
+            (configuredLayout.paperMode === "auto" &&
+              layout.paperMode === "full")) && (
+            <Notice>ใช้ A4 เต็มใบเพื่อให้หัวกระดาษและวงฝนมีพื้นที่พอ</Notice>
           )}
           {structureChanged && (
             <Notice tone="error">
@@ -332,7 +335,10 @@ export function PrintPreview({ examId }: { examId: string }) {
           ))}
           <details className="print-instructions">
             <summary>ตั้งค่าเครื่องพิมพ์</summary>
-            <p>A4 แนวนอน · ขนาดจริง 100%</p>
+            <p>
+              A4 {g.paperHeight > g.paperWidth ? "แนวตั้ง" : "แนวนอน"} ·
+              ขนาดจริง 100%
+            </p>
             <p>1 หน้า PDF ต่อแผ่น · ปิด “ปรับพอดีหน้า”</p>
           </details>
         </aside>

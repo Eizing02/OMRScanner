@@ -1,20 +1,33 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link2, RefreshCw, Save } from "lucide-react";
 import { Badge, Notice, Modal } from "@/components/ui/primitives";
 import { useMathQuest } from "./use-mathquest";
 export function MathQuestSettings() {
-  const { state, mode, readOnly, loading, error, busy, mutate, refresh } =
-    useMathQuest("/api/integrations/mathquest");
+  const {
+    state,
+    mode,
+    readOnly,
+    loading,
+    error,
+    busy,
+    mutate,
+    refresh,
+    retryAfter,
+  } = useMathQuest("/api/integrations/mathquest");
   const [code, setCode] = useState(""),
     [consent, setConsent] = useState(false),
+    [useCode, setUseCode] = useState(false),
     [confirmation, setConfirmation] = useState<"revoke" | "recover" | null>(
       null,
     );
   const pairRequest = useRef<{ code: string; id: string } | null>(null);
   const confirmationTrigger = useRef<HTMLButtonElement | null>(null);
+  const confirmationId = useRef<string | undefined>(undefined);
   const pairInput = useRef<HTMLInputElement | null>(null);
   const connection = state?.connection;
+  const signed = Boolean(state?.signedPairing && !useCode);
+  const stage = connection?.signedStage;
   const disabled =
     busy ||
     readOnly ||
@@ -22,6 +35,36 @@ export function MathQuestSettings() {
     !state?.enabled ||
     !state?.receiverReady ||
     mode !== "connected";
+  useEffect(() => {
+    if (
+      stage !== "waiting" ||
+      connection?.status !== "pending_approval" ||
+      disabled
+    )
+      return;
+    let timer: ReturnType<typeof setTimeout>;
+    const id = connection.id;
+    const schedule = () => {
+      clearTimeout(timer);
+      if (document.visibilityState === "visible")
+        timer = setTimeout(
+          () => {
+            void mutate(
+              "PATCH",
+              { action: "refresh", expectedRequestId: id },
+              true,
+            );
+          },
+          Math.max(30 + Math.random() * 10, retryAfter) * 1000,
+        );
+    };
+    schedule();
+    document.addEventListener("visibilitychange", schedule);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", schedule);
+    };
+  }, [stage, connection?.id, connection?.status, disabled, mutate, retryAfter]);
   const label = readOnly
     ? "อ่านอย่างเดียว"
     : mode === "demo"
@@ -33,11 +76,21 @@ export function MathQuestSettings() {
           : !state.receiverReady
             ? "รอปลายทางพร้อม"
             : !connection || connection.status === "revoked"
-              ? "ยังไม่เชื่อม"
+              ? busy && signed
+                ? "กำลังส่งคำขอ"
+                : stage === "cancelled"
+                  ? "ยกเลิกแล้ว"
+                  : "ยังไม่เชื่อม"
               : connection.status === "pending_approval"
-                ? "รออนุมัติ"
+                ? stage && stage !== "waiting"
+                  ? "ยังยืนยันผลไม่ได้"
+                  : "รออนุมัติ"
                 : connection.status === "error"
-                  ? "มีปัญหา"
+                  ? stage === "rejected"
+                    ? "ปฏิเสธ"
+                    : stage === "expired"
+                      ? "หมดอายุ"
+                      : "มีปัญหา"
                   : connection.revocationPending
                     ? "กำลังยกเลิก"
                     : connection.enabled
@@ -78,37 +131,59 @@ export function MathQuestSettings() {
           className="integration-form"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (pairRequest.current?.code !== code.trim())
+            const choice = signed ? "signed" : code.trim();
+            if (pairRequest.current?.code !== choice)
               pairRequest.current = {
-                code: code.trim(),
+                code: choice,
                 id: crypto.randomUUID(),
               };
             if (
-              await mutate("POST", {
-                requestId: pairRequest.current.id,
-                code: code.trim(),
-                consent,
-              })
+              await mutate(
+                "POST",
+                signed
+                  ? {
+                      method: "signed",
+                      requestId: pairRequest.current.id,
+                      consent,
+                    }
+                  : {
+                      requestId: pairRequest.current.id,
+                      code: code.trim(),
+                      consent,
+                    },
+                signed,
+              )
             ) {
               setCode("");
               setConsent(false);
             }
           }}
         >
-          <label>
-            รหัสเชื่อมต่อ
-            <input
-              ref={pairInput}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-              maxLength={128}
-              required
-              minLength={8}
-              disabled={disabled}
-            />
-          </label>
+          {signed ? (
+            <div>
+              <p className="integration-destination">
+                {state.signedPairing?.destinationLabel}
+              </p>
+              <small className="muted">
+                จากพื้นที่ {state.signedPairing?.workspaceLabel}
+              </small>
+            </div>
+          ) : (
+            <label>
+              รหัสเชื่อมต่อ
+              <input
+                ref={pairInput}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={128}
+                required
+                minLength={8}
+                disabled={disabled}
+              />
+            </label>
+          )}
           <label className="checkbox-label">
             <input
               type="checkbox"
@@ -120,11 +195,26 @@ export function MathQuestSettings() {
           </label>
           <button
             className="btn btn-primary"
-            disabled={disabled || !consent || code.trim().length < 8}
+            disabled={
+              disabled || !consent || (!signed && code.trim().length < 8)
+            }
           >
             <Link2 size={17} />
-            {busy ? "กำลังเชื่อม…" : "ขอเชื่อมต่อ"}
+            {busy ? "กำลังส่ง…" : signed ? "ส่งคำขอเชื่อมต่อ" : "ขอเชื่อมต่อ"}
           </button>
+          {state.signedPairing && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              disabled={disabled}
+              onClick={() => {
+                setUseCode(!useCode);
+                setConsent(false);
+              }}
+            >
+              {useCode ? "ขอเชื่อมโดยไม่ใช้รหัส" : "ใช้รหัสเชื่อมต่อ"}
+            </button>
+          )}
         </form>
       ) : (
         <div className="integration-form">
@@ -133,6 +223,18 @@ export function MathQuestSettings() {
               {connection.destinationLabel}
             </p>
           )}
+          {connection.requestedAt &&
+            connection.status === "pending_approval" && (
+              <p className="muted">
+                ขอเมื่อ{" "}
+                {new Date(connection.requestedAt).toLocaleString("th-TH")}
+              </p>
+            )}
+          {stage === "preparing" && !busy && !connection.revocationPending && (
+            <Notice tone="warning">
+              ยังยืนยันรอบเปิดรับไม่ได้ ยกเลิกคำขอนี้ก่อนขอเชื่อมใหม่
+            </Notice>
+          )}
           {connection.revocationPending && (
             <Notice tone="warning">
               {connection.recoveryPending
@@ -140,7 +242,8 @@ export function MathQuestSettings() {
                 : "ยังยกเลิกที่ MathQuest ไม่สำเร็จ ลองยกเลิกอีกครั้ง"}
             </Notice>
           )}
-          {connection.lastError === "CONNECTION_DENIED" &&
+          {!stage &&
+            connection.lastError === "CONNECTION_DENIED" &&
             !connection.recoveryPending && (
               <Notice tone="warning">
                 MathQuest ปฏิเสธการเชื่อมต่อ
@@ -213,6 +316,7 @@ export function MathQuestSettings() {
                   disabled={busy || readOnly || connection.recoveryPending}
                   onClick={(event) => {
                     confirmationTrigger.current = event.currentTarget;
+                    confirmationId.current = connection.id;
                     setConfirmation("revoke");
                   }}
                 >
@@ -226,6 +330,7 @@ export function MathQuestSettings() {
                     disabled={busy || readOnly || !state.receiverReady}
                     onClick={(event) => {
                       confirmationTrigger.current = event.currentTarget;
+                      confirmationId.current = connection.id;
                       setConfirmation("recover");
                     }}
                   >
@@ -241,17 +346,32 @@ export function MathQuestSettings() {
             <div className="integration-actions">
               <button
                 className="btn btn-secondary"
-                disabled={disabled || connection.status !== "pending_approval"}
-                onClick={() => void mutate("PATCH", { action: "refresh" })}
+                disabled={
+                  disabled ||
+                  connection.status !== "pending_approval" ||
+                  stage === "preparing"
+                }
+                onClick={() =>
+                  void mutate(
+                    "PATCH",
+                    { action: "refresh", expectedRequestId: connection.id },
+                    Boolean(stage),
+                  )
+                }
               >
                 <RefreshCw size={16} />
-                {busy ? "กำลังตรวจ…" : "ตรวจสถานะ"}
+                {busy
+                  ? "กำลังตรวจ…"
+                  : stage === "submit"
+                    ? "ลองส่งคำขอเดิม"
+                    : "ตรวจสถานะ"}
               </button>
               <button
                 className="btn btn-ghost"
                 disabled={busy || readOnly}
                 onClick={(event) => {
                   confirmationTrigger.current = event.currentTarget;
+                  confirmationId.current = connection.id;
                   setConfirmation("revoke");
                 }}
               >
@@ -303,9 +423,19 @@ export function MathQuestSettings() {
             onClick={async () => {
               if (
                 confirmation &&
-                (await mutate("PATCH", { action: confirmation, consent: true }))
-              )
+                (await mutate(
+                  "PATCH",
+                  {
+                    action: confirmation,
+                    consent: true,
+                    expectedRequestId: confirmationId.current,
+                  },
+                  Boolean(stage),
+                ))
+              ) {
+                pairRequest.current = null;
                 setConfirmation(null);
+              }
             }}
           >
             {busy

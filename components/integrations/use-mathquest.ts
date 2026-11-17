@@ -11,6 +11,8 @@ export function useMathQuest(path: string) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(mode === "connected");
+  const [retryAfter, setRetryAfter] = useState(0);
+  const mutation = useRef(false);
   const mounted = useRef(false);
   useEffect(() => {
     mounted.current = true;
@@ -50,42 +52,67 @@ export function useMathQuest(path: string) {
       });
     return () => controller.abort();
   }, [mode, refresh]);
-  async function mutate(method: "POST" | "PATCH", input: unknown) {
-    if (busy || mode !== "connected" || readOnly || state?.readOnly)
-      return false;
-    setBusy(true);
-    setError("");
-    try {
-      const response = await request(
-        path,
-        {
-          method,
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
-        },
-        true,
-      );
-      const body = await response.json();
-      if (!response.ok)
-        throw new Error(
-          body.error?.messageTh ?? "ทำรายการไม่สำเร็จ กรุณาลองใหม่",
+  const mutate = useCallback(
+    async (method: "POST" | "PATCH", input: unknown, reconcile = false) => {
+      if (
+        mutation.current ||
+        mode !== "connected" ||
+        readOnly ||
+        state?.readOnly
+      )
+        return false;
+      mutation.current = true;
+      setBusy(true);
+      setError("");
+      try {
+        const response = await request(
+          path,
+          {
+            method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(input),
+          },
+          true,
         );
-      const next = integrationOverviewSchema.parse(body.data);
-      if (!mounted.current || !isCurrentWorkspace()) return false;
-      setState(next);
-      return true;
-    } catch (error) {
-      if (mounted.current && isCurrentWorkspace())
-        setError(
-          error instanceof Error
-            ? error.message
-            : "ทำรายการไม่สำเร็จ กรุณาลองใหม่",
-        );
-      return false;
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
-  }
+        const body = await response.json();
+        const wait = Number(response.headers.get("retry-after"));
+        if (mounted.current && isCurrentWorkspace())
+          setRetryAfter(
+            Number.isFinite(wait) ? Math.max(0, Math.min(wait, 3600)) : 0,
+          );
+        if (!response.ok)
+          throw new Error(
+            body.error?.messageTh ?? "ทำรายการไม่สำเร็จ กรุณาลองใหม่",
+          );
+        const next = integrationOverviewSchema.parse(body.data);
+        if (!mounted.current || !isCurrentWorkspace()) return false;
+        setState(next);
+        return true;
+      } catch (error) {
+        if (reconcile && mounted.current && isCurrentWorkspace())
+          await refresh().catch(() => undefined);
+        if (mounted.current && isCurrentWorkspace())
+          setError(
+            error instanceof Error
+              ? error.message
+              : "ทำรายการไม่สำเร็จ กรุณาลองใหม่",
+          );
+        return false;
+      } finally {
+        mutation.current = false;
+        if (mounted.current) setBusy(false);
+      }
+    },
+    [
+      mode,
+      readOnly,
+      state?.readOnly,
+      request,
+      path,
+      isCurrentWorkspace,
+      refresh,
+    ],
+  );
   async function checkStatus() {
     setBusy(true);
     try {
@@ -104,6 +131,7 @@ export function useMathQuest(path: string) {
     busy,
     refresh: checkStatus,
     mutate,
+    retryAfter,
     mode,
     readOnly: readOnly || state?.readOnly === true,
   };

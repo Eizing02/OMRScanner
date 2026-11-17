@@ -10,10 +10,57 @@ export const integrationConnectionSchema = z.object({
   enabled: z.boolean(),
   revocationPending: z.boolean(),
   recoveryPending: z.boolean().default(false),
+  signedStage: z
+    .enum([
+      "prepare",
+      "preparing",
+      "submit",
+      "waiting",
+      "active",
+      "rejected",
+      "expired",
+      "cancelled",
+    ])
+    .optional(),
+  requestedAt: z.string().optional(),
   lastSyncAt: z.string().nullable(),
   lastError: z.string().nullable(),
 });
 export const publicationSummarySchema = z.object({
+  preview: z
+    .object({
+      metadata: z
+        .object({
+          title: z.string(),
+          subject: z.string(),
+          exam_type: z.string(),
+          classroom: z.string(),
+          academic_year: z.number().int(),
+          term: z.number().int(),
+        })
+        .nullable(),
+      confirmedCount: z.number().int().nonnegative(),
+      reviewCount: z.number().int().nonnegative(),
+      identityIssueCount: z.number().int().nonnegative(),
+      identityIssues: z.array(
+        z.object({
+          originalCode: z
+            .string()
+            .regex(/^[0-9]{5}$/)
+            .nullable(),
+          currentCode: z
+            .string()
+            .regex(/^[0-9]{5}$/)
+            .nullable(),
+        }),
+      ),
+      blocked: z.string().nullable(),
+      fingerprint: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .nullable(),
+    })
+    .nullish(),
   recoveryRequired: z.boolean().default(false),
   termClosed: z.boolean().default(false),
   canWithdraw: z.boolean().default(false),
@@ -33,11 +80,15 @@ export const integrationOverviewSchema = z.object({
   enabled: z.boolean(),
   receiverReady: z.boolean(),
   readOnly: z.boolean(),
+  signedPairing: z
+    .object({ destinationLabel: z.string(), workspaceLabel: z.string() })
+    .nullish(),
   connection: integrationConnectionSchema.nullable(),
   publication: publicationSummarySchema.nullable(),
 });
 export type IntegrationOverview = z.infer<typeof integrationOverviewSchema>;
-export const pairingInputSchema = z.strictObject({
+const legacyPairingInputSchema = z.strictObject({
+  method: z.literal("code").optional(),
   requestId: z.uuid(),
   code: z
     .string()
@@ -47,19 +98,44 @@ export const pairingInputSchema = z.strictObject({
     .regex(/^[A-Za-z0-9_-]+$/),
   consent: z.literal(true),
 });
+export const pairingInputSchema = z.union([
+  legacyPairingInputSchema,
+  z.strictObject({
+    method: z.literal("signed"),
+    requestId: z.uuid(),
+    consent: z.literal(true),
+  }),
+]);
+const expectedRequestId = z.uuid().optional();
 export const connectionCommandSchema = z.discriminatedUnion("action", [
-  z.strictObject({ action: z.literal("refresh") }),
+  z.strictObject({ action: z.literal("refresh"), expectedRequestId }),
   z.strictObject({
     action: z.literal("mode"),
     mode: integrationModeSchema,
     enabled: z.boolean(),
     consent: z.literal(true),
   }),
-  z.strictObject({ action: z.literal("revoke"), consent: z.literal(true) }),
-  z.strictObject({ action: z.literal("recover"), consent: z.literal(true) }),
+  z.strictObject({
+    action: z.literal("revoke"),
+    consent: z.literal(true),
+    expectedRequestId,
+  }),
+  z.strictObject({
+    action: z.literal("recover"),
+    consent: z.literal(true),
+    expectedRequestId,
+  }),
 ]);
-export const publicationCommandSchema = z.strictObject({
-  action: z.enum(["publish", "withdraw", "retry"]),
+const publicationRequest = {
   requestId: z.uuid(),
   consent: z.literal(true),
-});
+};
+export const publicationCommandSchema = z.discriminatedUnion("action", [
+  z.strictObject({
+    ...publicationRequest,
+    action: z.literal("publish"),
+    previewFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  z.strictObject({ ...publicationRequest, action: z.literal("withdraw") }),
+  z.strictObject({ ...publicationRequest, action: z.literal("retry") }),
+]);

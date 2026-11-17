@@ -1,6 +1,24 @@
 import "server-only";
 import { ApiError } from "@/lib/supabase/api";
 const messages: Record<string, [string, number]> = {
+  PAIRING_REQUEST_CHANGED: ["คำขอนี้เปลี่ยนแล้ว กรุณาโหลดสถานะล่าสุด", 409],
+  PAIRING_DESTINATION_CHANGED: [
+    "ปลายทางต่างจากคำขอเดิม กรุณาให้ผู้ดูแลตรวจค่าการเชื่อมต่อ",
+    409,
+  ],
+  INVALID_ACK: ["MathQuest ตอบรับไม่ตรงกับคำขอ", 409],
+  SCORE_IDENTITY_REVIEW: [
+    "พบรหัสนักเรียนที่ต้องตรวจเทียบกับข้อมูลตอนสอบก่อนส่ง",
+    409,
+  ],
+  SCORE_PREVIEW_CHANGED: [
+    "ข้อมูลที่จะส่งเปลี่ยนแล้ว กดตรวจสถานะแล้วตรวจรายการอีกครั้ง",
+    409,
+  ],
+  SCORE_PREVIEW_REQUIRED: [
+    "ตรวจรายการและกดส่งคะแนนเพื่อสร้างรอบเผยแพร่ใหม่",
+    409,
+  ],
   WITHDRAWAL_PROOF_REQUIRED: [
     "MathQuest ยังยืนยันการถอนคะแนนไม่ได้ กรุณาติดต่อผู้ดูแลปลายทาง",
     409,

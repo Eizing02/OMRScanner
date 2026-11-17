@@ -5,6 +5,7 @@ export class ReceiverError extends Error {
     public code: string,
     public retryable: boolean,
     public retryAfter = 0,
+    public status?: number,
   ) {
     super(code);
   }
@@ -13,8 +14,14 @@ export async function receiverRequest(
   path: "ingest-scansob-results" | "pair-scansob-workspace",
   body: string,
   token?: string,
+  options: {
+    signedHeaders?: Record<string, string>;
+    expectedOrigin?: string;
+  } = {},
 ) {
   const origin = receiverOrigin();
+  if (options.expectedOrigin && options.expectedOrigin !== origin)
+    throw new ReceiverError("PAIRING_DESTINATION_CHANGED", false);
   let response: Response;
   try {
     response = await fetch(`${origin}/functions/v1/${path}`, {
@@ -25,6 +32,7 @@ export async function receiverRequest(
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.signedHeaders,
       },
       body,
     });
@@ -34,9 +42,22 @@ export async function receiverRequest(
   if (!response.ok) {
     // Only this bounded, documented code can be distinguished from denial.
     // Never persist or return an arbitrary receiver error body.
+    const knownError =
+      path === "ingest-scansob-results"
+        ? response.status === 403
+          ? ["TERM_CLOSED"]
+          : []
+        : response.status === 409
+          ? [
+              "PAIRING_WINDOW_CHANGED",
+              "PAIRING_WORKSPACE_BUSY",
+              "PAIRING_REQUEST_CONFLICT",
+            ]
+          : response.status === 503
+            ? ["SIGNED_PAIRING_DISABLED"]
+            : [];
     if (
-      path === "ingest-scansob-results" &&
-      response.status === 403 &&
+      knownError.length &&
       response.headers.get("content-type")?.includes("application/json")
     ) {
       try {
@@ -46,13 +67,14 @@ export async function receiverRequest(
           typeof value === "object" &&
           Object.keys(value).length === 1 &&
           "error" in value &&
-          value.error === "TERM_CLOSED"
+          typeof value.error === "string" &&
+          knownError.includes(value.error)
         )
-          throw new ReceiverError("TERM_CLOSED", false);
+          throw new ReceiverError(value.error, false, 0, response.status);
       } catch (error) {
         if (
           error instanceof ReceiverError &&
-          (error.code === "TERM_CLOSED" ||
+          (knownError.includes(error.code) ||
             error.code === "RECEIVER_UNAVAILABLE")
         )
           throw error;
@@ -72,6 +94,7 @@ export async function receiverRequest(
       code,
       retryable,
       Number.isFinite(wait) ? Math.min(Math.max(wait, 0), 3600) : 0,
+      response.status,
     );
   }
   if (

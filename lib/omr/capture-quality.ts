@@ -7,6 +7,7 @@ import {
   type Raster,
 } from "./scan-qr";
 import type { LockedScanTemplate } from "@/types/scan";
+import { resolveGeometry } from "./generate-template";
 
 /** Conservative capture gates, not an accuracy certification. Recalibrate
  * against physical paper/device images before changing these thresholds. */
@@ -15,6 +16,7 @@ export function captureGeometry(
   width: number,
   height: number,
   single: boolean,
+  portraitA4 = false,
 ) {
   if (
     !validQuad(quad) ||
@@ -29,7 +31,9 @@ export function captureGeometry(
     ),
   );
   const ratio = (sides[0] + sides[2]) / (sides[1] + sides[3]);
-  const expected = (single ? 148.5 : 297) / 210;
+  const paperWidth = single ? (portraitA4 ? 210 : 148.5) : 297;
+  const paperHeight = single && portraitA4 ? 297 : 210;
+  const expected = paperWidth / paperHeight;
   if (
     Math.max(
       sides[0] / sides[2],
@@ -41,8 +45,8 @@ export function captureGeometry(
   )
     return "ถือกล้องให้ขนานกระดาษ และเลือกขนาดกระดาษให้ตรง";
   if (
-    Math.min(sides[0], sides[2]) / (single ? 148.5 : 297) < 3.2 ||
-    Math.min(sides[1], sides[3]) / 210 < 3.2
+    Math.min(sides[0], sides[2]) / paperWidth < 3.2 ||
+    Math.min(sides[1], sides[3]) / paperHeight < 3.2
   )
     return "ขยับใกล้ขึ้น ภาพยังละเอียดไม่พอ";
   return null;
@@ -103,8 +107,9 @@ export function assessPaperQuality(
   template: LockedScanTemplate,
   single: boolean,
 ) {
+  const g = resolveGeometry(template.layout_json);
   const leaves =
-    !single && template.layout_json.paperMode !== "full"
+    !single && g.sheetsPerPage === 2
       ? [
           rasterRegion(image, 0, Math.floor(image.width / 2)),
           rasterRegion(
@@ -126,16 +131,17 @@ export function assessPaperQuality(
       return "ให้ QR ชัด และหลีกเลี่ยงแสงสะท้อน";
     const alignment = qrAlignmentError(leaf, template, qr);
     if (alignment) return alignment;
-    const mmWidth = template.layout_json.paperMode === "full" ? 297 : 148.5;
-    const sx = leaf.width / mmWidth,
-      sy = leaf.height / 210;
-    for (const [x, y] of [
-      [7.5, 7.5],
-      [mmWidth - 7.5, 7.5],
-      [7.5, 202.5],
-      [mmWidth - 7.5, 202.5],
-    ])
-      if (fillPercentage(leaf, x * sx, y * sy, 0.65 * Math.min(sx, sy)) < 55)
+    const sx = leaf.width / g.sheetWidth,
+      sy = leaf.height / g.sheetHeight;
+    for (const { x, y } of g.markers)
+      if (
+        fillPercentage(
+          leaf,
+          (x + 1.5) * sx,
+          (y + 1.5) * sy,
+          0.65 * Math.min(sx, sy),
+        ) < 55
+      )
         return "ให้เห็นจุดดำครบ หลีกเลี่ยงเงาและแสงสะท้อน";
     // Only the locked answer field can establish answer detail. Printed IDs,
     // QR and the new fill examples must never make blurred answers look sharp.

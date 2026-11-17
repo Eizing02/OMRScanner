@@ -4580,11 +4580,18 @@ svg {
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.integration-counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
+.integration-exam-scope {
   margin: 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.integration-counts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding-block: 12px;
+  border-block: 1px solid var(--line);
 }
 .integration-counts dt {
   color: var(--muted);
@@ -4986,24 +4993,8 @@ body:has(.roster-form, .roster-directory) .toast {
   .integration-actions > .btn {
     min-height: 44px;
   }
-  .results-task .workspace-actionbar:has(.integration-trigger) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px;
-  }
-  .results-task .workspace-actionbar:has(.integration-trigger) > label {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .results-task
-    .workspace-actionbar:has(.integration-trigger)
-    > .btn:last-of-type {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .results-task .workspace-actionbar > .integration-trigger {
-    grid-column: 1 / -1;
-    grid-row: 2;
+  .integration-trigger {
+    min-height: 44px;
   }
 }
 

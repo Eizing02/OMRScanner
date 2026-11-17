@@ -2,11 +2,25 @@ import { z } from "zod";
 import { choices, type Exam } from "@/types/exam";
 import type { PrintStudent } from "@/types/print";
 import fontMetrics from "./print-font-metrics.json";
+import {
+  gridPaper,
+  gridPrintTexts,
+  gridStudentFits,
+  gridTextFits,
+  schoolGridPrint,
+} from "./school-grid";
 
 export const layoutSchema = z.object({
   schemaVersion: z.literal(1),
   printStyle: z
-    .enum(["classic", "compact", "school", "school-v2"])
+    .enum([
+      "classic",
+      "compact",
+      "school",
+      "school-v2",
+      "school-grid",
+      "school-grid-portrait",
+    ])
     .default("classic"),
   school: z.string().trim().min(1).max(60),
   title: z.string().trim().min(1).max(120),
@@ -87,7 +101,7 @@ export function layoutForExam(stored: SheetLayout, exam: Exam): SheetLayout {
 export const mmToPt = (mm: number) => (mm * 72) / 25.4;
 export const mmToPx = (mm: number, dpi: number) => (mm * dpi) / 25.4;
 export const modernPrint = (layout: SheetLayout) =>
-  layout.printStyle === "school-v2";
+  layout.printStyle === "school-v2" || schoolGridPrint(layout);
 export function measurePrintText(value: string, size: number, bold = false) {
   const metrics = fontMetrics[bold ? "bold" : "normal"] as Record<
     string,
@@ -169,6 +183,7 @@ export function wrapPrintText(value: string, width: number, fontSize: number) {
   return lines;
 }
 function geometryFor(width: number, layout: SheetLayout) {
+  if (schoolGridPrint(layout)) return gridPaper(width, layout);
   const answerLeft = 59,
     right = 12,
     answerTop = 82,
@@ -270,6 +285,7 @@ function geometryFor(width: number, layout: SheetLayout) {
 }
 export type SheetGeometry = ReturnType<typeof geometryFor>;
 function textFits(layout: SheetLayout, g: SheetGeometry) {
+  if (schoolGridPrint(layout)) return gridTextFits(layout, g);
   if (modernPrint(layout)) {
     const texts = modernPrintTexts(layout, g);
     return (
@@ -309,7 +325,14 @@ export function resolveGeometry(layout: SheetLayout) {
   const expanded =
     layout.paperMode === "full" || !half.fits || !textFits(layout, half);
   return {
-    ...geometryFor(expanded ? 297 : 148.5, layout),
+    ...geometryFor(
+      expanded
+        ? layout.printStyle === "school-grid-portrait"
+          ? 210
+          : 297
+        : 148.5,
+      layout,
+    ),
     autoExpanded: layout.paperMode === "auto" && expanded,
   };
 }
@@ -339,7 +362,10 @@ export function answerBubbles(
           g.answerStart.x +
           Math.floor(i / g.rows) * g.answerColumnWidth +
           option * g.answerStepX,
-        y: g.answerStart.y + row * g.answerStepY + Math.floor(row / 5) * 1.5,
+        y:
+          g.answerStart.y +
+          row * g.answerStepY +
+          (schoolGridPrint(layout) ? 0 : Math.floor(row / 5) * 1.5),
       };
     }),
   ).flat();
@@ -349,7 +375,7 @@ export type PrintText = {
   x: number;
   y: number;
   size: number;
-  align?: "left" | "center";
+  align?: "left" | "center" | "right";
   weight?: "normal" | "bold";
   maxWidth?: number;
 };
@@ -495,6 +521,7 @@ export function printTexts(
   g = resolveGeometry(layout),
   student?: PrintStudent,
 ): PrintText[] {
+  if (schoolGridPrint(layout)) return gridPrintTexts(layout, g, student);
   if (modernPrint(layout)) return modernPrintTexts(layout, g, student);
   const lines = (
     value: string,
@@ -618,25 +645,31 @@ export function printStudentErrors(
         `รหัสนักเรียน ${student.full_name} ต้องเป็นข้อความตัวเลข 5 หลัก`,
       );
     if (
-      modernPrint(layout) &&
-      (wrapMeasuredText(
-        `ชื่อ–สกุล …${student.full_name}…`,
-        g.qr.x - 16,
-        2.8,
-        true,
-      ).length > 2 ||
-        measurePrintText(
-          printClassroom({ ...layout, printStyle: "school" }, student),
-          2.8,
-          true,
-        ) >
-          g.qr.x - 16)
+      schoolGridPrint(layout)
+        ? !gridStudentFits(g, student)
+        : modernPrint(layout) &&
+          (wrapMeasuredText(
+            `ชื่อ–สกุล …${student.full_name}…`,
+            g.qr.x - 16,
+            2.8,
+            true,
+          ).length > 2 ||
+            measurePrintText(
+              printClassroom({ ...layout, printStyle: "school" }, student),
+              2.8,
+              true,
+            ) >
+              g.qr.x - 16)
     )
       errors.push(`ข้อมูล ${student.student_code} ยาวเกินพื้นที่หัวกระดาษ`);
     if (
       !student.full_name.trim() ||
-      wrapPrintText(`ชื่อ–สกุล …${student.full_name}…`, g.sheetWidth - 24, 2.8)
-        .length > 2
+      (!schoolGridPrint(layout) &&
+        wrapPrintText(
+          `ชื่อ–สกุล …${student.full_name}…`,
+          g.sheetWidth - 24,
+          2.8,
+        ).length > 2)
     )
       errors.push(
         `ชื่อ ${student.full_name} ยาวเกินพื้นที่หัวกระดาษ กรุณาตรวจรายชื่อ`,
@@ -654,6 +687,13 @@ export function resolvePrintLayout(
   layout: SheetLayout,
   students: PrintStudent[],
 ): SheetLayout {
+  if (schoolGridPrint(layout)) {
+    const g = resolveGeometry(layout);
+    return g.sheetsPerPage === 2 &&
+      students.some((student) => !gridStudentFits(g, student))
+      ? { ...layout, paperMode: "full" }
+      : layout;
+  }
   if (
     layout.paperMode === "auto" &&
     resolveGeometry(layout).sheetsPerPage === 2 &&
@@ -680,7 +720,8 @@ export function validateLayout(layout: SheetLayout) {
       (b) =>
         b.x - g.bubbleRadius < 10 ||
         b.x + g.bubbleRadius > g.sheetWidth - 10 ||
-        b.y + g.bubbleRadius > 183,
+        b.y + g.bubbleRadius >
+          (schoolGridPrint(layout) ? g.sheetHeight - 12 : 183),
     )
   )
     errors.push("วงฝนล้ำพื้นที่ปลอดภัย");
@@ -688,7 +729,7 @@ export function validateLayout(layout: SheetLayout) {
     errors,
     warnings: ["ยังต้องทดสอบพิมพ์และสแกนจริงก่อนใช้กับคะแนนนักเรียน"],
     checks: [
-      `A4 แนวนอน · ${g.sheetsPerPage} ใบต่อแผ่น`,
+      `A4 ${g.paperHeight > g.paperWidth ? "แนวตั้ง" : "แนวนอน"} · ${g.sheetsPerPage} ใบต่อแผ่น`,
       `${layout.questionCount} ข้อ · ${layout.choiceCount} ตัวเลือก · ${g.columns} คอลัมน์`,
       "รหัสนักเรียน 5 หลัก · 50 ช่องฝน",
       "QR ชุดเดียวกันและจุดจัดแนวครบทุกใบ",
@@ -722,13 +763,17 @@ export function compileOmrTemplate(layout: SheetLayout) {
   );
   return {
     schemaVersion: 1,
-    geometryVersion: modernPrint(layout)
-      ? 5
-      : layout.printStyle === "school"
-        ? 4
-        : layout.printStyle === "compact"
-          ? 3
-          : 2,
+    geometryVersion: schoolGridPrint(layout)
+      ? g.sheetHeight > 210
+        ? 7
+        : 6
+      : modernPrint(layout)
+        ? 5
+        : layout.printStyle === "school"
+          ? 4
+          : layout.printStyle === "compact"
+            ? 3
+            : 2,
     pageDimensions: [900, Math.round(g.sheetHeight * factor)],
     bubbleDimensions: [
       g.bubbleRadius * 2 * factor,
