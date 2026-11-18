@@ -1,6 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { readFile } from "node:fs/promises";
+import { read, utils } from "xlsx";
 import { demoExams, demoReviews, demoStudents } from "@/lib/demo";
+import { scoreRow } from "@/lib/grading/recalculate";
 import type { SignedPairingAvailability } from "@/types/integration";
 
 const user = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -25,7 +28,7 @@ const confirmed = demoReviews.slice(0, 2).map((review, index) => ({
   })),
 }));
 
-async function fixtures(page: Page) {
+async function fixtures(page: Page, results = confirmed) {
   let readOnly = false;
   let recoveryFails = false;
   let availability: SignedPairingAvailability = "ready";
@@ -303,15 +306,19 @@ async function fixtures(page: Page) {
               }
             : view === "results" || view === "queue"
               ? {
-                  items: confirmed.map((r) => ({
+                  items: results.slice(0, 20).map((r) => ({
                     ...r,
                     score,
                     maxScore: score,
                     percent: 100,
                     passed: true,
                   })),
-                  total: confirmed.length,
-                  counts: { needs_review: 0, verified: 2, voided: 0 },
+                  total: results.length,
+                  counts: {
+                    needs_review: 0,
+                    verified: results.length,
+                    voided: 0,
+                  },
                   page: 0,
                   limit: 20,
                 }
@@ -414,6 +421,116 @@ async function accessibleAndContained(page: Page) {
     ).violations,
   ).toEqual([]);
 }
+
+test("downloads four file types through the compact score export dialog", async ({
+  page,
+}, testInfo) => {
+  const results = Array.from({ length: 42 }, (_, index) => ({
+    ...confirmed[0],
+    id: crypto.randomUUID(),
+    studentCode: String(2074 + index).padStart(5, "0"),
+    classroom: exam.classroom,
+    name: `นักเรียนทดสอบ ${index + 1}`,
+    number: index + 1,
+  }));
+  await fixtures(page, results);
+  const rows = results.map((item) => scoreRow(item, exam));
+  const requests: unknown[] = [];
+  await page.route("**/api/export", async (route) => {
+    const input = route.request().postDataJSON();
+    requests.push(input);
+    await route.fulfill({
+      json: {
+        data: {
+          rows: rows.filter(
+            (_, index) => !input.scanIds || input.scanIds.includes(results[index].id),
+          ),
+        },
+      },
+    });
+  });
+  await page.goto("/export");
+  const trigger = page.getByRole("button", {
+    name: "ส่งออกคะแนน",
+    exact: true,
+  });
+  const dialog = page.getByRole("dialog", { name: "ส่งออกคะแนน", exact: true });
+  await trigger.click();
+  await expect(dialog.getByText("ยืนยันแล้ว 42 คน")).toBeVisible();
+  await expect(dialog.getByRole("radio", { name: "Excel" })).toBeChecked();
+  await expect(dialog.getByRole("radio")).toHaveCount(4);
+  await accessibleAndContained(page);
+  await page.screenshot({
+    path: ".impeccable/review/score-export-desktop.png",
+  });
+
+  const formatGrid = dialog.locator(".score-export-formats");
+  const columns = () =>
+    formatGrid.evaluate(
+      (grid) => getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+    );
+  expect(await columns()).toBe(4);
+  await page.setViewportSize({ width: 768, height: 1024 });
+  expect(await columns()).toBe(4);
+  await accessibleAndContained(page);
+  await page.screenshot({ path: ".impeccable/review/score-export-tablet.png" });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await columns()).toBe(2);
+  const excel = dialog.getByRole("radio", { name: "Excel" });
+  await excel.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(dialog.getByRole("radio", { name: "PDF" })).toBeChecked();
+  await accessibleAndContained(page);
+  await page.screenshot({ path: ".impeccable/review/score-export-phone.png" });
+
+  for (const [label, extension] of [
+    ["Excel", "xlsx"],
+    ["PDF", "pdf"],
+    ["CSV", "csv"],
+    ["Word", "docx"],
+  ] as const) {
+    if (!(await dialog.isVisible())) await trigger.click();
+    await dialog.getByText(label, { exact: true }).click();
+    const downloaded = page.waitForEvent("download");
+    await dialog
+      .getByRole("button", { name: "ดาวน์โหลด", exact: true })
+      .click();
+    const file = await downloaded;
+    expect(file.suggestedFilename()).toMatch(new RegExp(`\\.${extension}$`));
+    const path = testInfo.outputPath(`score.${extension}`);
+    await file.saveAs(path);
+    const data = await readFile(path);
+    if (extension === "xlsx") {
+      const book = read(data, { type: "buffer" });
+      const sheet = book.Sheets[book.SheetNames[0]];
+      expect(sheet.B2).toMatchObject({ t: "s", v: "02074" });
+      expect(utils.sheet_to_json(sheet)).toHaveLength(42);
+    } else if (extension === "csv") {
+      expect(data.subarray(0, 3).toString("hex")).toBe("efbbbf");
+      expect(data.toString("utf8")).toContain("02074");
+      expect(data.toString("utf8").trimEnd().split(/\r?\n/)).toHaveLength(43);
+    } else if (extension === "pdf") {
+      expect(data.subarray(0, 5).toString("ascii")).toBe("%PDF-");
+      expect(data.toString("latin1")).toMatch(/\/Count [2-9]\b/);
+    } else {
+      expect(data.subarray(0, 2).toString("ascii")).toBe("PK");
+      expect(data.includes(Buffer.from("word/document.xml"))).toBe(true);
+    }
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+  }
+  const individualDownload = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "ดาวน์โหลดรายงาน 02074", exact: true })
+    .click();
+  const individual = await individualDownload;
+  expect(individual.suggestedFilename()).toBe("ผลคะแนนรายบุคคล.pdf");
+  expect(requests).toEqual([
+    ...["xlsx", "pdf", "csv", "docx"].map((format) => ({ examId, format })),
+    { examId, format: "pdf", scanIds: [results[0].id] },
+  ]);
+});
 
 test("pairs explicitly, publishes confirmed scores and stays usable on desktop phone and iPad", async ({
   page,

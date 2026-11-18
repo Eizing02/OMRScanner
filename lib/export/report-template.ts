@@ -1,8 +1,14 @@
 import { jsPDF } from "jspdf";
-type Row = Record<string, string | number>;
-export async function downloadScoreReport(
-  rows: Row[],
-  title: string,
+import type { ScoreExportRow, ScoreReportDetails } from "@/types/export";
+import {
+  scoreReportContext,
+  scoreSummaryCells,
+  scoreSummaryColumns,
+} from "./score-report";
+
+export async function buildScoreReportPdf(
+  rows: ScoreExportRow[],
+  report: ScoreReportDetails,
   individual = false,
 ) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -16,27 +22,27 @@ export async function downloadScoreReport(
   doc.setFont("Thai");
   let page = 1,
     y = 0;
+  const margin = 16;
+  const width = 178;
+  const reportDate = new Date().toLocaleDateString("th-TH");
   function heading() {
-    doc.setFontSize(15);
-    const lines = doc.splitTextToSize(title, 178);
-    doc.text(lines, 16, 20);
-    y = 20 + lines.length * 6;
-    doc.setFontSize(10);
-    doc.text(
-      individual ? "รายงานผลรายบุคคล" : "รายงานคะแนนที่ยืนยันแล้ว",
-      16,
-      y,
-    );
-    y += 10;
+    y = 20;
+    const line = (text: string, size: number, spacing: number) => {
+      doc.setFontSize(size);
+      const lines: string[] = doc.splitTextToSize(text, width);
+      doc.text(lines, 105, y, { align: "center" });
+      y += lines.length * spacing;
+    };
+    line(report.school, 11, 6);
+    line(individual ? "รายงานผลรายบุคคล" : "รายงานผลสอบ", 17, 8);
+    line(report.title, 12, 6);
+    line(scoreReportContext(report), 10, 5);
+    if (!individual) line(`ยืนยันแล้ว ${rows.length} คน`, 10, 5);
+    y += 5;
   }
   function footer() {
     doc.setFontSize(8);
-    doc.text(
-      `หน้า ${page} · ${new Date().toLocaleDateString("th-TH")}`,
-      194,
-      286,
-      { align: "right" },
-    );
+    doc.text(`หน้า ${page} · ${reportDate}`, 194, 286, { align: "right" });
   }
   function next() {
     footer();
@@ -71,35 +77,54 @@ export async function downloadScoreReport(
       y += 6;
     }
   } else {
+    const columnWidths = scoreSummaryColumns.map(
+      (column) => (column.width / 100) * width,
+    );
+    const drawRow = (cells: string[][], height: number, header = false) => {
+      if (header) {
+        doc.setFillColor(244, 246, 248);
+        doc.rect(margin, y, width, height, "F");
+      }
+      let x = margin;
+      for (const [index, lines] of cells.entries()) {
+        const alignedRight = scoreSummaryColumns[index].numeric;
+        const anchor = alignedRight ? x + columnWidths[index] - 2 : x + 2;
+        doc.text(lines, anchor, y + 4.5, {
+          align: alignedRight ? "right" : "left",
+        });
+        x += columnWidths[index];
+      }
+      y += height;
+      doc.setDrawColor(220);
+      doc.line(margin, y, margin + width, y);
+    };
+    const lineHeight = 4;
     const header = () => {
-      doc.setFontSize(10);
-      doc.text("รหัส", 16, y);
-      doc.text("ชื่อ-สกุล", 39, y);
-      doc.text("ชั้น", 127, y);
-      doc.text("คะแนน", 155, y);
-      doc.text("ผล", 184, y);
-      y += 4;
-      doc.setDrawColor(200);
-      doc.line(16, y, 194, y);
-      y += 6;
+      doc.setFontSize(9);
+      drawRow(
+        scoreSummaryColumns.map(({ title }) => [title]),
+        8,
+        true,
+      );
     };
     header();
     for (const row of rows) {
-      const name = doc.splitTextToSize(String(row["ชื่อ-สกุล"]), 83);
-      const height = Math.max(7, name.length * 5 + 2);
+      doc.setFontSize(9);
+      const cells = scoreSummaryCells(row).map(
+        (value, index) =>
+          doc.splitTextToSize(value, columnWidths[index] - 4) as string[],
+      );
+      const height = Math.max(
+        8,
+        Math.max(...cells.map((lines) => lines.length)) * lineHeight + 4,
+      );
       if (y + height > 273) {
         next();
         header();
       }
-      doc.setFontSize(9);
-      doc.text(String(row["รหัสนักเรียน"]), 16, y);
-      doc.text(name, 39, y);
-      doc.text(String(row["ชั้น/ห้อง"]), 127, y);
-      doc.text(`${row["คะแนนที่ได้"]}/${row["คะแนนเต็ม"]}`, 155, y);
-      doc.text(String(row["ผ่าน/ไม่ผ่าน"]), 184, y);
-      y += height;
+      drawRow(cells, height);
     }
   }
   footer();
-  doc.save(individual ? "ผลคะแนนรายบุคคล.pdf" : "รายงานคะแนน.pdf");
+  return doc.output("blob");
 }

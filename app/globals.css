@@ -4052,6 +4052,65 @@ svg {
   max-width: 520px;
   flex: 1;
 }
+.results-task > .workspace-actionbar {
+  justify-content: flex-end;
+}
+.score-export-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 6px;
+}
+.score-export-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.score-export-formats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.score-export-format {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 7px;
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+.score-export-format > svg {
+  position: absolute;
+  inset-inline-start: 9px;
+  visibility: hidden;
+}
+.score-export-format:has(input:checked) {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-light);
+}
+.score-export-format:has(input:checked) > svg {
+  visibility: visible;
+}
+.score-export-format:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.score-export-format:has(input:disabled) {
+  cursor: not-allowed;
+}
+.score-export-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .scorebook {
   flex: 1;
   min-height: 0;
@@ -4373,6 +4432,13 @@ svg {
   }
   .results-task .data-table {
     min-width: 690px;
+  }
+  .score-export-formats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .score-export-actions > .btn {
+    width: 100%;
+    min-height: 44px;
   }
 }
 @media (max-height: 700px) and (max-width: 900px) {

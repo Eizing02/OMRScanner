@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { readFile } from "node:fs/promises";
 import {
   compileOmrTemplate,
   defaultLayout,
@@ -22,6 +23,39 @@ afterAll(async () => {
 });
 
 describe("school-grid print and verified score delivery", () => {
+  it("registers Word exports with an audit entry for confirmed scores in the owning workspace", async () => {
+    await fixture.db.exec(
+      await readFile(
+        "supabase/migrations/202611180025_word_score_export.sql",
+        "utf8",
+      ),
+    );
+    const { scanId } = await fixture.exam();
+    const input = {
+      school_id: fixture.schoolA,
+      format: "docx",
+      scan_ids: [scanId],
+    };
+    await expect(
+      fixture.rpc(teacherA, "register_score_export", input),
+    ).rejects.toThrow("UNCONFIRMED_EXPORT");
+    await fixture.confirm(scanId);
+    await expect(
+      fixture.rpc(teacherB, "register_score_export", input),
+    ).rejects.toThrow("FORBIDDEN");
+    const job = await fixture.rpc<string>(
+      teacherA,
+      "register_score_export",
+      input,
+    );
+    const { rows } = await fixture.db.query<{ format: string; action: string }>(
+      `select j.format, a.action from public.export_jobs j
+       join public.audit_logs a on a.resource_id = j.id where j.id = $1`,
+      [job],
+    );
+    expect(rows).toEqual([{ format: "docx", action: "export_word" }]);
+  }, 30000);
+
   it("pins signed attempts and activates in manual mode with an empty outbox", async () => {
     const id = crypto.randomUUID();
     const destination = crypto.randomUUID();

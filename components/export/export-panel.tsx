@@ -1,19 +1,35 @@
 "use client";
-import { useState } from "react";
-import { Download, FileText, ChevronLeft, ChevronRight } from "lucide-react";
+import { useRef, useState } from "react";
+import {
+  Check,
+  Download,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useWorkspace } from "@/components/layout/workspace-provider";
 import { scoreRow } from "@/lib/grading/recalculate";
-import { downloadScores } from "@/lib/export/export-excel";
-import { downloadScoreReport } from "@/lib/export/report-template";
+import {
+  scoreExportFormats,
+  type ScoreExportFormat,
+  type ScoreExportRow,
+  type ScoreReportDetails,
+} from "@/types/export";
 import { ExamPublication } from "@/components/integrations/exam-publication";
 import { useReviewPage } from "@/components/review/use-review-data";
 import {
   Badge,
   EmptyState,
+  Modal,
   Notice,
   PageHeading,
 } from "@/components/ui/primitives";
-type Format = "csv" | "xlsx" | "pdf";
+const formatLabels: Record<ScoreExportFormat, string> = {
+  xlsx: "Excel",
+  pdf: "PDF",
+  csv: "CSV",
+  docx: "Word",
+};
 export function Results({ initialExamId }: { initialExamId?: string } = {}) {
   const {
     reviews,
@@ -21,16 +37,19 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
     getExamVersion,
     mode,
     notify,
+    branding,
     request,
     readOnly,
     isCurrentWorkspace,
   } = useWorkspace();
   const [examId, setExamId] = useState(initialExamId ?? ""),
     [onlyVerified, setOnlyVerified] = useState(true),
-    [format, setFormat] = useState<Format>("xlsx"),
+    [format, setFormat] = useState<ScoreExportFormat>("xlsx"),
+    [exportOpen, setExportOpen] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [page, setPage] = useState(0);
+  const exportTrigger = useRef<HTMLButtonElement>(null);
   const selected = exams.find((e) => e.id === examId) ?? exams[0];
   const remote = useReviewPage({
     view: "results",
@@ -49,7 +68,7 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
     )
     .sort((a, b) => a.studentCode.localeCompare(b.studentCode));
   const items = mode === "connected" ? (remote.data?.items ?? []) : demoItems;
-  const rows: Record<string, string | number>[] =
+  const rows: ScoreExportRow[] =
     mode === "connected"
       ? items.map((item) => ({
           รหัสนักเรียน: item.studentCode,
@@ -72,13 +91,21 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
     mode === "connected" ? rows : rows.slice(start, start + 20);
   const visibleItems =
     mode === "connected" ? items : items.slice(start, start + 20);
-  async function download(individualId?: string) {
-    if (!selected || readOnly) return;
+  const confirmedCount =
+    mode === "connected"
+      ? (remote.data?.counts.verified ?? 0)
+      : items.filter((item) => item.status === "verified").length;
+  const exportDisabled = busy || readOnly || remote.loading || !confirmedCount;
+
+  async function download(
+    actualFormat: ScoreExportFormat,
+    individualId?: string,
+  ) {
+    if (!selected || readOnly || busy) return;
     setBusy(true);
     setError("");
     try {
-      const actualFormat = individualId ? "pdf" : format;
-      let exportRows: Record<string, string | number>[];
+      let exportRows: ScoreExportRow[];
       if (mode === "connected") {
         const response = await request(
           "/api/export",
@@ -107,13 +134,50 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
           .map((r) => scoreRow(r, getExamVersion(r.examId, r.examVersion)!));
       else throw new Error("ยังไม่ได้เชื่อมต่อระบบ");
       if (!isCurrentWorkspace()) return;
-      if (actualFormat === "pdf")
-        await downloadScoreReport(
-          exportRows,
-          selected.title,
-          Boolean(individualId),
-        );
-      else downloadScores(exportRows, actualFormat);
+      const report: ScoreReportDetails = {
+        school: branding.school,
+        title: selected.title,
+        subject: selected.subject,
+        classroom: selected.classroom,
+        term: selected.term,
+        year: selected.year,
+      };
+      let file: Blob;
+      let name = "ผลคะแนน";
+      switch (actualFormat) {
+        case "pdf": {
+          const { buildScoreReportPdf } =
+            await import("@/lib/export/report-template");
+          file = await buildScoreReportPdf(
+            exportRows,
+            report,
+            Boolean(individualId),
+          );
+          name = individualId ? "ผลคะแนนรายบุคคล" : "รายงานคะแนน";
+          break;
+        }
+        case "docx": {
+          const { buildScoreReportWord } =
+            await import("@/lib/export/export-word");
+          file = await buildScoreReportWord(exportRows, report);
+          name = "รายงานคะแนน";
+          break;
+        }
+        default: {
+          const { buildScoreTable } = await import("@/lib/export/export-excel");
+          file = buildScoreTable(exportRows, actualFormat);
+        }
+      }
+      if (!isCurrentWorkspace()) return;
+      const url = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${name}.${actualFormat}`;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      if (!individualId) setExportOpen(false);
       notify("ส่งออกคะแนนที่ยืนยันแล้วเรียบร้อย");
     } catch (e) {
       setError(e instanceof Error ? e.message : "ส่งออกไม่สำเร็จ");
@@ -164,7 +228,7 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
           เฉพาะที่ยืนยันแล้ว
         </label>
       </div>
-      {error && <Notice tone="error">{error}</Notice>}
+      {error && !exportOpen && <Notice tone="error">{error}</Notice>}
       {remote.error && <Notice tone="error">{remote.error}</Notice>}
       {remote.loading && <Notice>กำลังโหลดผลสอบ…</Notice>}
       <section className="panel scorebook">
@@ -210,7 +274,7 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
                       className="icon-button"
                       aria-label={`ดาวน์โหลดรายงาน ${row["รหัสนักเรียน"]}`}
                       disabled={row.สถานะ !== "ยืนยันแล้ว" || busy || readOnly}
-                      onClick={() => void download(visibleItems[i].id)}
+                      onClick={() => void download("pdf", visibleItems[i].id)}
                     >
                       <FileText size={18} />
                     </button>
@@ -251,34 +315,71 @@ export function Results({ initialExamId }: { initialExamId?: string } = {}) {
         </div>
       </section>
       <footer className="workspace-actionbar">
-        <label>
-          <span className="sr-only">รูปแบบรายงาน</span>
-          <select
-            aria-label="รูปแบบรายงาน"
-            value={format}
-            onChange={(e) => setFormat(e.target.value as Format)}
-          >
-            <option value="xlsx">Excel (.xlsx)</option>
-            <option value="csv">CSV</option>
-            <option value="pdf">PDF ทั้งห้อง</option>
-          </select>
-        </label>
         <button
+          ref={exportTrigger}
           className="btn btn-primary"
-          disabled={
-            busy ||
-            readOnly ||
-            remote.loading ||
-            (mode === "connected"
-              ? !remote.data?.counts.verified
-              : !items.some((r) => r.status === "verified"))
-          }
-          onClick={() => void download()}
+          disabled={exportDisabled}
+          onClick={() => {
+            setError("");
+            setExportOpen(true);
+          }}
         >
           <Download size={17} />
-          {busy ? "กำลังส่งออก…" : "ส่งออกคะแนน"}
+          ส่งออกคะแนน
         </button>
       </footer>
+      <Modal
+        open={exportOpen && Boolean(selected)}
+        onOpenChange={setExportOpen}
+        returnFocusRef={exportTrigger}
+        title="ส่งออกคะแนน"
+        description={
+          selected ? `${selected.title} · ${selected.classroom}` : undefined
+        }
+      >
+        <form
+          className="score-export-form"
+          aria-busy={busy}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!exportDisabled) void download(format);
+          }}
+        >
+          <p className="muted">
+            ยืนยันแล้ว {confirmedCount} คน
+          </p>
+          <fieldset className="score-export-fieldset" disabled={busy}>
+            <legend className="sr-only">รูปแบบไฟล์</legend>
+            <div className="score-export-formats">
+              {scoreExportFormats.map((kind) => (
+                <label key={kind} className="score-export-format">
+                  <input
+                    className="sr-only"
+                    type="radio"
+                    name="score-export-format"
+                    value={kind}
+                    checked={format === kind}
+                    onChange={() => setFormat(kind)}
+                  />
+                  <Check size={15} aria-hidden="true" />
+                  {formatLabels[kind]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          {error && exportOpen && <Notice tone="error">{error}</Notice>}
+          <div className="score-export-actions">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={exportDisabled}
+            >
+              <Download size={17} aria-hidden="true" />
+              {busy ? "กำลังดาวน์โหลด…" : "ดาวน์โหลด"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReviewItem } from "@/types/result";
+import { scoreExportFormats } from "@/types/export";
 const mock = vi.hoisted(() => ({
   readOnly: false,
   reviews: [] as ReviewItem[],
@@ -85,24 +86,27 @@ beforeEach(() => {
   }));
 });
 describe("authoritative confirmed-score export", () => {
-  it("uses the scanned key version and preserves leading-zero codes; ignores forged scores", async () => {
-    const response = await POST(request({ rows: [{ score: 999 }] }));
-    expect(response.status).toBe(200);
-    const { data } = await response.json();
-    expect(data.rows[0]).toMatchObject({
-      รหัสนักเรียน: "02074",
-      คะแนนที่ได้: 20,
-      คะแนนเต็ม: 20,
-      สถานะ: "ยืนยันแล้ว",
-    });
-    expect(mock.rpc).toHaveBeenCalledWith("get_scan_reviews", {
-      tenant: "20000000-0000-4000-8000-000000000099",
-      exam_filter: examId,
-    });
-    expect(mock.rpc).toHaveBeenCalledWith("register_score_export", {
-      input: expect.objectContaining({ scan_ids: [scanId], format: "xlsx" }),
-    });
-  });
+  it.each(scoreExportFormats)(
+    "exports %s from the scanned key version with leading-zero codes",
+    async (format) => {
+      const response = await POST(request({ format, rows: [{ score: 999 }] }));
+      expect(response.status).toBe(200);
+      const { data } = await response.json();
+      expect(data.rows[0]).toMatchObject({
+        รหัสนักเรียน: "02074",
+        คะแนนที่ได้: 20,
+        คะแนนเต็ม: 20,
+        สถานะ: "ยืนยันแล้ว",
+      });
+      expect(mock.rpc).toHaveBeenCalledWith("get_scan_reviews", {
+        tenant: "20000000-0000-4000-8000-000000000099",
+        exam_filter: examId,
+      });
+      expect(mock.rpc).toHaveBeenCalledWith("register_score_export", {
+        input: expect.objectContaining({ scan_ids: [scanId], format }),
+      });
+    },
+  );
   it("does not export or audit unconfirmed/mismatched selected scans", async () => {
     mock.reviews[0].status = "needs_review";
     expect((await POST(request())).status).toBe(422);

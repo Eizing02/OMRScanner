@@ -10,12 +10,13 @@ import { scanDatabaseError } from "@/lib/omr/scan-errors";
 import { scoreRow } from "@/lib/grading/recalculate";
 import type { ReviewItem } from "@/types/result";
 import type { Exam } from "@/types/exam";
+import { scoreExportFormats } from "@/types/export";
 export async function POST(request: Request) {
   try {
     const { db, schoolId } = await context(true);
     const parsed = z
       .object({
-        format: z.enum(["xlsx", "csv", "pdf"]),
+        format: z.enum(scoreExportFormats),
         examId: z.uuid(),
         scanIds: z.array(z.uuid()).min(1).max(500).optional(),
       })
